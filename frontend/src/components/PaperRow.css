@@ -1,0 +1,18 @@
+.paper-row {
+  display: grid;
+  grid-template-columns: 3fr 2fr 1fr 1fr 50px 50px;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid #2c2c2c;
+  align-items: center;
+}
+
+.paper-row:hover {
+  background-color: #2a2a2a;
+  cursor: pointer;
+}
+
+.paper-title {
+  text-decoration: underline;
+  color: #90caf9;
+}

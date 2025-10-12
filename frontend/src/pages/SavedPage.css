@@ -1,0 +1,25 @@
+.saved-container {
+  display: flex;
+  height: calc(100vh - 60px);
+}
+
+.saved-main {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #121212;
+}
+
+.add-folder-btn {
+  background-color: #2c2c2c;
+  border: none;
+  color: #e0e0e0;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.add-folder-btn:hover {
+  background-color: #3a3a3a;
+}
