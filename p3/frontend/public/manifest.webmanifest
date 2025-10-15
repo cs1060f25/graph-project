@@ -1,9 +1,0 @@
-{
-	"name": "Prototype 3 - Research Graph Explorer",
-	"short_name": "P3 Graph",
-	"start_url": "/",
-	"display": "standalone",
-	"background_color": "#ffffff",
-	"theme_color": "#1e40af",
-	"icons": []
-}
