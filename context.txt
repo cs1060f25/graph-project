@@ -1,0 +1,218 @@
+CS 1060 Homework 3
+
+Collaborators		Persona (# words)	Major Section (# words)
+Madison Davis	#2, Alice (104)	Lucky Break (574), Problem (186)
+Ivan Gutierrez		#5, Sofia (127)	Pre-Mortem (296), Security Discussion (252)
+Jack Fan		#6, Peter T. (302)	API Journey (506), Launch Plan (279)
+Kathryn Harper	#1, Robert (114)	Success Criteria (303), Update Plan (150)
+Vihaan Gupta		#3, Sally (100)		User Persona Journey (503)
+
+
+PRD Design Area
+
+
+Problem — crisply define the problem(s) you’re solving
+Madison Davis
+Research, especially in hot topics such as AI and biomedical sciences, has become extremely difficult to parse.  For example, Arxiv is seeing over 150 new publishings each day; from 2013-2023, there has been a doubling of AI papers, from 103,000 to 242,000 (link); and the AI Index Report says that in 2022, that approximately 41,200 AI papers were from conferences (ICML, NeurlIPS).
+Because of this massive overload, it can be difficult to parse through what papers are most important for its readers, depending on the type of question they wish to ask:
+Future Research: Which current papers show the most promise for future research for topic(s)?
+Past Prediction: Which papers have influenced our current trajectory the most (if I am starting out new in research or want to only sift through the most important prior research to get caught up)?
+Application: I am applying AI, what papers might be best to aid the kind of system I currently have (some papers may not provide meaningful results., and even if they do, they are not applicable or repeatable... OpenAI researchers I've talked to have called this 'garbage' )
+
+Personæ — at least 1 for each type of stakeholder: values/ethics, motivation, background, goals
+Primary Persona 1: Robert, research scientist
+Values/ethics: impact, high-quality output
+Motivation: wants to deliver results that provide high impact (“extend the frontier”) and connect to a lot of the existing literature
+Background: understands their field of research relatively well and is going for his thesis, in guidance of a mentor
+Goals: wants to find papers that will help provide a good extension for his thesis and citations of other papers to back his claims/provide context.  These new papers should be adjacent to the current study that can provide new perspectives or pose new questions for experiments.  Does not want to receive a lot of “garbled” text and does not want the website to take more time than a traditional search.
+Persona 2: Alice, co-founder and CTO at a mid-sized startup
+Values/ethics: impact, usability
+Motivation: Wants to outcompete competitors by integrating cutting-edge technology into her social media startup.  Moreover, she wants to be able to talk to other individuals at industry networking events with the newfound knowledge she has acquired.  
+Background: Understands research ideas fairly well, but is not a full-blown researcher.  In the past, she’s mainly been concerned about the application of technology to make a big impact and get ahead of the competition in emerging markets.
+Goals: Wants to be able to find “golden-ticket” papers whose research results are both promising and are also able to be replicated to her current system for added benefit. 
+Persona 3: Sally, student
+Values/ethics: learning, connections between/along topics
+Motivation: wants to become better equipped at the history and trajectory of certain topics
+Background: Sally is a computer science major and knows that AI is an emerging field.   She does not understand AI that well and does not know where to begin looking for information, but Sally is technically savvy and knows how to navigate a computer to query
+Goals: wants to learn more about the history of papers in topics she has not explored.  She hopes to gain a quick understanding of how the most important research has evolved over time.
+Persona 4: Tom, teacher
+Idea: The teachers were professional academics who, as part of their occupation, would also be conducting research on the side and would encourage students to come up with new project ideas based on course material.  The teacher’s need therefore bridged a gap between students and researchers: students wanting to keep up with the literature, and the researcher wanting to find new avenues of learning.  If the tool could be used as a platform for students to start their literature search and to help aid the curriculum topics, it would save a lot of time and provide more confidence.  Universities would therefore support a great backing.   
+Persona 5: Sofia Alvarez, Congresswoman
+ Values/ethics: evidence-based policymaking, environmentalism
+ Motivation: Needs to craft and defend legislation for climate change and environmental regulation. Wants to pass impactful legislation to address deforestation and loss of ecosystems, and to improve public health. Needs credible research to counter misinformation and persuade her constituents and colleagues.
+ Background: Sofia is not a technical researcher and instead studied Political Science at Florida State University. She has a small team of legislative aides, but they are overwhelmed with the amount of studies on emissions, conservation, biodiversity loss, etc. She has limited time to actually read and process these studies, 
+Goals:
+Identify consensus and credible research on pressing environmental issues
+Find emerging environmental research that seems promising
+Recommend articles for her legislative aides to digest and summarize back to her
+Persona 6: Peter T., early-stage tech and AI impact VC
+Values/ethics: high ROI plays, profit maximisation, technophile, efficiency, productivity and time value optimisation
+Motivation: 
+Needs to potentially outcompete other VCs or pattern-match/identify trends within other VCs’ investments in order to make as many of the best investments as possible for his own firm
+As a result of the fast-moving nature of VC and the tech startup environment as a whole, he wants to get a picture of any particular topic, sector, or area and the innovation and relevant frontier developments happening within that space at a quick glance (as quick and clear as possible without sacrificing comprehensiveness or exhaustiveness)
+Background:
+Likely has a general technical background and understanding about the tech sphere, especially in terms of experience because of the large number of companies and pitches that have been seen
+Notably, Peter likely doesn’t have a good understanding of specifics nor the ability to effectively reason first-principles about the feasibility and viability of the technology within any particular startup primarily because of the time pressure and the minimal information from any pitches that he receives
+Despite this, Peter is likely able to form good intuitions and guesses because of his intuition
+Peter is probably able to condense and understand information quickly and thoroughly because of his extensive experience within VC and also as a founder in his past days; he is likely able to understand companies and business schemes reasonably, and thus will probably leverage the tool to get a lower-level though still quick and dirty understanding of any particular tech in order to better inform his understanding of the company overall
+Goals:
+Seeks to maximise return on companies and identify/stay abreast of trends within specific fields, both re: founders and other people in the space and re: tech
+
+Persona journeys — formerly user journeys
+Vihaan Gupta
+Robert
+Robert, an applied ML research scientist, decides on a specific research question in a new tangential field that he wants to pursue, e.g. the biopsychology of productivity.
+Robert begins by doing a literature review, but he’s unable to find many relevant publications and only sees 2-3 papers that he would really like to refer to, despite being a little bit confused about a couple of the core concepts (“circadian rhythm”, “adenosine levels in regard to energy”, etc.)
+Robert queries (our App Name) with each of these papers in order to interpret and graph out the hierarchy of these specific concepts. Furthermore, the graph includes other relevant papers as the central nodes of their hierarchical clusters that represent other interesting and relevant papers across different research vectors.
+Robert hovers over each of the papers to get a quick summary.  When he clicks on each, he’s directed to their pages.
+Alice
+Alice is now working on a new feature for her mid-sized social media startup focused on a recommendation system and wants to improve personalisation.
+She talks to a Neural Network specialist at an industry event who mentions the term “graph-based contrastive learning”, which can be used for a recommendation system.
+Curious to learn more about the concept, mostly to integrate it with her current recommendation system, Alice queries (our APP NAME) with “graph-based contrastive learning for recommender systems”. The app generates a ranked list of papers, especially prioritising those that are “implementation ready” for a recommendation system.
+Since she’s not concerned with the in-depth theory of the concept, she only goes down to level 2 of the graph, exporting the implementation notes and repo links into her team’s internal documentation. Within a day, she sets up a baseline prototype using one of the suggested papers.
+
+Sally
+
+
+API journeys — if you have API clients that aren’t users 
+Jack Fan
+SEO companies – generally, it might be useful for companies to understand how different keywords and topics are related; furthermore, it might be possible to begin mapping different links and graphscapes for sites overall in order to better inform SEO
+SEO company turns a company into a number of its keywords.
+SEO company creates a website for a specific company.
+Optionally before doing this, the company may be able to reverse-engineer with the tool in order to get a more general domain understanding of the company and be able to do a better, more targeted job.
+SEO company then uses the tool in order to determine what keywords are currently targetable
+SEO company reworks/edits the website with these keywords in mind
+AI scraping/browser use/web agent companies – e.g. Perplexity’s Deep Research feature on “academic mode”, able to more effectively interpret different search queries and build relationships between different keywords, search nodes, etc. In a similar fashion, understanding or having data about what people like to search/know about and how different concepts and keywords are connected will likely be able to inform “search primitives” for these browsing and web agent companies in order to improve their performance at a higher, more conceptual level a la humans.
+search company receives a query from a user under the “academic mode”.
+search company introduces a “reasoning/mapping layer” leveraging the tool:
+Convert the query to keywords
+For each of these keywords, find potential interesting papers and look at the relevant keywords
+Reason across these keywords and build more general understanding
+Recursively repeat the above at a determined depth
+Given these search terms and domain knowledge that is now within the context by using graph nodes/segmented retrieval, either directly reformat this information with existing LLMs or do more search on information keywords that have been deemed important but you haven’t found enough general domain information on.
+Return search terms and result, with additional relationship metadata and information as useful as well
+General diligence, e.g. in consulting or VC – Using the tool to reverse-engineer particular keywords and buzzwords to visualise trends in terms of relationships, i.e. what keywords are linked to a lot of papers and thus development in the research sphere? What innovations exist, and what areas are hot/could be taken advantage of right now?
+The general idea is very similar to the initial SEO companies: do diligence and help investors or consultants understand the domain knowledge that companies have and the innovations that are taking place at the moment.
+Reduce a company to its keywords and key areas of study/product
+Take the keywords and reverse-engineer the innovation proxy based on papers, related keywords and scores, etc. (think PageRank/weighted PageRank, community-based algorithms, relevance and innovation of individual nodes, FOAF, multi-hop, etc.)
+From this score + what’s missing, determine further search courses if necessary and operate recursively.
+Return a report about the technical feasibility of the product (this is most applicable in more natural sciences/direct STEM domains, but can be expanded to more general web information even though there’s significantly more noise)
+
+Success Criteria — how will you measure success, quantitatively?
+Kathryn Harper
+Qualitative measures of stakeholder opinions ok
+Include externalities, dates, cost, security, privacy, ethics, etc.
+Relative priority of success criteria: which matters most
+By User Need Criteria
+Research Scientist (future directions)
+Hit Rate (top 5): % of first 5 papers reviewers mark as “good extensions for my topic.” Target (Beta, Jan 31, 2026): ≥ 60%.
+Breadth: ≥ 60% of top 5 are not already in the user’s library / too-close variants.
+Future impact (retrospective): Median recommended paper lands in top 35% of field activity after 12 months.
+Applied Engineer (make it run)
+Reproducibility pass rate: % of “implementation-ready” papers where core result can be reproduced within reasonable tolerance. Target: ≥ 70%.
+Time to working baseline: Median time from search → running code. Target: ≤ 1 workday (8 hours).
+Meaningful uplift: % of prototyped papers improving user’s metric by ≥ threshold (e.g., 5%). Target: ≥ 25%.
+Student (get oriented fast)
+Must-read coverage: % of a topic’s canonical list appearing in first 20 results. Target: ≥ 80%.
+Learning gain: Average improvement on a short before/after quiz. Target: ≥ +30%.
+Time to “I get it”: Time to self-rated clarity ≥4/5. Target: ≤ 20 minutes.
+System, Cost, and Freshness Criteria
+Speed (p95): ≤ 3s for ranked list; ≤ 8s with summaries.
+Index freshness: arXiv < 24h lag; major venues < 7 days.
+Reliability: 99.5% monthly uptime; error rate < 0.5%.
+Unit cost/query: p50 ≤ $0.35; p95 ≤ $0.75 (Beta).
+Quality, privacy, security, and ethics Criteria
+Ethical fact errors in summaries: ≤ 2% in weekly spot checks.
+Source traceability: 100% of claims link to the cited section/figure/page when possible.
+Privacy: User uploads auto-delete after 30 days; encryption at rest; deletion within 7 days of request; full access logs.
+Security: SSO + role-based access; quarterly secret rotation; zero outstanding “critical” dependency issues.
+Breadth & balance: Topic/venue/affiliation mix at least as diverse as intake; quarterly review.
+Energy: Track kgCO₂e/query; year-over-year intensity ↓10% via caching/right-sizing.
+Adoption & Qualitative feedback (non-NPS) Criteria
+Weekly active “successful” users: Count users completing a core task (export citations, run repro, pass quiz). Target: 200 in Beta.
+Task success rating (1–5): Median ≥ 4 across personas.
+Monthly interviews: 3–5 per persona; log top pain + top win.
+Externalities & risks to monitor
+Echo-chamber effects: Maintain diversity constraints; limit prestige over-weighting.
+Over-trust in weak results: Badges for code/data availability; warnings on missing artifacts.
+Copyright/licensing: Only cache allowed content; documented takedown path.
+Academic integrity: “Assist, don’t author” defaults; always cite; educator mode
+
+Security, privacy, and ethics discussion – include a threat model and other considerations
+Use the OWASP Threat Modeling summary that refers to the Threat Modeling 
+Manifesto, since we have not covered these yet. Reasonable, thoughtful efforts will receive full credit.
+Ivan Gutierrez
+Assumptions about our product that can be checked or challenged in the future as the threat landscape changes
+Our data sources and repositories will remain openly accessible and trustworthy.
+Users will generally behave in good faith, i.e. not spamming requests and attempting to slow down the product for others.
+Recommendations are consumed in good faith, i.e. not weaponized to target minority groups or spread disinformation.
+Our system will not be a prime target for sophisticated attackers.
+ Potential threats to the system
+Poisoning of the graph through false, misleading, or search engine optimizing papers.
+Leak of user preferences, search history, or any annotations they leave behind.
+Harmful beliefs (racism, xenophobia, etc.) propagated by research surfacing once more through our recommendations.
+DDOS attacks to our API.
+Actions that can be taken to mitigate each threat
+Only sourcing from historically open-access and reputable sources. Manual moderation if necessary.
+Minimizing the amount of user data that we store. Allow for opt-outs when possible. Use encryption when possible.
+Be transparent about our recommendation system. Audit for more harmful associations.
+Rate-limiting API usage. Live monitoring of usage for unusual activity.
+A way of validating the model and threats, and verification of success of actions taken
+Simulate the event of a keyword optimizing article that somehow managed to get through the moderation of these research repositories. Time how long it takes for a developer (or moderation bot) to notice and moderate.
+Periodic reviews of inflammatory keywords to audit bias.
+Allow users to suggest feedback or report recommendations.
+
+Launch Plan — phase the launch (“dogfood,” alpha, beta, restricted, general availability)?
+Jack Fan
+MVP (roughly 3-4 weeks) – get 3-4 design partner labs within a specific domain (e.g. embeddings/applied ML research, graph theory, oncology, etc.).  Incorporates users 
+For each of these labs, give them an MCP version of the product and measure the aforementioned metrics in terms of their domain knowledge, learning, and general productivity at the early stages of research (including but not limited to e.g. forming questions, lit reviews, initial hypotheses, thought experiments, etc.)
+GOAL: find relative PMF and polish out initial bugs to get a stable product; minimise technical debt in order to allow for fast growth in alpha phase
+Alpha and tester cohort (2 months) – open up to more labs and a small cohort of entrepreneurs, but still private invite only; target 10-15 labs at various R1/R2 research institutions that are willing to pilot across all of their researchers and assistants, as well as 10 individual startup entrepreneurs from varying research backgrounds
+At this point, it might also be helpful to create feedback channels (such as communication channels and suggestion boxes with weekly syncs), a more proper tester cohort and weekly tester/customer calls in order to gauge sentiment, and set up some more product and design infrastructure: create tester Discord/Slack, etc. Probably important at this point to focus on ironing out PMF and ensuring the 40-40 rule (40% of 40 users cannot live without/NEED the app)
+Closed beta (invite only) (2 months) – invitations to other collaborators (namely, our persona students and additional startup founders); begin building infrastructure for proper distribution and marketing and iron out analytics, metrics, and overall user numbers
+Open beta/v0 release (should happen before the 6-month mark) – all systems go, engineering effort is fully towards developing more features and triaging with the product team (which honestly product and engineering should be one and the same), distribution is full-forward.
+
+Update Plan — How will we update the PRD as we learn more?
+Kathryn Harper
+Cadence
+Every 2 weeks: Review experiments and dashboards; adjust tactics, not definitions.
+Monthly: Persona interviews; update jobs-to-be-done, pains, and goals.
+Quarterly: Privacy & responsible-use review; refresh risk register and mitigations.
+Change control
+Versioned PRD with a changelog (what/why/owner/date).
+Any metric definition change requires PM + Data + Privacy sign-off.
+New data sources require a brief data protection impact assessment.
+Experimentation
+Ranker/reranker changes behind flags; A/B or interleaving; pre-registered success metrics.
+Kill switch: If fact errors >5% or reproducibility <50% for two consecutive weeks, auto-revert.
+Learning loops
+Offline sets refreshed monthly; expert labels kept blinded.
+Repro runner logs success and delta vs. reported results; feed back into trust badges.
+Post-mortems on misses (papers we should have surfaced earlier); tune breadth and sourcing rules accordingly.
+Target refresh
+Targets can tighten once p95 variance stabilizes for 4 consecutive weeks or loosen only with a documented cost/benefit and leadership approval.
+
+The “lucky break” – Imagine 5 years out and it’s a huge success.  How did we get there? 
+Madison Davis
+The Right Early Partners
+We partnered with a tight set of responsive research labs to conduct proper testing at the MVP stage.  These labs were very responsive and wanted to see the product improve, instead of being overly critical and skeptical.  They offered testimonials in their journal publishings.  Because of their credibility, this increased the attention of the tool for others, with several other labs requesting early access.
+ Great Feedback Channels Implemented
+Because we have several types of stakeholders at play, it is crucial for us to have a process in place to receive, analyze, and implement feedback as quickly and as efficiently as possible.  We offered suggestive boxes within the actual browser itself, specifically for the earlier versions of the tool, so as to get people’s opinions right on the spot, even if we were not there physically with them while they tested.  Moreover, we created a Slack organization that anyone could join and put their suggestions in a channel.  Our team would compile all suggestions and then meet weekly in-person to discuss the main takeaways and what was most feasible at the time for implementing.  Once the next set of features was decided, we would showcase this on the Slack channel and ping individuals who had provided suggestions of the new incoming features.  This way, the stakeholders feel heard and get real-time results. 
+ Discovering Emerging Use-Cases
+Without the feedback channel in place, we wouldn’t have been able to discover additional use-cases for our product.  For example, we noticed that while college students were trying out the product in classrooms, academic teachers were noticing and getting intrigued.  They reached out to us through our feedback systems.  The teachers were professional academics who, as part of their occupation, would also be conducting research on the side and would encourage students to come up with new project ideas based on course material.  The teacher’s need therefore bridged a gap between students and researchers: students wanting to keep up with the literature, and the researcher wanting to find new avenues of learning.  If the tool could be used as a platform for students to start their literature search and to help aid the curriculum topics, it would save a lot of time and provide more confidence.  Universities would therefore support a great backing.
+Distribution via APIs
+By allowing our content to be utilizable via APIs, it expanded our reach beyond just the initial cohort of researchers and students we reached out to.  The APIs, for example, allowed companies to improve their search engines and for VCs to fill gaps in the market by understanding the technical development going on in the papers.  The APIs’ distribution for large-scale use could also encourage a channel for monetization.
+The “Niche” Network Graph
+The main concept that kept us in success was the solution of the network graph as a means to decipher large amounts of unstructured data.  Unlike search engines where typical queries may pull up multiple sites with similar information, each individual paper has its own motivation and conclusion for the topic at hand.  Therefore, an individual feels more concerned about potentially missing out on a paper with great conclusions and impacts compared to if two simplistic websites were swapped in their ordering.  The graph helps to alleviate this by allowing us to perform impact analysis and review/citation commentaries behind the scenes, displaying the great content and removing the “garbage” unless one truly desires to see those papers.
+
+The “pre-mortem” – Imagine 5 years out and it’s a train wreck.  What factors led to failure?
+Ivan Gutierrez 
+These should be interesting ideas that lead to thoughtful choices and “what can go wrong,” not a list of bad stuff
+ Gaming of the system
+Suppose our product takes off and leads to more and more students and research analysts using our product to discover research. However, we accidentally show results from a research repository that does not moderate submissions well. As a result, people upload “research articles” that are filled with spammy keywords meant to optimize their visibility through our product. At worst, these spam articles contain phishing, malware, or otherwise illegal links, and the user experience and reputation of our product worsens immensely.
+Filled with non-reputable sources
+Our recommendation system may recommend poor-quality articles or research papers, either from non-reputable repositories or just from the nature of the article itself. If said articles are then used in important research fields, in policy making decisions, or by malicious actors, they can simply point to our product as the “neutral recommender” and abstain from any responsibility of the claims they made. Thus, tanking our reputation if said claims are shown to be faulty.
+Algorithmic bias
+Our system unintentionally learns about correlations between unrelated research fields because such correlations exist in biased papers, flawed datasets, or citation chains. For instance, a user who is interested in reading about immigration may be suggested an overwhelming amount of research on crime. Producing outputs that even appear to look racist, xenophobic, antisemitic, etc. can tank reputation and ruin partnerships.
+Better technologies
+Shifts in publishing or search tools could make our product less relevant. For instance, restriction of data access may reduce the quality and quantity of results. Or, search engines like Google Scholar get much better at personalization and suggestions, potentially modifying our idea and integrating it into their own engine. Thus, the uniqueness of our product is reduced, and our product may be overlooked for more popular or modern alternatives.
