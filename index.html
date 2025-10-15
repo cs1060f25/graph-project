@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Page Prototype 2 - Mobile-First Folder Structure</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .app {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #1976d2;
+            color: white;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 16px 8px;
+            text-align: center;
+            background: none;
+            border: none;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #1976d2;
+            border-bottom: 2px solid #1976d2;
+            font-weight: 500;
+        }
+
+        .content {
+            padding: 16px;
+        }
+
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .folder-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .folder-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .folder-card.selected {
+            border-color: #1976d2;
+            background: #f3f8ff;
+        }
+
+        .folder-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .folder-name {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .folder-count {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .folder-description {
+            font-size: 12px;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .papers-list {
+            margin-top: 16px;
+        }
+
+        .paper-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        .paper-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #1976d2;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .paper-meta {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .paper-summary {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .recommendations {
+            margin-top: 16px;
+        }
+
+        .recommendation-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .recommendation-title {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .recommendation-confidence {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-reason {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1976d2;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .folder-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        function PersonalApp() {
+            const [selectedFolder, setSelectedFolder] = useState(null);
+            const [viewMode, setViewMode] = useState('folders');
+
+            const folders = [
+                {
+                    id: 1,
+                    name: "Graph Neural Networks",
+                    icon: "📊",
+                    count: 12,
+                    description: "Research on GNN architectures",
+                    papers: [
+                        {
+                            title: "Graph Neural Networks for Recommendation Systems",
+                            authors: "Zhang et al.",
+                            year: 2023,
+                            citations: 127,
+                            summary: "Novel GNN architecture for recommendation systems"
+                        },
+                        {
+                            title: "Graph Convolutional Networks",
+                            authors: "Kipf & Welling",
+                            year: 2016,
+                            citations: 8234,
+                            summary: "Semi-supervised classification with GCNs"
+                        }
+                    ]
+                },
+                {
+                    id: 2,
+                    name: "Recommendation Systems",
+                    icon: "🤖",
+                    count: 8,
+                    description: "Collaborative filtering research",
+                    papers: [
+                        {
+                            title: "Neural Collaborative Filtering",
+                            authors: "He et al.",
+                            year: 2017,
+                            citations: 2456,
+                            summary: "Deep learning for collaborative filtering"
+                        }
+                    ]
+                },
+                {
+                    id: 3,
+                    name: "To Read",
+                    icon: "📚",
+                    count: 15,
+                    description: "Papers to review",
+                    papers: []
+                },
+                {
+                    id: 4,
+                    name: "Favorites",
+                    icon: "⭐",
+                    count: 23,
+                    description: "Most important papers",
+                    papers: []
+                }
+            ];
+
+            const recommendations = [
+                {
+                    title: "Graph Attention Networks",
+                    confidence: "92%",
+                    reason: "Based on your interest in GNNs and recommendation systems, this paper combines both areas effectively."
+                },
+                {
+                    title: "DeepWalk: Online Learning of Social Representations",
+                    confidence: "87%",
+                    reason: "Complementary to your GNN research, focuses on graph embeddings."
+                },
+                {
+                    title: "Matrix Factorization Techniques for Recommender Systems",
+                    confidence: "84%",
+                    reason: "Foundational paper that aligns with your recommendation systems folder."
+                }
+            ];
+
+            const stats = {
+                totalPapers: 58,
+                folders: 4,
+                starred: 23,
+                thisMonth: 8
+            };
+
+            const renderFolders = () => (
+                <div>
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-number">{stats.totalPapers}</div>
+                            <div className="stat-label">Total Papers</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-number">{stats.folders}</div>
+                            <div className="stat-label">Folders</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-number">{stats.starred}</div>
+                            <div className="stat-label">Starred</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-number">{stats.thisMonth}</div>
+                            <div className="stat-label">This Month</div>
+                        </div>
+                    </div>
+
+                    <div className="folder-grid">
+                        {folders.map(folder => (
+                            <div 
+                                key={folder.id}
+                                className={`folder-card ${selectedFolder?.id === folder.id ? 'selected' : ''}`}
+                                onClick={() => setSelectedFolder(folder)}
+                            >
+                                <div className="folder-icon">{folder.icon}</div>
+                                <div className="folder-name">{folder.name}</div>
+                                <div className="folder-count">{folder.count} papers</div>
+                                <div className="folder-description">{folder.description}</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {selectedFolder && (
+                        <div className="papers-list">
+                            <h3 style={{ marginBottom: '16px', color: '#333' }}>
+                                Papers in {selectedFolder.name}
+                            </h3>
+                            {selectedFolder.papers.length > 0 ? (
+                                selectedFolder.papers.map((paper, index) => (
+                                    <div key={index} className="paper-card">
+                                        <div className="paper-title">{paper.title}</div>
+                                        <div className="paper-meta">
+                                            {paper.authors} • {paper.year} • {paper.citations.toLocaleString()} citations
+                                        </div>
+                                        <div className="paper-summary">{paper.summary}</div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div style={{ textAlign: 'center', color: '#666', padding: '20px' }}>
+                                    No papers in this folder yet
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+
+            const renderRecommendations = () => (
+                <div className="recommendations">
+                    <h3 style={{ marginBottom: '16px', color: '#333' }}>AI Recommendations</h3>
+                    {recommendations.map((rec, index) => (
+                        <div key={index} className="recommendation-card">
+                            <div className="recommendation-title">{rec.title}</div>
+                            <div className="recommendation-confidence">Confidence: {rec.confidence}</div>
+                            <div className="recommendation-reason">{rec.reason}</div>
+                        </div>
+                    ))}
+                </div>
+            );
+
+            return (
+                <div className="app">
+                    <div className="header">
+                        <h1>Personal Research Library</h1>
+                    </div>
+                    
+                    <div className="tabs">
+                        <button 
+                            className={`tab ${viewMode === 'folders' ? 'active' : ''}`}
+                            onClick={() => setViewMode('folders')}
+                        >
+                            📁 Folders
+                        </button>
+                        <button 
+                            className={`tab ${viewMode === 'recommendations' ? 'active' : ''}`}
+                            onClick={() => setViewMode('recommendations')}
+                        >
+                            🤖 AI Recommendations
+                        </button>
+                    </div>
+
+                    <div className="content">
+                        {viewMode === 'folders' ? renderFolders() : renderRecommendations()}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<PersonalApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
