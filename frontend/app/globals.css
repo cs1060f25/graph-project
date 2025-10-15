@@ -1,0 +1,19 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, Helvetica, Arial, sans-serif;
+  background-color: #0E0E0F;
+  color: #FFFFFF;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  background-color: #0E0E0F;
+  color: #FFFFFF;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
