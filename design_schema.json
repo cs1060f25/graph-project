@@ -1,0 +1,188 @@
+{
+    "app": {
+      "name": "Research Navigator",
+      "theme": {
+        "colors": {
+          "background": "#0E0E0F",
+          "sidebarBackground": "#1C1C1E",
+          "graphBackground": "#121214",
+          "panelBackground": "#1F1F22",
+          "textPrimary": "#FFFFFF",
+          "textSecondary": "#B0B0B5",
+          "accentPurple": "#8A4FFF",
+          "accentPurpleLight": "#B18CFF",
+          "accentGray": "#2A2A2D",
+          "border": "#2F2F33"
+        },
+        "typography": {
+          "fontFamily": "Inter, Helvetica, Arial, sans-serif",
+          "fontSizeBase": "14px",
+          "fontWeightNormal": 400,
+          "fontWeightBold": 600,
+          "lineHeight": 1.5
+        }
+      },
+      "layout": {
+        "header": {
+          "visible": true,
+          "height": "56px",
+          "elements": {
+            "logo": {
+              "type": "icon",
+              "icon": "network",
+              "color": "accentPurple"
+            },
+            "searchBar": {
+              "placeholder": "Search papers, authors, or topics...",
+              "width": "40%",
+              "style": {
+                "background": "#1F1F22",
+                "borderRadius": "8px",
+                "padding": "8px 12px",
+                "border": "1px solid #2F2F33",
+                "color": "textPrimary"
+              }
+            },
+            "profileMenu": {
+              "type": "dropdown",
+              "icon": "user-circle"
+            }
+          }
+        },
+        "sidebar": {
+          "position": "left",
+          "width": "280px",
+          "sections": [
+            {
+              "title": "Library",
+              "items": ["All Papers", "Saved", "Recently Viewed", "Tags"]
+            },
+            {
+              "title": "Filters",
+              "items": ["Date", "Author", "Topic", "Journal"]
+            }
+          ],
+          "style": {
+            "background": "sidebarBackground",
+            "color": "textSecondary",
+            "hoverColor": "textPrimary"
+          }
+        },
+        "main": {
+          "graphView": {
+            "background": "graphBackground",
+            "nodes": {
+              "style": {
+                "default": {
+                  "size": 8,
+                  "color": "accentPurpleLight"
+                },
+                "hover": {
+                  "size": 12,
+                  "color": "accentPurple"
+                },
+                "selected": {
+                  "size": 14,
+                  "color": "accentPurple"
+                }
+              },
+              "label": {
+                "visible": true,
+                "color": "textSecondary",
+                "fontSize": "12px"
+              }
+            },
+            "edges": {
+              "style": {
+                "color": "#2A2A2D",
+                "thickness": 1,
+                "opacity": 0.4
+              },
+              "hover": {
+                "color": "accentPurple",
+                "thickness": 2,
+                "opacity": 0.8
+              }
+            },
+            "interactions": {
+              "zoom": true,
+              "pan": true,
+              "dragNodes": true,
+              "clickNodeOpensDetails": true,
+              "hoverHighlight": true
+            }
+          }
+        },
+        "rightPane": {
+          "width": "360px",
+          "visible": true,
+          "sections": [
+            {
+              "type": "paperDetails",
+              "elements": {
+                "title": "string",
+                "authors": ["string"],
+                "abstract": "string",
+                "tags": ["string"],
+                "links": {
+                  "doi": "string",
+                  "pdf": "string"
+                }
+              }
+            },
+            {
+              "type": "relatedPapers",
+              "title": "Related Papers",
+              "items": [
+                {
+                  "title": "string",
+                  "authors": ["string"],
+                  "year": "integer"
+                }
+              ]
+            }
+          ],
+          "style": {
+            "background": "panelBackground",
+            "borderLeft": "1px solid border"
+          }
+        }
+      },
+      "pages": {
+        "home": {
+          "layout": {
+            "centeredSearch": {
+              "placeholder": "Explore research topics...",
+              "style": {
+                "width": "60%",
+                "padding": "16px 20px",
+                "borderRadius": "12px",
+                "border": "1px solid #2F2F33",
+                "fontSize": "18px",
+                "textAlign": "center"
+              }
+            },
+            "background": "background",
+            "subtitle": {
+              "text": "Discover, explore, and map research connections visually.",
+              "color": "textSecondary"
+            }
+          }
+        },
+        "graph": {
+          "layout": {
+            "graphView": true,
+            "sidebar": true,
+            "rightPane": true
+          }
+        }
+      },
+      "animations": {
+        "nodeHover": "scale(1.2) with ease-in-out",
+        "sidebarSlide": "slide-in-left 0.3s ease",
+        "paneSlide": "slide-in-right 0.3s ease",
+        "fadeIn": "fade-in 0.2s ease-in"
+      }
+    }
+  }
+  
