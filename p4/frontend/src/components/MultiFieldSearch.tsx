@@ -26,96 +26,105 @@ interface Suggestion {
   venue?: string;
 }
 
-interface SelectedItem {
-  text: string;
-  type: 'keyword' | 'author' | 'paper';
-  id?: string;
-}
-
 export default function MultiFieldSearch() {
   const [input, setInput] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedItems, setSelectedItems] = useState<{text: string, type: 'keyword' | 'author' | 'paper', id?: string}[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Generate suggestions from mock data
+  // Detect input type and fetch suggestions from mock data
   const fetchSuggestions = async (query: string) => {
-    if (!query.trim()) {
+    if (query.length < 2) {
       setSuggestions([]);
       return;
     }
 
     const queryLower = query.toLowerCase();
-    const newSuggestions: Suggestion[] = [];
+    const allSuggestions: Suggestion[] = [];
 
     // Keywords
     const allKeywords = Array.from(new Set(mockPapers.flatMap(p => p.keywords)));
     const keywordMatches = allKeywords.filter(kw => kw.includes(queryLower));
-    newSuggestions.push(...keywordMatches.map(kw => ({
-      text: kw,
-      type: 'keyword' as const
-    })));
+    allSuggestions.push(...keywordMatches.map(kw => ({ text: kw, type: 'keyword' as const })));
 
     // Authors
     const allAuthors = Array.from(new Set(mockPapers.flatMap(p => p.authors.split(' et al.')[0].trim())));
     const authorMatches = allAuthors.filter(author => author.toLowerCase().includes(queryLower));
-    newSuggestions.push(...authorMatches.map(author => ({
-      text: author,
-      type: 'author' as const
-    })));
+    allSuggestions.push(...authorMatches.map(author => ({ text: author, type: 'author' as const })));
 
     // Papers
     const paperMatches = mockPapers.filter(p => p.title.toLowerCase().includes(queryLower));
-    newSuggestions.push(...paperMatches.map(paper => ({
-      text: paper.title,
-      type: 'paper' as const,
+    allSuggestions.push(...paperMatches.map(paper => ({ 
+      text: paper.title, 
+      type: 'paper' as const, 
       id: paper.id,
       authors: paper.authors,
       year: paper.year,
-      venue: paper.venue,
+      venue: paper.venue
     })));
 
-    setSuggestions(newSuggestions.slice(0, 8)); // Limit to 8 suggestions
+    setSuggestions(allSuggestions.slice(0, 8)); // Limit to 8 suggestions
   };
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchSuggestions(input);
-    }, 200);
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+    fetchSuggestions(value);
+    setShowSuggestions(true);
+  };
 
-    return () => clearTimeout(timeoutId);
-  }, [input]);
-
-  const addItem = (item: Suggestion) => {
-    if (!selectedItems.some(selected => selected.text === item.text && selected.type === item.type)) {
-      setSelectedItems(prev => [...prev, {
-        text: item.text,
-        type: item.type,
-        id: item.id
+  // Add item to selected list
+  const addItem = (suggestion: Suggestion) => {
+    if (!selectedItems.some(item => item.text === suggestion.text && item.type === suggestion.type)) {
+      setSelectedItems([...selectedItems, {
+        text: suggestion.text,
+        type: suggestion.type,
+        id: suggestion.id
       }]);
     }
     setInput('');
-    setShowSuggestions(false);
     setSuggestions([]);
+    setShowSuggestions(false);
+    inputRef.current?.focus();
   };
 
-  const removeItem = (index: number) => {
-    setSelectedItems(prev => prev.filter((_, i) => i !== index));
-  };
-
+  // Add current input as keyword if no suggestions match
   const addCurrentInput = () => {
-    if (input.trim() && !selectedItems.some(selected => selected.text === input.trim() && selected.type === 'keyword')) {
-      setSelectedItems(prev => [...prev, {
-        text: input.trim(),
-        type: 'keyword'
-      }]);
+    if (input.trim() && !selectedItems.some(item => item.text === input.trim())) {
+      setSelectedItems([...selectedItems, { text: input.trim(), type: 'keyword' }]);
       setInput('');
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   };
 
+  // Remove item from selected list
+  const removeItem = (index: number) => {
+    setSelectedItems(selectedItems.filter((_, i) => i !== index));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    // Group selected items by type
+    const keywords = selectedItems.filter(item => item.type === 'keyword').map(item => item.text);
+    const authors = selectedItems.filter(item => item.type === 'author').map(item => item.text);
+    const papers = selectedItems.filter(item => item.type === 'paper').map(item => item.id || item.text);
+    
+    const query = { keywords, authors, papers };
+    console.log('Submitting query:', query);
+    
+    const queryString = encodeURIComponent(JSON.stringify(query));
+    router.push(`/graph?query=${queryString}`);
+  };
+
+  // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -127,248 +136,179 @@ export default function MultiFieldSearch() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (selectedItems.length === 0) {
-      return;
+  // Get type color
+  const getTypeColor = (type: 'keyword' | 'author' | 'paper') => {
+    switch (type) {
+      case 'keyword': return 'bg-blue-600 text-blue-100';
+      case 'author': return 'bg-green-600 text-green-100';
+      case 'paper': return 'bg-purple-600 text-purple-100';
     }
-
-    setIsLoading(true);
-
-    // Add current input if it exists
-    if (input.trim()) {
-      addCurrentInput();
-    }
-
-    // Wait a bit for the state to update
-    setTimeout(() => {
-      const keywords = selectedItems.filter(item => item.type === 'keyword').map(item => item.text);
-      const authors = selectedItems.filter(item => item.type === 'author').map(item => item.text);
-      const papers = selectedItems.filter(item => item.type === 'paper').map(item => item.id || item.text);
-
-      const query = { keywords, authors, papers };
-      const queryString = encodeURIComponent(JSON.stringify(query));
-      
-      router.push(`/graph?query=${queryString}`);
-      setIsLoading(false);
-    }, 100);
   };
 
-  const getTypeColor = (type: string) => {
+  // Get type icon
+  const getTypeIcon = (type: 'keyword' | 'author' | 'paper') => {
     switch (type) {
-      case 'keyword': return '#3b82f6';
-      case 'author': return '#10b981';
-      case 'paper': return '#f59e0b';
-      default: return '#6b7280';
+      case 'keyword': return '🏷️';
+      case 'author': return '👤';
+      case 'paper': return '📄';
     }
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{ 
-        width: '100%', 
-        maxWidth: '800px',
-        textAlign: 'center'
-      }}>
-        <h1 style={{ 
-          color: 'white', 
-          fontSize: '2.5rem', 
-          fontWeight: 'bold', 
-          marginBottom: '1rem',
-          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text'
-        }}>
-          Research Graph Explorer
-        </h1>
-        
-        <p style={{ 
-          color: '#9ca3af', 
-          fontSize: '1.1rem', 
-          marginBottom: '2rem',
-          lineHeight: '1.6'
-        }}>
-          Discover connections between research papers through keywords, authors, and citations
-        </p>
-
-        <form onSubmit={handleSubmit} style={{ position: 'relative' }}>
-          <div style={{ 
-            position: 'relative',
-            background: '#1f2937',
-            borderRadius: '12px',
-            border: '1px solid #374151',
-            padding: '8px',
-            minHeight: '60px',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            {/* Selected items */}
-            {selectedItems.map((item, index) => (
-              <div
-                key={index}
-                style={{
-                  background: getTypeColor(item.type),
-                  color: 'white',
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <span>{item.text}</span>
-                <button
-                  type="button"
-                  onClick={() => removeItem(index)}
-                  style={{
-                    background: 'rgba(255,255,255,0.2)',
-                    border: 'none',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '12px'
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-
-            {/* Input field */}
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onKeyDown={handleKeyDown}
-              placeholder={selectedItems.length === 0 ? "Search for keywords, authors, or papers..." : "Add more..."}
-              style={{
-                flex: 1,
-                minWidth: '200px',
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: 'white',
-                fontSize: '16px',
-                padding: '8px'
-              }}
-            />
-          </div>
-
-          {/* Suggestions dropdown */}
+    <div style={{ margin: '0 auto' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: 640 }}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setShowSuggestions(true)}
+            placeholder="Type keywords, author names, or paper titles..."
+            style={{ 
+              flex: '0 1 640px', 
+              height: 56, 
+              minHeight: 56, 
+              maxHeight: 56, 
+              width: '100%', 
+              maxWidth: 640, 
+              resize: 'none', 
+              padding: '0 16px', 
+              borderRadius: 14, 
+              border: '1px solid rgba(148,163,184,0.25)', 
+              background: 'linear-gradient(180deg, rgba(15,23,42,0.9), rgba(2,6,23,0.9))', 
+              color: '#e5e7eb', 
+              fontSize: 15, 
+              lineHeight: '56px', 
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)', 
+              overflow: 'hidden' 
+            }}
+          />
+          
+          {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              background: '#1f2937',
-              border: '1px solid #374151',
-              borderTop: 'none',
-              borderRadius: '0 0 12px 12px',
-              maxHeight: '300px',
-              overflowY: 'auto',
-              zIndex: 1000
+            <div style={{ 
+              position: 'absolute', 
+              top: '100%', 
+              left: 0, 
+              right: 0, 
+              marginTop: 4, 
+              background: 'rgba(15,23,42,0.95)', 
+              border: '1px solid rgba(148,163,184,0.25)', 
+              borderRadius: 14, 
+              maxHeight: 200, 
+              overflowY: 'auto', 
+              zIndex: 10,
+              backdropFilter: 'blur(10px)'
             }}>
               {suggestions.map((suggestion, index) => (
                 <div
-                  key={index}
+                  key={`${suggestion.type}-${index}`}
                   onClick={() => addItem(suggestion)}
-                  style={{
-                    padding: '12px 16px',
-                    cursor: 'pointer',
-                    borderBottom: index < suggestions.length - 1 ? '1px solid #374151' : 'none',
+                  style={{ 
+                    padding: '12px 16px', 
+                    cursor: 'pointer', 
+                    borderBottom: index < suggestions.length - 1 ? '1px solid rgba(148,163,184,0.1)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
+                    gap: 12,
                     transition: 'background-color 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#374151';
+                    e.currentTarget.style.backgroundColor = 'rgba(148,163,184,0.1)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
-                  <div
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: getTypeColor(suggestion.type)
-                    }}
-                  />
+                  <span style={{ fontSize: 16 }}>{getTypeIcon(suggestion.type)}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ color: 'white', fontSize: '14px' }}>
+                    <div style={{ color: '#e5e7eb', fontSize: 14, fontWeight: 500 }}>
                       {suggestion.text}
                     </div>
                     {suggestion.type === 'paper' && (
-                      <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '2px' }}>
+                      <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 2 }}>
                         {suggestion.authors} • {suggestion.year}
                       </div>
                     )}
                   </div>
-                  <div style={{
-                    color: '#6b7280',
-                    fontSize: '12px',
-                    textTransform: 'capitalize'
+                  <span style={{ 
+                    color: '#94a3b8', 
+                    fontSize: 12, 
+                    textTransform: 'capitalize',
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    background: 'rgba(148,163,184,0.1)'
                   }}>
                     {suggestion.type}
-                  </div>
+                  </span>
                 </div>
               ))}
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={selectedItems.length === 0 || isLoading}
-            style={{
-              marginTop: '20px',
-              background: selectedItems.length === 0 || isLoading 
-                ? '#374151' 
-                : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '12px 32px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: selectedItems.length === 0 || isLoading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              opacity: selectedItems.length === 0 || isLoading ? 0.6 : 1
-            }}
-          >
-            {isLoading ? 'Generating Graph...' : 'Generate Graph'}
-          </button>
-        </form>
-
-        <div style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', marginTop: '16px' }}>
-          Example: &quot;transformer&quot;, &quot;Vaswani&quot;, or &quot;Attention Is All You Need&quot;
         </div>
-      </div>
+
+        {/* Selected Items */}
+        {selectedItems.length > 0 && (
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: 8, 
+            maxWidth: 640, 
+            justifyContent: 'center',
+            marginTop: 8
+          }}>
+            {selectedItems.map((item, index) => (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 12px',
+                  borderRadius: 20,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className={getTypeColor(item.type)}
+                onClick={() => removeItem(index)}
+              >
+                <span>{getTypeIcon(item.type)}</span>
+                <span>{item.text}</span>
+                <span style={{ fontSize: 16, opacity: 0.7 }}>×</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Generate Graph Button */}
+        <button
+          type="submit"
+          disabled={selectedItems.length === 0 || loading}
+          style={{
+            marginTop: 16,
+            padding: '12px 32px',
+            borderRadius: 12,
+            border: 'none',
+            background: selectedItems.length === 0 || loading 
+              ? 'rgba(148,163,184,0.2)' 
+              : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+            color: selectedItems.length === 0 || loading ? '#94a3b8' : 'white',
+            fontSize: 16,
+            fontWeight: 600,
+            cursor: selectedItems.length === 0 || loading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: selectedItems.length === 0 || loading 
+              ? 'none' 
+              : '0 4px 12px rgba(59, 130, 246, 0.3)'
+          }}
+        >
+          {loading ? 'Generating Graph...' : 'Generate Graph'}
+        </button>
+      </form>
     </div>
   );
 }

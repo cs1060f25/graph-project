@@ -351,8 +351,18 @@ export default function ThreeLayerGraph({ initialQuery }: { initialQuery: any })
       return false;
     });
 
+    // Get all node IDs that have at least one edge in the current layer
+    const connectedNodeIds = new Set<string>();
+    filteredEdges.forEach((edge: any) => {
+      connectedNodeIds.add(edge.source);
+      connectedNodeIds.add(edge.target);
+    });
+
+    // Filter nodes to only include those with edges in the current layer
+    const connectedNodes = data.nodes.filter((node: any) => connectedNodeIds.has(node.id));
+
     // Convert to React Flow format
-    const reactFlowNodes = data.nodes.map((node: any) => ({
+    const reactFlowNodes = connectedNodes.map((node: any) => ({
       id: node.id,
       type: 'paper',
       position: { x: Math.random() * 800, y: Math.random() * 600 },
