@@ -1,14 +1,15 @@
 {
+  "version": 2,
   "builds": [
     {
-      "src": "personal-page-prototype-1.html",
+      "src": "index.html",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/",
-      "dest": "/personal-page-prototype-1.html"
+      "dest": "/index.html"
     }
   ]
 }

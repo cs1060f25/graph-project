@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Research Library - Starred Papers</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: #1976d2;
+            color: white;
+            padding: 16px 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 500;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .library-stats {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .folders-section {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .folders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .folder-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .folder-card:hover {
+            border-color: #1976d2;
+            box-shadow: 0 4px 12px rgba(25,118,210,0.1);
+            transform: translateY(-2px);
+        }
+
+        .folder-icon {
+            font-size: 32px;
+            color: #1976d2;
+            margin-bottom: 12px;
+        }
+
+        .folder-name {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .folder-count {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        .folder-description {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .recent-papers {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .paper-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 16px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .paper-item:last-child {
+            border-bottom: none;
+        }
+
+        .paper-content {
+            flex: 1;
+        }
+
+        .paper-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #1976d2;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .paper-meta {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .paper-summary {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .paper-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-left: 16px;
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+
+        .action-btn:hover {
+            opacity: 0.8;
+        }
+
+        .recommendations {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+
+        .recommendations h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .recommendation-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .recommendation-reason {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .floating-action {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+
+        .floating-action:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>My Research Library</h1>
+        <div class="user-info">
+            <span>Madison Davis</span>
+            <div class="avatar">
+                <span class="material-icons">person</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Library Statistics -->
+        <div class="library-stats">
+            <div class="stat-card">
+                <div class="stat-number">47</div>
+                <div class="stat-label">Starred Papers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">8</div>
+                <div class="stat-label">Folders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">12</div>
+                <div class="stat-label">New This Week</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">156</div>
+                <div class="stat-label">Total Citations</div>
+            </div>
+        </div>
+
+        <!-- Folders Section -->
+        <div class="folders-section">
+            <h2 class="section-title">My Folders</h2>
+            <div class="folders-grid">
+                <div class="folder-card">
+                    <div class="folder-icon">📊</div>
+                    <div class="folder-name">Graph Neural Networks</div>
+                    <div class="folder-count">12 papers</div>
+                    <div class="folder-description">Research on GNN architectures and applications</div>
+                </div>
+                <div class="folder-card">
+                    <div class="folder-icon">🤖</div>
+                    <div class="folder-name">Recommendation Systems</div>
+                    <div class="folder-count">8 papers</div>
+                    <div class="folder-description">Collaborative filtering and personalization</div>
+                </div>
+                <div class="folder-card">
+                    <div class="folder-icon">🧠</div>
+                    <div class="folder-name">Deep Learning</div>
+                    <div class="folder-count">15 papers</div>
+                    <div class="folder-description">Neural networks and optimization</div>
+                </div>
+                <div class="folder-card">
+                    <div class="folder-icon">📈</div>
+                    <div class="folder-name">To Read</div>
+                    <div class="folder-count">7 papers</div>
+                    <div class="folder-description">Papers marked for future reading</div>
+                </div>
+                <div class="folder-card">
+                    <div class="folder-icon">⭐</div>
+                    <div class="folder-name">Favorites</div>
+                    <div class="folder-count">5 papers</div>
+                    <div class="folder-description">Most impactful papers</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Papers -->
+        <div class="recent-papers">
+            <h2 class="section-title">Recently Starred</h2>
+            <div class="paper-item">
+                <div class="paper-content">
+                    <div class="paper-title">Graph Neural Networks for Recommendation Systems</div>
+                    <div class="paper-meta">Zhang et al. • ICML 2023 • 127 citations</div>
+                    <div class="paper-summary">Novel GNN architecture for recommendation systems with state-of-the-art performance on multiple datasets.</div>
+                </div>
+                <div class="paper-actions">
+                    <button class="action-btn btn-primary">View Details</button>
+                    <button class="action-btn btn-secondary">Remove</button>
+                </div>
+            </div>
+            <div class="paper-item">
+                <div class="paper-content">
+                    <div class="paper-title">Attention Is All You Need</div>
+                    <div class="paper-meta">Vaswani et al. • NIPS 2017 • 45,231 citations</div>
+                    <div class="paper-summary">Introduces the Transformer architecture, revolutionizing sequence modeling and machine translation.</div>
+                </div>
+                <div class="paper-actions">
+                    <button class="action-btn btn-primary">View Details</button>
+                    <button class="action-btn btn-secondary">Remove</button>
+                </div>
+            </div>
+            <div class="paper-item">
+                <div class="paper-content">
+                    <div class="paper-title">BERT: Pre-training of Deep Bidirectional Transformers</div>
+                    <div class="paper-meta">Devlin et al. • NAACL 2019 • 32,156 citations</div>
+                    <div class="paper-summary">Bidirectional encoder representations from transformers for language understanding tasks.</div>
+                </div>
+                <div class="paper-actions">
+                    <button class="action-btn btn-primary">View Details</button>
+                    <button class="action-btn btn-secondary">Remove</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Recommendations -->
+        <div class="recommendations">
+            <h3>💡 AI Recommendations</h3>
+            <div class="recommendation-item">
+                <div class="recommendation-title">"Graph Attention Networks"</div>
+                <div class="recommendation-reason">Based on your interest in GNNs and attention mechanisms</div>
+            </div>
+            <div class="recommendation-item">
+                <div class="recommendation-title">"Neural Collaborative Filtering"</div>
+                <div class="recommendation-reason">Similar to your starred recommendation system papers</div>
+            </div>
+            <div class="recommendation-item">
+                <div class="recommendation-title">"Deep Residual Learning for Image Recognition"</div>
+                <div class="recommendation-reason">Foundational work in deep learning you might find valuable</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="floating-action">
+        <span class="material-icons">add</span>
+    </button>
+
+    <script>
+        // Add interactivity
+        document.querySelectorAll('.folder-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const folderName = this.querySelector('.folder-name').textContent;
+                alert(`Opening folder: ${folderName}`);
+            });
+        });
+
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const action = this.textContent.trim();
+                alert(`Action: ${action}`);
+            });
+        });
+
+        document.querySelector('.floating-action').addEventListener('click', function() {
+            alert('Add new paper to library');
+        });
+
+        // Simulate real-time updates
+        setInterval(() => {
+            const newPapersCount = document.querySelector('.stat-number');
+            const currentCount = parseInt(newPapersCount.textContent);
+            if (Math.random() > 0.95) {
+                newPapersCount.textContent = currentCount + 1;
+                newPapersCount.style.color = '#4caf50';
+                setTimeout(() => {
+                    newPapersCount.style.color = '#1976d2';
+                }, 2000);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
