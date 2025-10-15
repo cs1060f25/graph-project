@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Page Prototype 3 - CLI Failure Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #ff6b6b;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #ffa500;
+            font-size: 14px;
+        }
+
+        .terminal {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+
+        .prompt {
+            color: #00ff00;
+        }
+
+        .command {
+            color: #ffffff;
+        }
+
+        .output {
+            color: #cccccc;
+            margin-left: 20px;
+        }
+
+        .error {
+            color: #ff6b6b;
+        }
+
+        .warning {
+            color: #ffa500;
+        }
+
+        .demo-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .demo-title {
+            color: #4ecdc4;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .paper-list {
+            margin-left: 20px;
+        }
+
+        .paper-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #111;
+            border-left: 3px solid #333;
+        }
+
+        .paper-title {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .paper-meta {
+            color: #888;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .failure-analysis {
+            background: #2d1b1b;
+            border: 1px solid #ff6b6b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .failure-title {
+            color: #ff6b6b;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .failure-points {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .failure-points li {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .failure-points li:before {
+            content: "❌";
+            position: absolute;
+            left: 0;
+        }
+
+        .conclusion {
+            background: #1b2d1b;
+            border: 1px solid #4ecdc4;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .conclusion-title {
+            color: #4ecdc4;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .back-link a {
+            color: #4ecdc4;
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 1px solid #4ecdc4;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .back-link a:hover {
+            background: #4ecdc4;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Personal Page Prototype 3</h1>
+            <p>Command-Line Personal Library - FAILURE DEMO</p>
+        </div>
+
+        <div class="terminal">
+            <div class="prompt">$ python personal_library_cli.py</div>
+            <div class="output">
+                <br>
+                📚 Personal Research Library CLI<br>
+                ================================<br>
+                <br>
+                Library Statistics:<br>
+                • Total Papers: 58<br>
+                • Folders: 4<br>
+                • Starred: 23<br>
+                • Added this month: 8<br>
+                <br>
+                Available Commands:<br>
+                1. List folders<br>
+                2. Browse papers<br>
+                3. Search papers<br>
+                4. Export library<br>
+                5. Exit<br>
+                <br>
+                Enter command (1-5): <span class="command">1</span>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">📁 Folder Listing</div>
+            <div class="terminal">
+                <div class="output">
+                    Folders in your library:<br>
+                    <br>
+                    1. Graph Neural Networks (12 papers)<br>
+                    2. Recommendation Systems (8 papers)<br>
+                    3. To Read (15 papers)<br>
+                    4. Favorites (23 papers)<br>
+                    <br>
+                    Select folder (1-4): <span class="command">1</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">📄 Papers in Folder</div>
+            <div class="terminal">
+                <div class="output">
+                    Papers in "Graph Neural Networks":<br>
+                    <br>
+                    1. Graph Neural Networks for Recommendation Systems<br>
+                       Authors: Zhang et al. | Year: 2023 | Citations: 127<br>
+                       Summary: Novel GNN architecture for recommendation systems<br>
+                    <br>
+                    2. Graph Convolutional Networks<br>
+                       Authors: Kipf & Welling | Year: 2016 | Citations: 8,234<br>
+                       Summary: Semi-supervised classification with GCNs<br>
+                    <br>
+                    Select paper (1-2) or 'b' to go back: <span class="command">b</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <div class="demo-title">🔍 Search Functionality</div>
+            <div class="terminal">
+                <div class="output">
+                    Enter search term: <span class="command">neural networks</span><br>
+                    <br>
+                    Search Results:<br>
+                    <br>
+                    1. Graph Neural Networks for Recommendation Systems<br>
+                       Authors: Zhang et al. | Year: 2023 | Citations: 127<br>
+                       Summary: Novel GNN architecture for recommendation systems<br>
+                    <br>
+                    2. Graph Convolutional Networks<br>
+                       Authors: Kipf & Welling | Year: 2016 | Citations: 8,234<br>
+                       Summary: Semi-supervised classification with GCNs<br>
+                    <br>
+                    Found 2 results. Press Enter to continue...
+                </div>
+            </div>
+        </div>
+
+        <div class="failure-analysis">
+            <div class="failure-title">🚫 Why This Approach Failed</div>
+            <ul class="failure-points">
+                <li><strong>No Visual Organization:</strong> Users can't see library structure at a glance</li>
+                <li><strong>Poor Readability:</strong> Paper summaries and abstracts are hard to scan in terminal</li>
+                <li><strong>No Visual Comparison:</strong> Can't compare papers side by side</li>
+                <li><strong>Limited Interactivity:</strong> No drag-and-drop or visual organization</li>
+                <li><strong>No Visual Relationships:</strong> Can't see paper connections or citation networks</li>
+                <li><strong>Poor User Experience:</strong> Difficult to browse and discover papers</li>
+                <li><strong>No Visual Cues:</strong> Missing visual elements like charts, graphs, or icons</li>
+                <li><strong>Scalability Issues:</strong> Becomes unwieldy with large paper collections</li>
+            </ul>
+        </div>
+
+        <div class="conclusion">
+            <div class="conclusion-title">💡 Key Learning</div>
+            <p style="color: #cccccc; margin-bottom: 15px;">
+                CLI interfaces are completely unsuitable for personal library management. 
+                The lack of visual organization makes it impossible to quickly understand 
+                library structure and find papers. Researchers need visual cues, relationships, 
+                and rich formatting that only GUI interfaces can provide.
+            </p>
+            <p style="color: #cccccc;">
+                Personal libraries are inherently visual and organizational in nature, 
+                requiring interfaces that support quick scanning, visual comparison, and 
+                intuitive navigation - none of which are possible in a command-line environment.
+            </p>
+        </div>
+
+        <div class="back-link">
+            <a href="https://hw6-g0bfri6wd-kathryn-harpers-projects.vercel.app">← Back to Working Prototypes</a>
+        </div>
+    </div>
+</body>
+</html>
