@@ -208,7 +208,7 @@ export default function ThreeLayerGraph({ initialQuery }: { initialQuery: any })
         stroke: '#60a5fa',
         strokeDasharray: '5,5'
       },
-      label: `${edge.scores.combined.toFixed(2)}`,
+      label: `${edge.weight.toFixed(2)}`,
       labelStyle: { 
         fontSize: 12, 
         fill: '#60a5fa',
