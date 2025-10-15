@@ -32,15 +32,15 @@ export default function MultiFieldSearch() {
     try {
       // Fetch all types of suggestions
       const [keywordsRes, authorsRes, papersRes] = await Promise.all([
-        axios.get(`http://localhost:8002/api/autocomplete?q=${encodeURIComponent(query)}&type=keywords`),
-        axios.get(`http://localhost:8002/api/autocomplete?q=${encodeURIComponent(query)}&type=authors`),
-        axios.get(`http://localhost:8002/api/autocomplete?q=${encodeURIComponent(query)}&type=papers`)
+        axios.get(`/api/autocomplete?q=${encodeURIComponent(query)}&type=keywords`),
+        axios.get(`/api/autocomplete?q=${encodeURIComponent(query)}&type=authors`),
+        axios.get(`/api/autocomplete?q=${encodeURIComponent(query)}&type=papers`)
       ]);
 
       const allSuggestions: Suggestion[] = [
         ...keywordsRes.data.map((text: string) => ({ text, type: 'keyword' as const })),
         ...authorsRes.data.map((text: string) => ({ text, type: 'author' as const })),
-        ...papersRes.data.map((paper: any) => ({ 
+        ...papersRes.data.map((paper: { id: string; title: string; authors: string; year: number; venue: string }) => ({ 
           text: paper.title, 
           type: 'paper' as const, 
           id: paper.id,
@@ -285,7 +285,7 @@ export default function MultiFieldSearch() {
           {loading ? 'Generating…' : 'Generate Graph'}
         </button>
         <div style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
-          Example: "transformer", "Vaswani", "Attention Is All You Need"
+          Example: &quot;transformer&quot;, &quot;Vaswani&quot;, &quot;Attention Is All You Need&quot;
         </div>
       </form>
     </div>

@@ -18,7 +18,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 // Custom Paper Node Component
-const PaperNode = ({ data, selected }) => {
+const PaperNode = ({ data, selected }: { data: { title: string; year: number; citations: string[]; concepts: string[] }; selected: boolean }) => {
   return (
     <div
       style={{
@@ -131,7 +131,7 @@ export default function ThreeLayerGraph({ initialQuery }: { initialQuery: any })
     setError(null);
     try {
       console.log('Fetching graph with query:', initialQuery);
-      const res = await axios.post('http://localhost:8002/api/search', {
+      const res = await axios.post('/api/search', {
         ...initialQuery,
         layers: { alpha: 0.3, beta: 0.4, gamma: 0.3 } // Fixed weights
       });
