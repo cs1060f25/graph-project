@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Graph Explorer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Research Graph Explorer</h1>
+            <p class="tagline">Visualize the connections between research papers</p>
+        </header>
+
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Search papers by title, author, or keyword..." />
+            <button id="searchBtn">Search</button>
+            <button id="resetBtn">Reset View</button>
+        </div>
+
+        <div class="main-content">
+            <div class="graph-panel">
+                <div id="graph"></div>
+            </div>
+            
+            <div class="sidebar">
+                <div id="paperInfo" class="paper-info hidden">
+                    <h3>Paper Details</h3>
+                    <div id="paperContent"></div>
+                </div>
+                
+                <div id="paperList" class="paper-list">
+                    <h3>All Papers</h3>
+                    <div id="paperListContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
