@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-import axios from 'axios';
+import { useEffect, useState, useCallback } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -16,6 +15,136 @@ import ReactFlow, {
   Position
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+
+// Mock data embedded directly in the component
+const mockPapers = [
+  { 
+    id: 'p1', 
+    title: 'Attention Is All You Need', 
+    authors: 'Vaswani et al.', 
+    year: 2017, 
+    venue: 'NIPS', 
+    keywords: ['transformer', 'attention', 'nlp'],
+    citations: ['p2', 'p3', 'p5', 'p6', 'p8', 'p9', 'p10'],
+    citedBy: [],
+    concepts: ['Self-Attention', 'Multi-Head Attention', 'Positional Encoding']
+  },
+  { 
+    id: 'p2', 
+    title: 'BERT: Pre-training of Deep Bidirectional Transformers', 
+    authors: 'Devlin et al.', 
+    year: 2018, 
+    venue: 'NAACL', 
+    keywords: ['transformer', 'bert', 'nlp'],
+    citations: ['p1'],
+    citedBy: ['p3', 'p6', 'p8', 'p10'],
+    concepts: ['Bidirectional Encoding', 'Pre-training', 'Fine-tuning']
+  },
+  { 
+    id: 'p3', 
+    title: 'GPT-3: Language Models are Few-Shot Learners', 
+    authors: 'Brown et al.', 
+    year: 2020, 
+    venue: 'NeurIPS', 
+    keywords: ['transformer', 'gpt', 'language-model'],
+    citations: ['p1', 'p2'],
+    citedBy: ['p6', 'p10'],
+    concepts: ['Few-Shot Learning', 'In-Context Learning', 'Scaling Laws']
+  },
+  { 
+    id: 'p4', 
+    title: 'ResNet: Deep Residual Learning for Image Recognition', 
+    authors: 'He et al.', 
+    year: 2016, 
+    venue: 'CVPR', 
+    keywords: ['resnet', 'cnn', 'computer-vision'],
+    citations: [],
+    citedBy: ['p5', 'p7'],
+    concepts: ['Residual Connections', 'Skip Connections', 'Deep Networks']
+  },
+  { 
+    id: 'p5', 
+    title: 'Vision Transformer: An Image is Worth 16x16 Words', 
+    authors: 'Dosovitskiy et al.', 
+    year: 2020, 
+    venue: 'ICLR', 
+    keywords: ['transformer', 'vision', 'computer-vision'],
+    citations: ['p1', 'p4'],
+    citedBy: ['p6', 'p8', 'p9'],
+    concepts: ['Patch Embedding', 'Vision Transformer', 'Image Classification']
+  },
+  { 
+    id: 'p6', 
+    title: 'DALL-E: Creating Images from Text', 
+    authors: 'Ramesh et al.', 
+    year: 2021, 
+    venue: 'ICML', 
+    keywords: ['transformer', 'generation', 'multimodal'],
+    citations: ['p1', 'p2', 'p3', 'p5'],
+    citedBy: ['p8', 'p9'],
+    concepts: ['Text-to-Image', 'Discrete VAE', 'CLIP']
+  },
+  { 
+    id: 'p7', 
+    title: 'YOLO: Real-Time Object Detection', 
+    authors: 'Redmon et al.', 
+    year: 2016, 
+    venue: 'CVPR', 
+    keywords: ['yolo', 'object-detection', 'computer-vision'],
+    citations: ['p4'],
+    citedBy: [],
+    concepts: ['Real-Time Detection', 'Single Shot', 'Bounding Box']
+  },
+  { 
+    id: 'p8', 
+    title: 'CLIP: Learning Transferable Visual Representations', 
+    authors: 'Radford et al.', 
+    year: 2021, 
+    venue: 'ICML', 
+    keywords: ['transformer', 'clip', 'multimodal'],
+    citations: ['p1', 'p2', 'p5', 'p6'],
+    citedBy: ['p9'],
+    concepts: ['Contrastive Learning', 'Vision-Language', 'Zero-Shot']
+  },
+  { 
+    id: 'p9', 
+    title: 'Stable Diffusion: High-Resolution Image Synthesis', 
+    authors: 'Rombach et al.', 
+    year: 2022, 
+    venue: 'CVPR', 
+    keywords: ['transformer', 'diffusion', 'generation'],
+    citations: ['p1', 'p5', 'p6', 'p8'],
+    citedBy: [],
+    concepts: ['Latent Diffusion', 'Text-to-Image', 'Denoising']
+  },
+  { 
+    id: 'p10', 
+    title: 'Neural Machine Translation by Jointly Learning to Align and Translate', 
+    authors: 'Bahdanau et al.', 
+    year: 2014, 
+    venue: 'ICLR', 
+    keywords: ['attention', 'nlp', 'rnn'],
+    citations: ['p1'],
+    citedBy: [],
+    concepts: ['Attention Mechanism', 'Sequence-to-Sequence', 'Alignment']
+  }
+];
+
+// Helper functions
+function jaccardSimilarity(setA: Set<string>, setB: Set<string>): number {
+  if (setA.size === 0 && setB.size === 0) return 0;
+  const intersection = new Set([...setA].filter(x => setB.has(x)));
+  const union = new Set([...setA, ...setB]);
+  return union.size === 0 ? 0 : intersection.size / union.size;
+}
+
+function minMaxNormalize(values: number[]): number[] {
+  if (values.length === 0) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (max === min) return values.map(() => 0.5);
+  return values.map(v => (v - min) / (max - min));
+}
 
 // Custom Paper Node Component
 const PaperNode = ({ data, selected }: { data: { title: string; year: number; citations: string[]; concepts: string[] }; selected: boolean }) => {
@@ -59,55 +188,15 @@ const PaperNode = ({ data, selected }: { data: { title: string; year: number; ci
         style={{ background: '#555' }}
       />
       
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 'bold', lineHeight: 1.2 }}>
-          {data.label.length > 60 ? `${data.label.substring(0, 60)}...` : data.label}
-        </div>
+      <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>
+        {data.title}
       </div>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12 }}>
-            {data.year}
-          </span>
-          <span style={{ 
-            background: 'rgba(255,255,255,0.2)', 
-            color: 'white', 
-            padding: '2px 6px', 
-            borderRadius: 4, 
-            fontSize: 10 
-          }}>
-            {data.venue}
-          </span>
-        </div>
+      <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '4px' }}>
+        {data.year}
       </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {data.keywords.slice(0, 2).map((keyword) => (
-          <span
-            key={keyword}
-            style={{ 
-              background: 'rgba(255,255,255,0.2)',
-              color: 'white',
-              padding: '2px 6px',
-              borderRadius: 4,
-              fontSize: 10
-            }}
-          >
-            {keyword}
-          </span>
-        ))}
-        {data.keywords.length > 2 && (
-          <span style={{ 
-            background: 'rgba(255,255,255,0.2)',
-            color: 'white',
-            padding: '2px 6px',
-            borderRadius: 4,
-            fontSize: 10
-          }}>
-            +{data.keywords.length - 2}
-          </span>
-        )}
+      <div style={{ fontSize: '11px', opacity: 0.8 }}>
+        {data.concepts.slice(0, 2).join(', ')}
+        {data.concepts.length > 2 && '...'}
       </div>
     </div>
   );
@@ -120,80 +209,158 @@ const nodeTypes: NodeTypes = {
 export default function ThreeLayerGraph({ initialQuery }: { initialQuery: any }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeLayers, setActiveLayers] = useState({ layer1: true, layer2: false, layer3: false });
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [activeLayers, setActiveLayers] = useState({
+    layer1: true,
+    layer2: false,
+    layer3: false
+  });
 
-  const fetchGraph = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      console.log('Fetching graph with query:', initialQuery);
-      const res = await axios.post('/api/search', {
-        ...initialQuery,
-        layers: { alpha: 0.3, beta: 0.4, gamma: 0.3 } // Fixed weights
+  // Generate graph data based on query
+  const generateGraphData = useCallback((query: any) => {
+    let relevantPapers = new Set<string>();
+
+    // Find relevant papers based on query
+    if (query.keywords && query.keywords.length > 0) {
+      mockPapers.forEach(p => {
+        if (query.keywords.some((kw: string) => p.keywords.includes(kw.toLowerCase()))) {
+          relevantPapers.add(p.id);
+        }
       });
-      console.log('Graph data received:', res.data);
-      setData(res.data);
-    } catch (e) {
-      console.error('Graph fetch error:', e);
-      setError('Failed to load graph');
-    } finally {
-      setLoading(false);
     }
-  };
 
+    if (query.authors && query.authors.length > 0) {
+      mockPapers.forEach(p => {
+        if (query.authors.some((author: string) => p.authors.toLowerCase().includes(author.toLowerCase()))) {
+          relevantPapers.add(p.id);
+        }
+      });
+    }
+
+    if (query.papers && query.papers.length > 0) {
+      query.papers.forEach((paperId: string) => relevantPapers.add(paperId));
+    }
+
+    // If no specific search criteria, return a default set of papers
+    if (relevantPapers.size === 0) {
+      mockPapers.forEach(p => relevantPapers.add(p.id));
+    }
+
+    const paperNodes = Array.from(relevantPapers).map(id => {
+      const paper = mockPapers.find(p => p.id === id);
+      if (!paper) throw new Error(`Paper with id ${id} not found`);
+      return {
+        id: paper.id,
+        title: paper.title,
+        authors: paper.authors,
+        year: paper.year,
+        venue: paper.venue,
+        citations: paper.citations,
+        concepts: paper.keywords
+      };
+    });
+
+    const edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      weight: number;
+      layer1: boolean;
+      layer2: boolean;
+      layer3: boolean;
+    }> = [];
+    const allEdgeScores: number[] = [];
+
+    // Generate edges between all relevant papers
+    for (let i = 0; i < paperNodes.length; i++) {
+      for (let j = i + 1; j < paperNodes.length; j++) {
+        const paperA = paperNodes[i];
+        const paperB = paperNodes[j];
+
+        // Calculate similarity scores
+        const keywordsA = new Set(paperA.concepts);
+        const keywordsB = new Set(paperB.concepts);
+        const s_kw = jaccardSimilarity(keywordsA, keywordsB);
+
+        const citationsA = new Set(paperA.citations);
+        const citationsB = new Set(paperB.citations);
+        const citedByA = new Set(mockPapers.filter(p => p.citations.includes(paperA.id)).map(p => p.id));
+        const citedByB = new Set(mockPapers.filter(p => p.citations.includes(paperB.id)).map(p => p.id));
+        
+        const s_cite = (jaccardSimilarity(citationsA, citationsB) + jaccardSimilarity(citedByA, citedByB)) / 2;
+
+        // Mock semantic similarity
+        const s_sem = Math.random() * 0.8 + 0.1;
+
+        const alpha = 0.3;
+        const beta = 0.4;
+        const gamma = 0.3;
+
+        const edgeScore = alpha * s_kw + beta * s_cite + gamma * s_sem;
+        allEdgeScores.push(edgeScore);
+
+        edges.push({
+          id: `${paperA.id}-${paperB.id}`,
+          source: paperA.id,
+          target: paperB.id,
+          weight: edgeScore,
+          layer1: false,
+          layer2: false,
+          layer3: false,
+        });
+      }
+    }
+
+    if (allEdgeScores.length === 0) {
+      return { nodes: paperNodes, edges: [] };
+    }
+
+    const normalizedScores = minMaxNormalize(allEdgeScores);
+
+    // Calculate thresholds for layers
+    const sortedScores = [...normalizedScores].sort((a, b) => b - a);
+    const t1 = sortedScores[Math.floor(sortedScores.length * 0.1)] || 0.8; // Layer 1: top 10% - strongest
+    const t2 = sortedScores[Math.floor(sortedScores.length * 0.4)] || 0.6; // Layer 2: top 40% - strong + medium  
+    const t3 = sortedScores[Math.floor(sortedScores.length * 0.7)] || 0.4; // Layer 3: top 70% - all strong connections
+
+    // Assign layers to edges
+    edges.forEach((edge, index) => {
+      edge.weight = normalizedScores[index];
+      edge.layer1 = edge.weight >= t1;
+      edge.layer2 = edge.weight >= t2;
+      edge.layer3 = edge.weight >= t3;
+    });
+
+    return { nodes: paperNodes, edges };
+  }, []);
+
+  // Update graph when query or layers change
   useEffect(() => {
-    fetchGraph();
-  }, [initialQuery]);
-
-  // Convert API data to React Flow format
-  useEffect(() => {
-    if (!data) return;
-
-    // Filter edges based on active layers (cumulative - higher layers include lower layers)
+    const data = generateGraphData(initialQuery);
+    
+    // Filter edges based on active layers
     const filteredEdges = data.edges.filter((edge: any) => {
-      // Layer 1: Show only the strongest connections (layer1 only)
       if (activeLayers.layer1 && !activeLayers.layer2 && !activeLayers.layer3) {
-        return edge.layer1;
+        return edge.layer1; // Layer 1: Strongest connections only
       }
-      // Layer 2: Show strongest + medium connections (layer1 OR layer2)
       if (activeLayers.layer1 && activeLayers.layer2 && !activeLayers.layer3) {
-        return edge.layer1 || edge.layer2;
+        return edge.layer1 || edge.layer2; // Layer 2: Strong + Medium connections
       }
-      // Layer 3: Show all connections (layer1 OR layer2 OR layer3)
       if (activeLayers.layer1 && activeLayers.layer2 && activeLayers.layer3) {
-        return edge.layer1 || edge.layer2 || edge.layer3;
+        return edge.layer1 || edge.layer2 || edge.layer3; // Layer 3: All connections
       }
       return false;
     });
 
-    // Get all nodes that are connected by filtered edges
-    const connectedNodeIds = new Set();
-    filteredEdges.forEach((edge: any) => {
-      connectedNodeIds.add(edge.source);
-      connectedNodeIds.add(edge.target);
-    });
-
-    const filteredNodes = data.nodes.filter((node: any) => connectedNodeIds.has(node.id));
-
-    // Convert to React Flow format with automatic layout
-    const reactFlowNodes = filteredNodes.map((node: any, index: number) => ({
+    // Convert to React Flow format
+    const reactFlowNodes = data.nodes.map((node: any) => ({
       id: node.id,
       type: 'paper',
-      position: { 
-        x: Math.random() * 800 + 100, 
-        y: Math.random() * 600 + 100 
-      },
+      position: { x: Math.random() * 800, y: Math.random() * 600 },
       data: {
-        ...node,
-        label: node.label,
+        title: node.title,
         year: node.year,
-        venue: node.venue,
-        keywords: node.keywords,
-        authors: node.authors
+        citations: node.citations || [],
+        concepts: node.concepts || []
       }
     }));
 
@@ -222,217 +389,102 @@ export default function ThreeLayerGraph({ initialQuery }: { initialQuery: any })
 
     setNodes(reactFlowNodes);
     setEdges(reactFlowEdges);
-  }, [data, activeLayers, setNodes, setEdges]);
+  }, [initialQuery, activeLayers, generateGraphData, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
-  const onNodeClick = useCallback((event, node) => {
-    console.log('Node clicked:', node);
-  }, []);
-
-  const handleFitView = () => {
-    if (reactFlowInstance) {
-      reactFlowInstance.fitView();
-    }
+  const toggleLayer = (layer: 'layer1' | 'layer2' | 'layer3') => {
+    setActiveLayers(prev => ({
+      ...prev,
+      [layer]: !prev[layer]
+    }));
   };
-
-  const handleZoomIn = () => {
-    if (reactFlowInstance) {
-      reactFlowInstance.zoomIn();
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (reactFlowInstance) {
-      reactFlowInstance.zoomOut();
-    }
-  };
-
-  const getGraphStats = () => {
-    return {
-      papers: nodes.length,
-      connections: edges.length,
-      layer1Count: data?.layerCounts?.layer1 || 0,
-      layer2Count: data?.layerCounts?.layer2 || 0,
-      layer3Count: data?.layerCounts?.layer3 || 0
-    };
-  };
-
-  const stats = getGraphStats();
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Controls */}
-      <div style={{ padding: 16, borderBottom: '1px solid #374151', background: '#1f2937' }}>
-        <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Layer depth selector */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <label style={{ color: '#e5e7eb', fontSize: 14, fontWeight: 500 }}>Graph Depth:</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                onClick={() => setActiveLayers({ layer1: true, layer2: false, layer3: false })}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  border: '1px solid #374151',
-                  background: activeLayers.layer1 && !activeLayers.layer2 && !activeLayers.layer3 ? '#3b82f6' : '#1f2937',
-                  color: activeLayers.layer1 && !activeLayers.layer2 && !activeLayers.layer3 ? '#fff' : '#9ca3af',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 500
-                }}
-              >
-                Layer 1 (Shallow)
-              </button>
-              <button
-                onClick={() => setActiveLayers({ layer1: true, layer2: true, layer3: false })}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  border: '1px solid #374151',
-                  background: activeLayers.layer1 && activeLayers.layer2 && !activeLayers.layer3 ? '#3b82f6' : '#1f2937',
-                  color: activeLayers.layer1 && activeLayers.layer2 && !activeLayers.layer3 ? '#fff' : '#9ca3af',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 500
-                }}
-              >
-                Layer 2 (Medium)
-              </button>
-              <button
-                onClick={() => setActiveLayers({ layer1: true, layer2: true, layer3: true })}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  border: '1px solid #374151',
-                  background: activeLayers.layer1 && activeLayers.layer2 && activeLayers.layer3 ? '#3b82f6' : '#1f2937',
-                  color: activeLayers.layer1 && activeLayers.layer2 && activeLayers.layer3 ? '#fff' : '#9ca3af',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 500
-                }}
-              >
-                Layer 3 (Deep)
-              </button>
+    <div style={{ width: '100vw', height: '100vh', background: '#1f2937' }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        nodeTypes={nodeTypes}
+        fitView
+        style={{ background: '#1f2937' }}
+      >
+        <Background color="#374151" gap={20} />
+        <Controls />
+        <MiniMap 
+          style={{ background: '#1f2937' }}
+          nodeColor="#3b82f6"
+          maskColor="rgba(31, 41, 55, 0.8)"
+        />
+        
+        <Panel position="top-right">
+          <div style={{ 
+            background: '#1f2937', 
+            padding: '16px', 
+            borderRadius: '8px',
+            border: '1px solid #374151',
+            color: 'white',
+            minWidth: '200px'
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>Graph Layers</h3>
+            
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.layer1}
+                  onChange={() => toggleLayer('layer1')}
+                  style={{ marginRight: '8px' }}
+                />
+                <span style={{ fontSize: '14px' }}>Layer 1 (Strongest)</span>
+              </label>
+            </div>
+            
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.layer2}
+                  onChange={() => toggleLayer('layer2')}
+                  style={{ marginRight: '8px' }}
+                />
+                <span style={{ fontSize: '14px' }}>Layer 2 (Strong + Medium)</span>
+              </label>
+            </div>
+            
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={activeLayers.layer3}
+                  onChange={() => toggleLayer('layer3')}
+                  style={{ marginRight: '8px' }}
+                />
+                <span style={{ fontSize: '14px' }}>Layer 3 (All Connections)</span>
+              </label>
+            </div>
+            
+            <div style={{ 
+              marginTop: '12px', 
+              padding: '8px', 
+              background: '#374151', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              color: '#9ca3af'
+            }}>
+              <div>Nodes: {nodes.length}</div>
+              <div>Edges: {edges.length}</div>
             </div>
           </div>
-
-          {/* Layer info */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <span style={{ color: '#9ca3af', fontSize: 12 }}>
-              {activeLayers.layer1 && !activeLayers.layer2 && !activeLayers.layer3 && 'Layer 1: Strongest connections only'}
-              {activeLayers.layer1 && activeLayers.layer2 && !activeLayers.layer3 && 'Layer 2: Strong + Medium connections'}
-              {activeLayers.layer1 && activeLayers.layer2 && activeLayers.layer3 && 'Layer 3: All connections (broadest view)'}
-            </span>
-          </div>
-
-          {/* Controls */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
-              onClick={handleZoomIn}
-              style={{
-                padding: '6px 8px',
-                borderRadius: 4,
-                border: '1px solid #374151',
-                background: '#1f2937',
-                color: '#9ca3af',
-                cursor: 'pointer',
-                fontSize: 12
-              }}
-            >
-              Zoom In
-            </button>
-            <button
-              onClick={handleZoomOut}
-              style={{
-                padding: '6px 8px',
-                borderRadius: 4,
-                border: '1px solid #374151',
-                background: '#1f2937',
-                color: '#9ca3af',
-                cursor: 'pointer',
-                fontSize: 12
-              }}
-            >
-              Zoom Out
-            </button>
-            <button
-              onClick={handleFitView}
-              style={{
-                padding: '6px 8px',
-                borderRadius: 4,
-                border: '1px solid #374151',
-                background: '#1f2937',
-                color: '#9ca3af',
-                cursor: 'pointer',
-                fontSize: 12
-              }}
-            >
-              Fit View
-            </button>
-          </div>
-
-          {loading && <span style={{ color: '#9ca3af', fontSize: 12 }}>Updating...</span>}
-          {error && <span style={{ color: '#ef4444', fontSize: 12 }}>{error}</span>}
-        </div>
-
-        {/* Stats */}
-        <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 12 }}>
-          {stats.papers} papers • {stats.connections} connections • 
-          Layer 1: {stats.layer1Count} • Layer 2: {stats.layer2Count} • Layer 3: {stats.layer3Count}
-        </div>
-      </div>
-
-      {/* Graph container */}
-      <div style={{ flex: 1, background: '#1f2937' }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onInit={setReactFlowInstance}
-          nodeTypes={nodeTypes}
-          connectionLineType={ConnectionLineType.SmoothStep}
-          fitView
-          attributionPosition="bottom-left"
-        >
-          <Controls style={{ background: '#374151', border: '1px solid #4b5563' }} />
-          <MiniMap 
-            nodeColor="#3b82f6"
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-            style={{ background: '#374151', border: '1px solid #4b5563' }}
-          />
-          <Background variant="dots" gap={12} size={1} color="#4b5563" />
-          
-          <Panel position="top-center">
-            {nodes.length === 0 && !loading && (
-              <div style={{ 
-                background: '#374151', 
-                padding: 24, 
-                borderRadius: 8, 
-                textAlign: 'center', 
-                maxWidth: 400,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                border: '1px solid #4b5563'
-              }}>
-                <h3 style={{ margin: '0 0 8px 0', color: '#e5e7eb' }}>
-                  No Papers Found
-                </h3>
-                <p style={{ margin: 0, color: '#9ca3af' }}>
-                  Try adjusting your search criteria or layer depth to see more results.
-                </p>
-              </div>
-            )}
-          </Panel>
-        </ReactFlow>
-      </div>
+        </Panel>
+      </ReactFlow>
     </div>
   );
 }
