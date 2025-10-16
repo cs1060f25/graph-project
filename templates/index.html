@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Graphene</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
@@ -12,6 +13,7 @@
         <header>
             <h1>Graphene</h1>
             <p class="tagline">Visualize the connections between research papers</p>
+            <a href="/moderation" class="mod-link">Moderation Dashboard</a>
         </header>
 
         <div class="controls">
@@ -36,6 +38,22 @@
                     <div id="paperListContent"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3>Why are you flagging this paper?</h3>
+            <div class="reason-buttons">
+                <button class="reason-btn" data-reason="Off-topic">Off-topic</button>
+                <button class="reason-btn" data-reason="Spam">Spam</button>
+                <button class="reason-btn" data-reason="Poor quality">Poor quality</button>
+                <button class="reason-btn" data-reason="Duplicate">Duplicate</button>
+            </div>
+            <textarea id="customReason" placeholder="Or provide your own reason (optional)"></textarea>
+            <button id="submitFeedback" class="submit-btn">Submit Feedback</button>
         </div>
     </div>
 

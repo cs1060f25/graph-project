@@ -89,11 +89,15 @@ function displayPaperList(papers) {
 
 async function showPaperDetails(paperId) {
     try {
-        const response = await fetch(`/api/papers/${paperId}`);
-        const paper = await response.json();
+        const [paperResponse, relatedResponse, feedbackResponse] = await Promise.all([
+            fetch(`/api/papers/${paperId}`),
+            fetch(`/api/related/${paperId}`),
+            fetch(`/api/feedback/paper/${paperId}`)
+        ]);
         
-        const relatedResponse = await fetch(`/api/related/${paperId}`);
+        const paper = await paperResponse.json();
         const related = await relatedResponse.json();
+        const feedback = await feedbackResponse.json();
 
         const paperInfo = document.getElementById('paperInfo');
         const paperContent = document.getElementById('paperContent');
@@ -143,9 +147,24 @@ async function showPaperDetails(paperId) {
                     ${related.cited_by.map(p => p.title).join(', ') || 'None'}
                 </div>
             </div>
+            <div class="feedback-actions">
+                <button class="vote-btn ${feedback.user_vote === 'up' ? 'active-up' : ''}" 
+                        onclick="votePaper(${paperId}, 'up')">
+                    <span class="material-icons">thumb_up</span>
+                    <span class="vote-count">${feedback.upvotes}</span>
+                </button>
+                <button class="vote-btn ${feedback.user_vote === 'down' ? 'active-down' : ''}" 
+                        onclick="votePaper(${paperId}, 'down')">
+                    <span class="material-icons">thumb_down</span>
+                    <span class="vote-count">${feedback.downvotes}</span>
+                </button>
+            </div>
         `;
 
         paperInfo.classList.remove('hidden');
+        
+        // Store current paper ID for feedback modal
+        window.currentPaperId = paperId;
         
         // Highlight node in graph
         highlightNode(paperId);
@@ -305,3 +324,101 @@ function dragEnded(event, d) {
     d.fx = null;
     d.fy = null;
 }
+
+// Feedback/Voting Functions
+let selectedReason = '';
+
+async function votePaper(paperId, voteType) {
+    if (voteType === 'down') {
+        // Show modal for downvote
+        showFeedbackModal(paperId);
+    } else {
+        // Submit upvote directly
+        await submitFeedback(paperId, voteType, '');
+    }
+}
+
+function showFeedbackModal(paperId) {
+    const modal = document.getElementById('feedbackModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('show');
+    selectedReason = '';
+    
+    // Clear previous selections
+    document.querySelectorAll('.reason-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.getElementById('customReason').value = '';
+}
+
+function hideFeedbackModal() {
+    const modal = document.getElementById('feedbackModal');
+    modal.classList.remove('show');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+async function submitFeedback(paperId, voteType, reason) {
+    try {
+        const response = await fetch('/api/feedback/paper', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                paper_id: paperId,
+                vote_type: voteType,
+                reason: reason
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.hidden) {
+            alert('This paper has been hidden due to negative feedback.');
+            // Reload papers to update the list
+            loadPapers();
+        } else {
+            // Refresh the paper details to show updated votes
+            showPaperDetails(paperId);
+        }
+    } catch (error) {
+        console.error('Error submitting feedback:', error);
+        alert('Failed to submit feedback. Please try again.');
+    }
+}
+
+// Modal event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Close button
+    document.querySelector('.modal-close')?.addEventListener('click', hideFeedbackModal);
+    
+    // Click outside modal to close
+    document.getElementById('feedbackModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'feedbackModal') {
+            hideFeedbackModal();
+        }
+    });
+    
+    // Reason button selection
+    document.querySelectorAll('.reason-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedReason = btn.dataset.reason;
+        });
+    });
+    
+    // Submit feedback button
+    document.getElementById('submitFeedback')?.addEventListener('click', async () => {
+        const customReason = document.getElementById('customReason').value.trim();
+        const finalReason = customReason || selectedReason;
+        
+        if (!finalReason) {
+            alert('Please select or enter a reason for flagging this paper.');
+            return;
+        }
+        
+        hideFeedbackModal();
+        await submitFeedback(window.currentPaperId, 'down', finalReason);
+    });
+});

@@ -1,0 +1,186 @@
+/* Moderation Dashboard Styles - Material Design */
+
+.mod-content {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    flex: 1;
+    background-color: var(--graphite-medium);
+    border: 1px solid var(--graphite-border);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card .material-icons {
+    font-size: 48px;
+    color: var(--graphite-accent);
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--graphite-text);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--graphite-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.flagged-papers h2 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin-bottom: 1.5rem;
+    color: var(--graphite-text);
+}
+
+.flagged-card {
+    background-color: var(--graphite-medium);
+    border: 1px solid var(--graphite-border);
+    border-left: 4px solid var(--graphite-accent);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.flagged-card.hidden-paper {
+    border-left-color: #ef4444;
+    opacity: 0.7;
+}
+
+.flagged-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.flagged-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--graphite-text);
+    flex: 1;
+}
+
+.flagged-badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.badge.upvotes {
+    background-color: rgba(96, 165, 250, 0.2);
+    color: var(--graphite-accent);
+}
+
+.badge.downvotes {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.badge.score {
+    background-color: rgba(160, 160, 160, 0.2);
+    color: var(--graphite-text-dim);
+}
+
+.badge.hidden-badge {
+    background-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.flagged-meta {
+    font-size: 0.85rem;
+    color: var(--graphite-text-dim);
+    margin-bottom: 0.75rem;
+}
+
+.flagged-reasons {
+    margin-top: 1rem;
+}
+
+.flagged-reasons h4 {
+    font-size: 0.9rem;
+    color: var(--graphite-text-dim);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.reason-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.reason-tag {
+    padding: 0.25rem 0.75rem;
+    background-color: var(--graphite-light);
+    border: 1px solid var(--graphite-border);
+    border-radius: 16px;
+    font-size: 0.75rem;
+    color: var(--graphite-text);
+}
+
+.reason-tag .count {
+    color: var(--graphite-accent);
+    font-weight: 500;
+    margin-left: 0.25rem;
+}
+
+.back-link {
+    color: var(--graphite-accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 2rem;
+    transition: color 0.2s;
+}
+
+.back-link:hover {
+    color: var(--graphite-hover);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--graphite-text-dim);
+}
+
+.empty-state .material-icons {
+    font-size: 64px;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}

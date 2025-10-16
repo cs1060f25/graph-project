@@ -281,3 +281,194 @@ h3 {
 .sidebar::-webkit-scrollbar-thumb:hover {
     background: var(--graphite-text-dim);
 }
+
+/* Feedback/Voting Styles - Material Design */
+.feedback-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--graphite-border);
+}
+
+.vote-btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background-color: var(--graphite-light);
+    border: 1px solid var(--graphite-border);
+    color: var(--graphite-text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.vote-btn:hover {
+    background-color: var(--graphite-border);
+}
+
+.vote-btn.active-up {
+    background-color: rgba(96, 165, 250, 0.2);
+    border-color: var(--graphite-accent);
+    color: var(--graphite-accent);
+}
+
+.vote-btn.active-down {
+    background-color: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.vote-btn .material-icons {
+    font-size: 18px;
+}
+
+.vote-count {
+    font-weight: 500;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--graphite-medium);
+    border: 1px solid var(--graphite-border);
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-close {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 1.5rem;
+    color: var(--graphite-text-dim);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: var(--graphite-text);
+}
+
+.modal h3 {
+    margin-bottom: 1.5rem;
+}
+
+.reason-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.reason-btn {
+    padding: 0.75rem 1rem;
+    background-color: var(--graphite-light);
+    border: 1px solid var(--graphite-border);
+    color: var(--graphite-text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.reason-btn:hover {
+    border-color: var(--graphite-accent);
+}
+
+.reason-btn.selected {
+    background-color: rgba(96, 165, 250, 0.2);
+    border-color: var(--graphite-accent);
+    color: var(--graphite-accent);
+}
+
+#customReason {
+    width: 100%;
+    min-height: 80px;
+    padding: 0.75rem;
+    background-color: var(--graphite-dark);
+    border: 1px solid var(--graphite-border);
+    color: var(--graphite-text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    margin-bottom: 1rem;
+}
+
+#customReason:focus {
+    outline: none;
+    border-color: var(--graphite-accent);
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--graphite-accent);
+    border: none;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.submit-btn:hover {
+    background-color: var(--graphite-hover);
+}
+
+.mod-link {
+    color: var(--graphite-accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-left: auto;
+    transition: color 0.2s;
+}
+
+.mod-link:hover {
+    color: var(--graphite-hover);
+}
+
+header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+header h1 {
+    flex: 0;
+}
+
+header .tagline {
+    flex: 1;
+}

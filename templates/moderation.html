@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moderation Dashboard - Research Graph Explorer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='moderation.css') }}">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Moderation Dashboard</h1>
+            <p class="tagline">Review flagged papers and citations</p>
+            <a href="/" class="back-link">← Back to Graph</a>
+        </header>
+
+        <div class="mod-content">
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <span class="material-icons">flag</span>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalFlagged">0</div>
+                        <div class="stat-label">Flagged Papers</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">visibility_off</span>
+                    <div class="stat-info">
+                        <div class="stat-value" id="totalHidden">0</div>
+                        <div class="stat-label">Hidden Papers</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flagged-papers" id="flaggedList">
+                <h2>Most Flagged Papers</h2>
+                <div id="flaggedContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='moderation.js') }}"></script>
+</body>
+</html>

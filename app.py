@@ -1,11 +1,14 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 import sqlite3
 import json
 from datetime import datetime
+import secrets
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)  # For session management
 
 DATABASE = 'research_graph.db'
+HIDE_THRESHOLD = -0.5  # Papers with score below this are hidden
 
 def get_db():
     """Get database connection"""
@@ -50,15 +53,45 @@ def init_db():
 @app.route('/')
 def index():
     """Main page"""
+    # Create session ID if not exists
+    if 'user_id' not in session:
+        session['user_id'] = secrets.token_hex(16)
     return render_template('index.html')
+
+@app.route('/moderation')
+def moderation():
+    """Moderation dashboard"""
+    if 'user_id' not in session:
+        session['user_id'] = secrets.token_hex(16)
+    return render_template('moderation.html')
 
 @app.route('/api/papers', methods=['GET'])
 def get_papers():
-    """Get all papers"""
+    """Get all papers with vote scores, filtering out hidden ones unless include_hidden=true"""
+    include_hidden = request.args.get('include_hidden', 'false').lower() == 'true'
+    
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM papers ORDER BY year DESC, created_at DESC')
-    papers = [dict(row) for row in cursor.fetchall()]
+    
+    # Get papers with their vote scores
+    cursor.execute('''
+        SELECT p.*,
+               COALESCE(SUM(CASE WHEN pf.vote_type = 'up' THEN 1 
+                                 WHEN pf.vote_type = 'down' THEN -1 
+                                 ELSE 0 END), 0) as score
+        FROM papers p
+        LEFT JOIN paper_feedback pf ON p.id = pf.paper_id
+        GROUP BY p.id
+        ORDER BY p.year DESC, p.created_at DESC
+    ''')
+    
+    papers = []
+    for row in cursor.fetchall():
+        paper = dict(row)
+        # Filter out hidden papers unless explicitly requested
+        if include_hidden or paper['score'] >= HIDE_THRESHOLD:
+            papers.append(paper)
+    
     conn.close()
     return jsonify(papers)
 
@@ -212,6 +245,191 @@ def get_related_papers(paper_id):
         'cites': cited_papers,
         'cited_by': citing_papers
     })
+
+@app.route('/api/feedback/paper', methods=['POST'])
+def submit_paper_feedback():
+    """Submit feedback for a paper"""
+    data = request.json
+    paper_id = data.get('paper_id')
+    vote_type = data.get('vote_type')  # 'up' or 'down'
+    reason = data.get('reason', '')
+    
+    if not paper_id or vote_type not in ['up', 'down']:
+        return jsonify({'error': 'Invalid data'}), 400
+    
+    user_session = session.get('user_id')
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if user already voted on this paper
+    cursor.execute('''
+        SELECT id FROM paper_feedback 
+        WHERE paper_id = ? AND user_session = ?
+    ''', (paper_id, user_session))
+    
+    existing = cursor.fetchone()
+    
+    if existing:
+        # Update existing vote
+        cursor.execute('''
+            UPDATE paper_feedback 
+            SET vote_type = ?, reason = ?, created_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (vote_type, reason, existing['id']))
+    else:
+        # Insert new vote
+        cursor.execute('''
+            INSERT INTO paper_feedback (paper_id, vote_type, reason, user_session)
+            VALUES (?, ?, ?, ?)
+        ''', (paper_id, vote_type, reason, user_session))
+    
+    conn.commit()
+    
+    # Get updated score
+    cursor.execute('''
+        SELECT COALESCE(SUM(CASE WHEN vote_type = 'up' THEN 1 
+                                 WHEN vote_type = 'down' THEN -1 
+                                 ELSE 0 END), 0) as score
+        FROM paper_feedback
+        WHERE paper_id = ?
+    ''', (paper_id,))
+    
+    score = cursor.fetchone()['score']
+    conn.close()
+    
+    return jsonify({
+        'message': 'Feedback submitted',
+        'score': score,
+        'hidden': score < HIDE_THRESHOLD
+    })
+
+@app.route('/api/feedback/citation', methods=['POST'])
+def submit_citation_feedback():
+    """Submit feedback for a citation/edge"""
+    data = request.json
+    citation_id = data.get('citation_id')
+    vote_type = data.get('vote_type')  # 'up' or 'down'
+    reason = data.get('reason', '')
+    
+    if not citation_id or vote_type not in ['up', 'down']:
+        return jsonify({'error': 'Invalid data'}), 400
+    
+    user_session = session.get('user_id')
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Check if user already voted on this citation
+    cursor.execute('''
+        SELECT id FROM citation_feedback 
+        WHERE citation_id = ? AND user_session = ?
+    ''', (citation_id, user_session))
+    
+    existing = cursor.fetchone()
+    
+    if existing:
+        # Update existing vote
+        cursor.execute('''
+            UPDATE citation_feedback 
+            SET vote_type = ?, reason = ?, created_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (vote_type, reason, existing['id']))
+    else:
+        # Insert new vote
+        cursor.execute('''
+            INSERT INTO citation_feedback (citation_id, vote_type, reason, user_session)
+            VALUES (?, ?, ?, ?)
+        ''', (citation_id, vote_type, reason, user_session))
+    
+    conn.commit()
+    
+    # Get updated score
+    cursor.execute('''
+        SELECT COALESCE(SUM(CASE WHEN vote_type = 'up' THEN 1 
+                                 WHEN vote_type = 'down' THEN -1 
+                                 ELSE 0 END), 0) as score
+        FROM citation_feedback
+        WHERE citation_id = ?
+    ''', (citation_id,))
+    
+    score = cursor.fetchone()['score']
+    conn.close()
+    
+    return jsonify({
+        'message': 'Feedback submitted',
+        'score': score
+    })
+
+@app.route('/api/feedback/paper/<int:paper_id>', methods=['GET'])
+def get_paper_feedback(paper_id):
+    """Get feedback stats for a paper"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT 
+            COALESCE(SUM(CASE WHEN vote_type = 'up' THEN 1 ELSE 0 END), 0) as upvotes,
+            COALESCE(SUM(CASE WHEN vote_type = 'down' THEN 1 ELSE 0 END), 0) as downvotes,
+            COALESCE(SUM(CASE WHEN vote_type = 'up' THEN 1 
+                              WHEN vote_type = 'down' THEN -1 
+                              ELSE 0 END), 0) as score
+        FROM paper_feedback
+        WHERE paper_id = ?
+    ''', (paper_id,))
+    
+    stats = dict(cursor.fetchone())
+    
+    # Get user's vote if exists
+    user_session = session.get('user_id')
+    cursor.execute('''
+        SELECT vote_type FROM paper_feedback
+        WHERE paper_id = ? AND user_session = ?
+    ''', (paper_id, user_session))
+    
+    user_vote = cursor.fetchone()
+    stats['user_vote'] = user_vote['vote_type'] if user_vote else None
+    
+    conn.close()
+    return jsonify(stats)
+
+@app.route('/api/moderation/flagged', methods=['GET'])
+def get_flagged_papers():
+    """Get most flagged papers for moderation"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT p.*, 
+               COALESCE(SUM(CASE WHEN pf.vote_type = 'down' THEN 1 ELSE 0 END), 0) as downvotes,
+               COALESCE(SUM(CASE WHEN pf.vote_type = 'up' THEN 1 ELSE 0 END), 0) as upvotes,
+               COALESCE(SUM(CASE WHEN pf.vote_type = 'up' THEN 1 
+                                 WHEN pf.vote_type = 'down' THEN -1 
+                                 ELSE 0 END), 0) as score,
+               COUNT(DISTINCT pf.user_session) as unique_voters
+        FROM papers p
+        LEFT JOIN paper_feedback pf ON p.id = pf.paper_id
+        GROUP BY p.id
+        HAVING downvotes > 0
+        ORDER BY downvotes DESC, score ASC
+        LIMIT 50
+    ''')
+    
+    papers = [dict(row) for row in cursor.fetchall()]
+    
+    # Get reasons for each paper
+    for paper in papers:
+        cursor.execute('''
+            SELECT reason, COUNT(*) as count
+            FROM paper_feedback
+            WHERE paper_id = ? AND vote_type = 'down' AND reason IS NOT NULL AND reason != ''
+            GROUP BY reason
+            ORDER BY count DESC
+        ''', (paper['id'],))
+        paper['reasons'] = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return jsonify(papers)
 
 if __name__ == '__main__':
     init_db()
