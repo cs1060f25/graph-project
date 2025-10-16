@@ -75,12 +75,14 @@ function displayPaperList(papers) {
         return;
     }
 
+    // More compact display
     listContainer.innerHTML = papers.map(paper => `
         <div class="paper-item" onclick="showPaperDetails(${paper.id})">
             <div class="paper-title">${paper.title}</div>
-            <div class="paper-authors">${paper.authors}</div>
-            <div class="paper-year">${paper.year}</div>
-            ${paper.keywords ? `<div class="paper-keywords">${paper.keywords}</div>` : ''}
+            <div class="paper-meta">
+                <span class="paper-authors">${paper.authors}</span>
+                <span class="paper-year">${paper.year}</span>
+            </div>
         </div>
     `).join('');
 }
@@ -196,24 +198,28 @@ function updateGraph() {
         showPaperDetails(d.id);
     });
 
+    // Store references globally for future extensions if needed
+    window.graphLink = link;
+    window.graphNode = node;
+
     // Update simulation
     simulation
         .nodes(graphData.nodes)
-        .on('tick', ticked);
+        .on('tick', () => ticked(link, node));
 
     simulation.force('link')
         .links(graphData.links);
 
     simulation.alpha(1).restart();
 
-    function ticked() {
-        link
+    function ticked(linkSelection, nodeSelection) {
+        linkSelection
             .attr('x1', d => d.source.x)
             .attr('y1', d => d.source.y)
             .attr('x2', d => d.target.x)
             .attr('y2', d => d.target.y);
 
-        node
+        nodeSelection
             .attr('transform', d => `translate(${d.x},${d.y})`);
     }
 }
@@ -289,6 +295,7 @@ function dragStarted(event, d) {
 }
 
 function dragged(event, d) {
+    // Canonical D3 pattern: update fixed positions only; tick updates DOM
     d.fx = event.x;
     d.fy = event.y;
 }
