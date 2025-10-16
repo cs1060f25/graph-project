@@ -1,307 +1,242 @@
-// Graph visualization and interaction logic
-
-let graphData = { nodes: [], links: [] };
+// Mobile-first feed, feedback collection, voice prompts, offline queueing
 let allPapers = [];
-let simulation;
-let svg, g;
-let selectedNode = null;
+const FEEDBACK_QUEUE_KEY = 'graphene_feedback_queue_v1';
 
-// Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
-    initializeGraph();
+    registerServiceWorker();
     loadPapers();
-    setupEventListeners();
+    setupMobileEvents();
+    window.addEventListener('online', trySyncQueue);
 });
 
-function setupEventListeners() {
-    document.getElementById('searchBtn').addEventListener('click', performSearch);
-    document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') performSearch();
-    });
-    document.getElementById('resetBtn').addEventListener('click', () => {
-        document.getElementById('searchInput').value = '';
-        loadPapers();
-        resetGraphView();
-    });
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/service-worker.js').catch(err => {
+            console.warn('SW registration failed:', err);
+        });
+    }
 }
 
-function initializeGraph() {
-    const width = document.getElementById('graph').clientWidth;
-    const height = document.getElementById('graph').clientHeight;
-
-    svg = d3.select('#graph')
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height);
-
-    g = svg.append('g');
-
-    // Add zoom behavior
-    const zoom = d3.zoom()
-        .scaleExtent([0.1, 4])
-        .on('zoom', (event) => {
-            g.attr('transform', event.transform);
+function setupMobileEvents() {
+    const showGraphBtn = document.getElementById('showGraphBtn');
+    if (showGraphBtn) {
+        showGraphBtn.addEventListener('click', () => {
+            document.getElementById('graphView').classList.toggle('hidden');
         });
-
-    svg.call(zoom);
-
-    // Initialize force simulation
-    simulation = d3.forceSimulation()
-        .force('link', d3.forceLink().id(d => d.id).distance(150))
-        .force('charge', d3.forceManyBody().strength(-300))
-        .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(30));
+    }
 }
 
 async function loadPapers() {
     try {
         const response = await fetch('/api/papers');
         allPapers = await response.json();
-        displayPaperList(allPapers);
-        
-        const graphResponse = await fetch('/api/graph');
-        graphData = await graphResponse.json();
-        updateGraph();
-    } catch (error) {
-        console.error('Error loading papers:', error);
+        renderPaperFeed(allPapers);
+    } catch (err) {
+        console.error('Failed to load papers:', err);
     }
 }
 
-function displayPaperList(papers) {
-    const listContainer = document.getElementById('paperListContent');
-    
+function renderPaperFeed(papers) {
+    const feed = document.getElementById('paperFeed');
+    if (!feed) return;
+    feed.innerHTML = '';
+
     if (papers.length === 0) {
-        listContainer.innerHTML = '<p style="color: #a0a0a0;">No papers found.</p>';
+        const p = document.createElement('p');
+        p.textContent = 'No papers available.';
+        p.style.color = '#a0a0a0';
+        feed.appendChild(p);
         return;
     }
 
-    // More compact display
-    listContainer.innerHTML = papers.map(paper => `
-        <div class="paper-item" onclick="showPaperDetails(${paper.id})">
-            <div class="paper-title">${paper.title}</div>
-            <div class="paper-meta">
-                <span class="paper-authors">${paper.authors}</span>
-                <span class="paper-year">${paper.year}</span>
-            </div>
-        </div>
-    `).join('');
+    papers.forEach(paper => {
+        const card = document.createElement('article');
+        card.className = 'paper-card';
+        card.setAttribute('role', 'region');
+        card.setAttribute('aria-label', `Paper: ${paper.title}`);
+
+        const title = document.createElement('h4');
+        title.textContent = paper.title;
+        card.appendChild(title);
+
+        const meta = document.createElement('div');
+        meta.className = 'paper-meta-small';
+        meta.textContent = `${paper.authors} • ${paper.year || ''}`;
+        card.appendChild(meta);
+
+        // Audio summary button (if abstract exists)
+        if (paper.abstract) {
+            const playBtn = document.createElement('button');
+            playBtn.className = 'small-btn';
+            playBtn.textContent = '🔊 Listen summary';
+            playBtn.addEventListener('click', () => speakText(paper.abstract));
+            card.appendChild(playBtn);
+        }
+
+        // Feedback buttons
+        const row = document.createElement('div');
+        row.className = 'feedback-row';
+
+        const likeBtn = document.createElement('button');
+        likeBtn.className = 'btn-feedback btn-like';
+        likeBtn.innerHTML = '👍';
+        likeBtn.setAttribute('aria-label', `Like ${paper.title}`);
+        likeBtn.addEventListener('click', () => sendFeedback(paper.id, 'like'));
+
+        const dislikeBtn = document.createElement('button');
+        dislikeBtn.className = 'btn-feedback btn-dislike';
+        dislikeBtn.innerHTML = '👎';
+        dislikeBtn.setAttribute('aria-label', `Dislike ${paper.title}`);
+        dislikeBtn.addEventListener('click', () => handleDislike(paper));
+
+        row.appendChild(likeBtn);
+        row.appendChild(dislikeBtn);
+        card.appendChild(row);
+
+        feed.appendChild(card);
+    });
 }
 
-async function showPaperDetails(paperId) {
-    try {
-        const response = await fetch(`/api/papers/${paperId}`);
-        const paper = await response.json();
-        
-        const relatedResponse = await fetch(`/api/related/${paperId}`);
-        const related = await relatedResponse.json();
-
-        const paperInfo = document.getElementById('paperInfo');
-        const paperContent = document.getElementById('paperContent');
-
-        paperContent.innerHTML = `
-            <div class="detail-section">
-                <div class="detail-label">Title</div>
-                <div class="detail-value paper-title">${paper.title}</div>
-            </div>
-            <div class="detail-section">
-                <div class="detail-label">Authors</div>
-                <div class="detail-value">${paper.authors}</div>
-            </div>
-            <div class="detail-section">
-                <div class="detail-label">Year</div>
-                <div class="detail-value">${paper.year}</div>
-            </div>
-            ${paper.keywords ? `
-            <div class="detail-section">
-                <div class="detail-label">Keywords</div>
-                <div class="detail-value">${paper.keywords}</div>
-            </div>
-            ` : ''}
-            ${paper.abstract ? `
-            <div class="detail-section">
-                <div class="detail-label">Abstract</div>
-                <div class="detail-value detail-abstract">${paper.abstract}</div>
-            </div>
-            ` : ''}
-            ${paper.url ? `
-            <div class="detail-section">
-                <div class="detail-label">Link</div>
-                <div class="detail-value">
-                    <a href="${paper.url}" target="_blank" class="detail-link">View Paper</a>
-                </div>
-            </div>
-            ` : ''}
-            <div class="detail-section">
-                <div class="detail-label">Cites (${related.cites.length})</div>
-                <div class="detail-value">
-                    ${related.cites.map(p => p.title).join(', ') || 'None'}
-                </div>
-            </div>
-            <div class="detail-section">
-                <div class="detail-label">Cited By (${related.cited_by.length})</div>
-                <div class="detail-value">
-                    ${related.cited_by.map(p => p.title).join(', ') || 'None'}
-                </div>
-            </div>
-        `;
-
-        paperInfo.classList.remove('hidden');
-        
-        // Highlight node in graph
-        highlightNode(paperId);
-    } catch (error) {
-        console.error('Error fetching paper details:', error);
-    }
+function speakText(text) {
+    if (!('speechSynthesis' in window)) return;
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
 }
 
-function updateGraph() {
-    // Clear existing graph
-    g.selectAll('*').remove();
+function handleDislike(paper) {
+    // Voice-assisted options
+    const options = ['off-topic', 'unclear', 'offensive'];
+    // Prompt the user via voice and simple UI
+    const promptText = 'You disliked this paper. Say why: off-topic, unclear, or offensive. Or tap an option.';
+    speakText(promptText);
 
-    if (graphData.nodes.length === 0) {
-        return;
-    }
+    const overlay = document.createElement('div');
+    overlay.className = 'paper-card';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.style.position = 'relative';
 
-    // Create links
-    const link = g.append('g')
-        .selectAll('line')
-        .data(graphData.links)
-        .enter()
-        .append('line')
-        .attr('class', 'link');
+    const heading = document.createElement('h4');
+    heading.textContent = 'Why did you dislike this?';
+    overlay.appendChild(heading);
 
-    // Create nodes
-    const node = g.append('g')
-        .selectAll('.node')
-        .data(graphData.nodes)
-        .enter()
-        .append('g')
-        .attr('class', 'node')
-        .call(d3.drag()
-            .on('start', dragStarted)
-            .on('drag', dragged)
-            .on('end', dragEnded));
+    const optRow = document.createElement('div');
+    optRow.className = 'feedback-row';
 
-    node.append('circle')
-        .attr('r', 8);
-
-    node.append('text')
-        .attr('dx', 12)
-        .attr('dy', 4)
-        .text(d => {
-            // Shorten title for display
-            return d.title.length > 30 ? d.title.substring(0, 30) + '...' : d.title;
+    options.forEach(opt => {
+        const b = document.createElement('button');
+        b.className = 'btn-feedback btn-dislike';
+        b.textContent = opt;
+        b.addEventListener('click', () => {
+            sendFeedback(paper.id, 'dislike', opt);
+            overlay.remove();
+            speakText('Thanks, your feedback was recorded.');
         });
-
-    node.on('click', (event, d) => {
-        event.stopPropagation();
-        showPaperDetails(d.id);
+        optRow.appendChild(b);
     });
 
-    // Store references globally for future extensions if needed
-    window.graphLink = link;
-    window.graphNode = node;
+    // Allow voice input fallback using Web Speech API if available
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+        const r = new SpeechRec();
+        r.lang = 'en-US';
+        r.interimResults = false;
+        r.maxAlternatives = 1;
+        const speakBtn = document.createElement('button');
+        speakBtn.className = 'small-btn';
+        speakBtn.textContent = '🎙 Say it';
+        speakBtn.addEventListener('click', () => {
+            try {
+                r.start();
+            } catch (e) {
+                console.warn('Speech start failed', e);
+            }
+        });
 
-    // Update simulation
-    simulation
-        .nodes(graphData.nodes)
-        .on('tick', () => ticked(link, node));
+        r.onresult = (ev) => {
+            const spoken = ev.results[0][0].transcript.toLowerCase();
+            // find matching option
+            const match = options.find(o => spoken.includes(o));
+            sendFeedback(paper.id, 'dislike', match || spoken);
+            overlay.remove();
+            speakText('Thanks, your feedback was recorded.');
+        };
 
-    simulation.force('link')
-        .links(graphData.links);
+        r.onerror = () => {
+            speakText('Sorry, voice recognition failed. Tap an option instead.');
+        };
 
-    simulation.alpha(1).restart();
-
-    function ticked(linkSelection, nodeSelection) {
-        linkSelection
-            .attr('x1', d => d.source.x)
-            .attr('y1', d => d.source.y)
-            .attr('x2', d => d.target.x)
-            .attr('y2', d => d.target.y);
-
-        nodeSelection
-            .attr('transform', d => `translate(${d.x},${d.y})`);
+        overlay.appendChild(speakBtn);
     }
+
+    overlay.appendChild(optRow);
+
+    // Insert overlay near top of feed
+    const feed = document.getElementById('paperFeed');
+    feed.prepend(overlay);
 }
 
-function highlightNode(nodeId) {
-    // Remove previous selection
-    g.selectAll('.node').classed('selected', false);
-    g.selectAll('.link').classed('highlighted', false);
-    
-    // Highlight selected node
-    g.selectAll('.node')
-        .filter(d => d.id === nodeId)
-        .classed('selected', true);
-    
-    // Highlight connected links
-    g.selectAll('.link')
-        .filter(d => d.source.id === nodeId || d.target.id === nodeId)
-        .classed('highlighted', true);
-    
-    selectedNode = nodeId;
+function queueFeedback(entry) {
+    const raw = localStorage.getItem(FEEDBACK_QUEUE_KEY) || '[]';
+    const arr = JSON.parse(raw);
+    arr.push(entry);
+    localStorage.setItem(FEEDBACK_QUEUE_KEY, JSON.stringify(arr));
 }
 
-function resetGraphView() {
-    g.selectAll('.node').classed('selected', false);
-    g.selectAll('.link').classed('highlighted', false);
-    document.getElementById('paperInfo').classList.add('hidden');
-    selectedNode = null;
-    
-    // Reset zoom
-    svg.transition().duration(750).call(
-        d3.zoom().transform,
-        d3.zoomIdentity
-    );
-}
-
-async function performSearch() {
-    const query = document.getElementById('searchInput').value.trim();
-    
-    if (!query) {
-        loadPapers();
-        return;
-    }
+async function trySyncQueue() {
+    const raw = localStorage.getItem(FEEDBACK_QUEUE_KEY);
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    if (!arr || arr.length === 0) return;
 
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        const results = await response.json();
-        displayPaperList(results);
-        
-        // Filter graph to show only search results and their connections
-        if (results.length > 0) {
-            const resultIds = new Set(results.map(p => p.id));
-            const filteredNodes = graphData.nodes.filter(n => resultIds.has(n.id));
-            const filteredLinks = graphData.links.filter(l => 
-                resultIds.has(l.source.id || l.source) && 
-                resultIds.has(l.target.id || l.target)
-            );
-            
-            const tempData = graphData;
-            graphData = { nodes: filteredNodes, links: filteredLinks };
-            updateGraph();
-            graphData = tempData;
+        const resp = await fetch('/api/sync_feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: arr })
+        });
+
+        if (resp.ok) {
+            localStorage.removeItem(FEEDBACK_QUEUE_KEY);
+            console.log('Feedback queue synced');
+            speakText('Feedback synced. Thank you.');
         }
-    } catch (error) {
-        console.error('Error searching papers:', error);
+    } catch (err) {
+        console.warn('Sync failed, will retry later', err);
     }
 }
 
-// Drag functions
-function dragStarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
+function sendFeedback(paperId, kind, reason = null) {
+    const entry = {
+        paper_id: paperId,
+        kind,
+        reason,
+        ts: new Date().toISOString()
+    };
+
+    // Try immediate send if online
+    if (navigator.onLine) {
+        fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(entry)
+        }).then(resp => {
+            if (!resp.ok) {
+                // queue locally
+                queueFeedback(entry);
+                speakText('Saved feedback locally. It will sync when you are online.');
+            } else {
+                speakText('Thanks, your feedback was recorded.');
+            }
+        }).catch(() => {
+            queueFeedback(entry);
+            speakText('Saved feedback locally. It will sync when you are online.');
+        });
+    } else {
+        queueFeedback(entry);
+        speakText('Saved feedback locally. It will sync when you are online.');
+    }
 }
 
-function dragged(event, d) {
-    // Canonical D3 pattern: update fixed positions only; tick updates DOM
-    d.fx = event.x;
-    d.fy = event.y;
-}
-
-function dragEnded(event, d) {
-    if (!event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-}

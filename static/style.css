@@ -37,7 +37,7 @@ body {
 
 header {
     background-color: var(--graphite-medium);
-    padding: 2rem;
+    padding: 1.25rem 1rem;
     border-bottom: 1px solid var(--graphite-border);
 }
 
@@ -54,11 +54,7 @@ h1 {
 }
 
 .controls {
-    background-color: var(--graphite-medium);
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--graphite-border);
-    display: flex;
-    gap: 1rem;
+    display: none; /* hidden in mobile-first feed */
 }
 
 #searchInput {
@@ -95,31 +91,69 @@ button:active {
     transform: translateY(1px);
 }
 
-.main-content {
+.mobile-main {
     display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+}
+
+.paper-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.paper-card {
+    background: linear-gradient(180deg, var(--graphite-light), var(--graphite-medium));
+    border: 1px solid var(--graphite-border);
+    padding: 0.9rem;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.paper-card h4 {
+    font-size: 1.05rem;
+    margin-bottom: 0.25rem;
+}
+
+.paper-meta-small {
+    font-size: 0.85rem;
+    color: var(--graphite-text-dim);
+}
+
+.feedback-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.btn-feedback {
     flex: 1;
-    overflow: hidden;
+    padding: 0.9rem;
+    font-size: 1.25rem;
+    border-radius: 10px;
+    border: none;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.graph-panel {
-    flex: 1;
-    background-color: var(--graphite-dark);
-    position: relative;
-    min-width: 0; /* allow flex child to shrink properly */
+.btn-like { background: #16a34a; }
+.btn-dislike { background: #dc2626; }
+
+.small-btn {
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
+    border-radius: 8px;
 }
 
-#graph {
-    width: 100%;
-    height: calc(100vh - 180px);
-}
-
-.sidebar {
-    width: 350px;
-    background-color: var(--graphite-medium);
-    border-left: 1px solid var(--graphite-border);
-    overflow-y: auto; /* scroll only the sidebar when content is long */
-    height: calc(100vh - 180px);
-}
+.hidden { display: none !important; }
 
 .paper-info, .paper-list {
     padding: 1.5rem;

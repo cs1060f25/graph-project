@@ -47,6 +47,23 @@ def init_db():
     conn.commit()
     conn.close()
 
+    # Ensure feedback table exists
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            paper_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            reason TEXT,
+            ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            synced INTEGER DEFAULT 1,
+            FOREIGN KEY (paper_id) REFERENCES papers(id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
 @app.route('/')
 def index():
     """Main page"""
@@ -78,7 +95,7 @@ def get_paper(paper_id):
 @app.route('/api/papers', methods=['POST'])
 def add_paper():
     """Add a new paper"""
-    data = request.json
+    data = request.get_json(silent=True) or {}
     
     conn = get_db()
     cursor = conn.cursor()
@@ -104,7 +121,7 @@ def add_paper():
 @app.route('/api/citations', methods=['POST'])
 def add_citation():
     """Add a citation relationship"""
-    data = request.json
+    data = request.get_json(silent=True) or {}
     
     conn = get_db()
     cursor = conn.cursor()
@@ -212,6 +229,73 @@ def get_related_papers(paper_id):
         'cites': cited_papers,
         'cited_by': citing_papers
     })
+
+
+@app.route('/api/feedback', methods=['POST'])
+def receive_feedback():
+    """Receive a single feedback item. If DB write fails, return 500."""
+    data = request.get_json(silent=True) or {}
+    if not data or 'paper_id' not in data or 'kind' not in data:
+        return jsonify({'error': 'Invalid payload'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            INSERT INTO feedback (paper_id, kind, reason, ts, synced)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            data.get('paper_id'),
+            data.get('kind'),
+            data.get('reason'),
+            data.get('ts') or datetime.utcnow().isoformat(),
+            1
+        ))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Feedback saved'}), 201
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': 'DB error', 'details': str(e)}), 500
+
+
+@app.route('/api/sync_feedback', methods=['POST'])
+def sync_feedback():
+    """Accept an array of feedback items and store them. Returns counts."""
+    data = request.get_json(silent=True) or {}
+    items = data.get('items', [])
+    if not isinstance(items, list):
+        return jsonify({'error': 'Invalid items'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    stored = 0
+    for it in items:
+        try:
+            cursor.execute('''
+                INSERT INTO feedback (paper_id, kind, reason, ts, synced)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (
+                it.get('paper_id'),
+                it.get('kind'),
+                it.get('reason'),
+                it.get('ts') or datetime.utcnow().isoformat(),
+                1
+            ))
+            stored += 1
+        except Exception:
+            # skip bad entries
+            continue
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({'stored': stored, 'received': len(items)}), 200
+
+
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
 
 if __name__ == '__main__':
     init_db()
