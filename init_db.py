@@ -17,6 +17,8 @@ def init_db():
             year INTEGER,
             url TEXT,
             keywords TEXT,
+            thumbs_up INTEGER DEFAULT 0 NOT NULL,
+            thumbs_down INTEGER DEFAULT 0 NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')

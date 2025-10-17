@@ -132,6 +132,19 @@ async function showPaperDetails(paperId) {
             </div>
             ` : ''}
             <div class="detail-section">
+                <div class="detail-label">Rating</div>
+                <div class="detail-value vote-controls">
+                    <span class="vote-control">
+                        <i class="fas fa-thumbs-up" id="sidebar-thumb-up"></i>
+                        <span id="sidebar-up-count">${paper.thumbs_up}</span>
+                    </span>
+                    <span class="vote-control">
+                        <i class="fas fa-thumbs-down" id="sidebar-thumb-down"></i>
+                        <span id="sidebar-down-count">${paper.thumbs_down}</span>
+                    </span>
+                </div>
+            </div>
+            <div class="detail-section">
                 <div class="detail-label">Cites (${related.cites.length})</div>
                 <div class="detail-value">
                     ${related.cites.map(p => p.title).join(', ') || 'None'}
@@ -147,6 +160,10 @@ async function showPaperDetails(paperId) {
 
         paperInfo.classList.remove('hidden');
         
+        // Add event listeners for sidebar voting
+        document.getElementById('sidebar-thumb-up').addEventListener('click', () => handleVote(paperId, 'up'));
+        document.getElementById('sidebar-thumb-down').addEventListener('click', () => handleVote(paperId, 'down'));
+
         // Highlight node in graph
         highlightNode(paperId);
     } catch (error) {
@@ -304,4 +321,98 @@ function dragEnded(event, d) {
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
+}
+
+async function handleVote(paperId, voteType) {
+    // Optimistic UI update for sidebar
+    const countElement = document.getElementById(`sidebar-${voteType}-count`);
+    if (countElement) {
+        const currentCount = parseInt(countElement.textContent, 10);
+        countElement.textContent = currentCount + 1;
+    }
+
+    try {
+        const response = await fetch(`/api/papers/${paperId}/vote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vote_type: voteType }),
+        });
+
+        if (response.ok) {
+            const updatedCounts = await response.json();
+            // Update UI with confirmed counts
+            if (document.getElementById('sidebar-up-count')) {
+                document.getElementById('sidebar-up-count').textContent = updatedCounts.thumbs_up;
+            }
+            if (document.getElementById('sidebar-down-count')) {
+                document.getElementById('sidebar-down-count').textContent = updatedCounts.thumbs_down;
+            }
+
+            // Update the master graphData object
+            const nodeData = graphData.nodes.find(n => n.id === paperId);
+            if (nodeData) {
+                nodeData.thumbs_up = updatedCounts.thumbs_up;
+                nodeData.thumbs_down = updatedCounts.thumbs_down;
+            }
+        } else {
+            // Revert optimistic update on failure
+            if (countElement) {
+                countElement.textContent = parseInt(countElement.textContent, 10) - 1;
+            }
+            console.error('Failed to submit vote');
+        }
+    } catch (error) {
+        console.error('Error voting:', error);
+        // Revert optimistic update on error
+        if (countElement) {
+            countElement.textContent = parseInt(countElement.textContent, 10) - 1;
+        }
+    }
+}
+
+async function handleVote(paperId, voteType) {
+    // Optimistic UI update for sidebar
+    const countElement = document.getElementById(`sidebar-${voteType}-count`);
+    if (countElement) {
+        const currentCount = parseInt(countElement.textContent, 10);
+        countElement.textContent = currentCount + 1;
+    }
+
+    try {
+        const response = await fetch(`/api/papers/${paperId}/vote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vote_type: voteType }),
+        });
+
+        if (response.ok) {
+            const updatedCounts = await response.json();
+            // Update UI with confirmed counts
+            if (document.getElementById('sidebar-up-count')) {
+                document.getElementById('sidebar-up-count').textContent = updatedCounts.thumbs_up;
+            }
+            if (document.getElementById('sidebar-down-count')) {
+                document.getElementById('sidebar-down-count').textContent = updatedCounts.thumbs_down;
+            }
+
+            // Update the master graphData object
+            const nodeData = graphData.nodes.find(n => n.id === paperId);
+            if (nodeData) {
+                nodeData.thumbs_up = updatedCounts.thumbs_up;
+                nodeData.thumbs_down = updatedCounts.thumbs_down;
+            }
+        } else {
+            // Revert optimistic update on failure
+            if (countElement) {
+                countElement.textContent = parseInt(countElement.textContent, 10) - 1;
+            }
+            console.error('Failed to submit vote');
+        }
+    } catch (error) {
+        console.error('Error voting:', error);
+        // Revert optimistic update on error
+        if (countElement) {
+            countElement.textContent = parseInt(countElement.textContent, 10) - 1;
+        }
+    }
 }

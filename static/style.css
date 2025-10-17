@@ -281,3 +281,53 @@ h3 {
 .sidebar::-webkit-scrollbar-thumb:hover {
     background: var(--graphite-text-dim);
 }
+
+/* Sidebar vote controls */
+.vote-controls {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.vote-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+.vote-control i {
+    cursor: pointer;
+    color: var(--graphite-text-dim);
+    transition: color 0.2s, transform 0.2s;
+}
+
+.vote-control i:hover {
+    color: var(--graphite-accent);
+    transform: scale(1.1);
+}
+
+/* Sidebar vote controls */
+.vote-controls {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.vote-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+.vote-control i {
+    cursor: pointer;
+    color: var(--graphite-text-dim);
+    transition: color 0.2s, transform 0.2s;
+}
+
+.vote-control i:hover {
+    color: var(--graphite-accent);
+    transform: scale(1.1);
+}

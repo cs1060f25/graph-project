@@ -28,6 +28,8 @@ def init_db():
             year INTEGER,
             url TEXT,
             keywords TEXT,
+            thumbs_up INTEGER DEFAULT 0 NOT NULL,
+            thumbs_down INTEGER DEFAULT 0 NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -89,11 +91,11 @@ def add_paper():
     ''', (
         data.get('title'),
         data.get('authors'),
-        data.get('abstract'),
+        data.get('abstract',
         data.get('year'),
         data.get('url'),
         data.get('keywords')
-    ))
+    )))
     
     paper_id = cursor.lastrowid
     conn.commit()
@@ -131,7 +133,7 @@ def get_graph():
     cursor = conn.cursor()
     
     # Get all papers as nodes
-    cursor.execute('SELECT id, title, authors, year, keywords FROM papers')
+    cursor.execute('SELECT id, title, authors, year, keywords, thumbs_up, thumbs_down FROM papers')
     papers = cursor.fetchall()
     
     nodes = []
@@ -141,7 +143,9 @@ def get_graph():
             'title': paper['title'],
             'authors': paper['authors'],
             'year': paper['year'],
-            'keywords': paper['keywords']
+            'keywords': paper['keywords'],
+            'thumbs_up': paper['thumbs_up'],
+            'thumbs_down': paper['thumbs_down']
         })
     
     # Get all citations as links
@@ -212,6 +216,32 @@ def get_related_papers(paper_id):
         'cites': cited_papers,
         'cited_by': citing_papers
     })
+
+@app.route('/api/papers/<int:paper_id>/vote', methods=['POST'])
+def vote_paper(paper_id):
+    """Vote on a paper"""
+    data = request.json
+    vote_type = data.get('vote_type')
+
+    if vote_type not in ['up', 'down']:
+        return jsonify({'error': 'Invalid vote type'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if vote_type == 'up':
+        cursor.execute('UPDATE papers SET thumbs_up = thumbs_up + 1 WHERE id = ?', (paper_id,))
+    else:
+        cursor.execute('UPDATE papers SET thumbs_down = thumbs_down + 1 WHERE id = ?', (paper_id,))
+    
+    conn.commit()
+
+    cursor.execute('SELECT thumbs_up, thumbs_down FROM papers WHERE id = ?', (paper_id,))
+    updated_counts = cursor.fetchone()
+    
+    conn.close()
+
+    return jsonify(dict(updated_counts))
 
 if __name__ == '__main__':
     init_db()
