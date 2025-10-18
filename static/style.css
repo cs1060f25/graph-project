@@ -61,6 +61,19 @@ h1 {
     gap: 1rem;
 }
 
+.toggle-lowtrust {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    color: var(--graphite-text-dim);
+    user-select: none;
+}
+.toggle-lowtrust input {
+    width: 18px;
+    height: 18px;
+}
+
 #searchInput {
     flex: 1;
     padding: 0.75rem 1rem;
@@ -111,6 +124,7 @@ button:active {
 #graph {
     width: 100%;
     height: calc(100vh - 180px);
+    position: relative;
 }
 
 .sidebar {
@@ -168,6 +182,23 @@ h3 {
     align-items: center;
     gap: 0.5rem;
 }
+.paper-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+.paper-actions .vote-btn {
+    cursor: pointer;
+    user-select: none;
+}
+.paper-actions .vote-btn.active {
+    color: var(--graphite-accent);
+}
+.paper-actions .vote-count {
+    color: var(--graphite-text-dim);
+    font-size: 0.85rem;
+}
 
 .paper-authors {
     font-size: 0.8rem;
@@ -203,6 +234,29 @@ h3 {
 .detail-value {
     color: var(--graphite-text);
     font-size: 0.95rem;
+}
+.detail-vote {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+.detail-vote .vote-btn {
+    cursor: pointer;
+}
+.detail-vote .vote-btn.active {
+    color: var(--graphite-accent);
+}
+.detail-vote .vote-count {
+    color: var(--graphite-text-dim);
+}
+.score-pill {
+    margin-left: 12px;
+    color: var(--graphite-text-dim);
+}
+.low-trust-note {
+    margin-top: 6px;
+    color: var(--graphite-text-dim);
 }
 
 .detail-abstract {
@@ -253,10 +307,38 @@ h3 {
     pointer-events: none;
 }
 
+/* node vote controls removed; voting is handled in sidebar */
+
+.low-trust {
+    opacity: 0.35;
+    filter: grayscale(70%);
+}
+
+.edge-vote-tooltip {
+    position: absolute;
+    background: rgba(30,30,30,0.95);
+    border: 1px solid var(--graphite-border);
+    color: var(--graphite-text);
+    padding: 4px 6px;
+    font-size: 12px;
+    border-radius: 4px;
+    pointer-events: auto;
+    display: none;
+    z-index: 10;
+}
+.edge-vote-tooltip .vote-btn {
+    margin: 0 4px;
+}
+
 .link {
     stroke: var(--graphite-border);
     stroke-opacity: 0.6;
     stroke-width: 1.5px;
+}
+
+.link.low-confidence {
+    stroke: #6b7280; /* gray-500 */
+    stroke-opacity: 0.4;
 }
 
 .link.highlighted {
