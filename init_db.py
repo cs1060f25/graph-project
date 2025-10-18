@@ -32,30 +32,6 @@ def init_db():
             UNIQUE(citing_paper_id, cited_paper_id)
         )
     ''')
-    # Create feedback table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            paper_id INTEGER,
-            edge_id INTEGER,
-            vote INTEGER NOT NULL CHECK (vote IN (-1, 1)),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (paper_id) REFERENCES papers(id),
-            FOREIGN KEY (edge_id) REFERENCES citations(id)
-        )
-    ''')
-    cursor.execute('''
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_user_paper
-        ON feedback(user_id, paper_id)
-        WHERE paper_id IS NOT NULL
-    ''')
-    cursor.execute('''
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_user_edge
-        ON feedback(user_id, edge_id)
-        WHERE edge_id IS NOT NULL
-    ''')
     
     conn.commit()
     conn.close()
