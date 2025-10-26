@@ -1,7 +1,7 @@
 // user-db-interface/subscriptions.js
 // Real-time subscription functions for the interface layer
 
-import { db } from "../user-db/firebaseConfig.js";
+import { db } from "../user-db-component/firebaseConfig.js";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { createResponse, validateUserId, validateCallback } from "./utils.js";
 
@@ -36,19 +36,32 @@ export function subscribeToFolders(uid, onChangeCallback) {
           ...doc.data()
         }));
 
-        // Call the callback with standardized response
-        onChangeCallback(createResponse(true, folders, null));
+        // Call the callback with standardized response and error handling
+        try {
+          onChangeCallback(createResponse(true, folders, null));
+        } catch (callbackError) {
+          console.error("Error in folder subscription callback:", callbackError);
+          // Don't re-throw to prevent subscription from breaking
+        }
       },
       (error) => {
         console.error("Error in folder subscription:", error);
-        onChangeCallback(createResponse(false, null, `Folder subscription error: ${error.message}`));
+        try {
+          onChangeCallback(createResponse(false, null, `Folder subscription error: ${error.message}`));
+        } catch (callbackError) {
+          console.error("Error in folder subscription error callback:", callbackError);
+        }
       }
     );
 
     return unsubscribe;
   } catch (error) {
     console.error("Error setting up folder subscription:", error);
-    onChangeCallback(createResponse(false, null, `Failed to setup folder subscription: ${error.message}`));
+    try {
+      onChangeCallback(createResponse(false, null, `Failed to setup folder subscription: ${error.message}`));
+    } catch (callbackError) {
+      console.error("Error in folder subscription setup error callback:", callbackError);
+    }
     return () => {};
   }
 }
@@ -84,19 +97,32 @@ export function subscribeToSavedPapers(uid, onChangeCallback) {
           ...doc.data()
         }));
 
-        // Call the callback with standardized response
-        onChangeCallback(createResponse(true, papers, null));
+        // Call the callback with standardized response and error handling
+        try {
+          onChangeCallback(createResponse(true, papers, null));
+        } catch (callbackError) {
+          console.error("Error in saved papers subscription callback:", callbackError);
+          // Don't re-throw to prevent subscription from breaking
+        }
       },
       (error) => {
         console.error("Error in saved papers subscription:", error);
-        onChangeCallback(createResponse(false, null, `Saved papers subscription error: ${error.message}`));
+        try {
+          onChangeCallback(createResponse(false, null, `Saved papers subscription error: ${error.message}`));
+        } catch (callbackError) {
+          console.error("Error in saved papers subscription error callback:", callbackError);
+        }
       }
     );
 
     return unsubscribe;
   } catch (error) {
     console.error("Error setting up saved papers subscription:", error);
-    onChangeCallback(createResponse(false, null, `Failed to setup saved papers subscription: ${error.message}`));
+    try {
+      onChangeCallback(createResponse(false, null, `Failed to setup saved papers subscription: ${error.message}`));
+    } catch (callbackError) {
+      console.error("Error in saved papers subscription setup error callback:", callbackError);
+    }
     return () => {};
   }
 }

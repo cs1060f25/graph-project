@@ -1,7 +1,7 @@
 // user-db-interface/papers.js
 // Saved papers functions for the interface layer
 
-import { db } from "../user-db/firebaseConfig.js";
+import { db } from "../user-db-component/firebaseConfig.js";
 import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
 import { createResponse, validateUserId, validatePaperData } from "./utils.js";
 

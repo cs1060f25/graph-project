@@ -1,8 +1,8 @@
 // user-db-interface/folders.js
 // Folder-related functions for the interface layer
 
-import { db } from "../user-db/firebaseConfig.js";
-import { getFolders, addFolder } from "../user-db/userDataService.js";
+import { db } from "../user-db-component/firebaseConfig.js";
+import { getFolders, addFolder } from "../user-db-component/userDataService.js";
 import { createResponse, validateUserId, validateFolderName } from "./utils.js";
 
 /**
