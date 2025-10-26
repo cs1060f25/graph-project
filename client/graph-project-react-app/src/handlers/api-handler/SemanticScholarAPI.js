@@ -66,7 +66,7 @@ export default class SemanticScholarAPI {
         link: entry.url || null,
       }));
       } catch (err) {
-      console.error("Fetch failed:", err);
+      console.error("Fetch failed due to rate limiting (is expected at times).  Try another API!");
       return []; // Return empty array instead of throwing
     }
   }
