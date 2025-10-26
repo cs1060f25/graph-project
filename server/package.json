@@ -1,0 +1,17 @@
+{
+    "name": "graph-project-server",
+    "version": "1.0.0",
+    "description": "Backend services for Graph Project",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "test:auth": "node user-db/tests/testAuth.js",
+        "test:firestore": "node user-db/tests/testFirestore.js"
+    },
+    "dependencies": {
+        "firebase": "^12.4.0"
+    },
+    "devDependencies": {
+        "dotenv": "^16.6.1"
+    }
+}
