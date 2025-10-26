@@ -7,12 +7,12 @@
  *   - queryByKeyword(keyword, maxResults)
  *
  * Features:
- *   - Rate limiting between requests
+ *   - Rate limiting between requests to avoid 429 errors
  *   - Normalized response format (same as ArxivAPI)
  */
 
 export default class SemanticScholarAPI {
-  constructor({ rateLimitMs = 1000, defaultMaxResults = 10 } = {}) {
+  constructor({ rateLimitMs = 2000, defaultMaxResults = 10 } = {}) {
     this.baseUrl = "https://api.semanticscholar.org/graph/v1";
     this.rateLimitMs = rateLimitMs;
     this.defaultMaxResults = defaultMaxResults;
