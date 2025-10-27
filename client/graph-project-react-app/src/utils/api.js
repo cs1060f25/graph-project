@@ -26,6 +26,13 @@ export const apiClient = async (endpoint, options = {}) => {
     throw new Error(error.error || 'API request failed');
   }
   
-  return response.json();
+  // Handle empty responses or non-JSON content
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    return null;
+  }
+  
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 };
 
