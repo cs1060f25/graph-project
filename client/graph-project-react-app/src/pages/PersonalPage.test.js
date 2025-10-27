@@ -44,14 +44,41 @@ describe('PersonalPage', () => {
     removePaper: jest.fn(),
     movePaperToFolder: jest.fn(),
     createFolder: jest.fn(),
-    getFilteredPapers: jest.fn(() => mockPapers),
+    getFilteredPapers: jest.fn((filter = 'all') => {
+      // Mock the actual filtering logic
+      let filtered = [...mockPapers];
+      
+      // Apply starred filter if requested
+      if (filter === 'starred') {
+        filtered = filtered.filter(p => p.starred);
+      }
+      
+      return filtered;
+    }),
     getPaperCountForFolder: jest.fn(() => 1),
     clearError: jest.fn(),
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    useSavedPapersHook.useSavedPapers = jest.fn(() => defaultHookReturn);
+    
+    // Recreate the mock with proper implementation
+    const mockGetFilteredPapers = jest.fn((filter = 'all') => {
+      // Mock the actual filtering logic
+      let filtered = [...mockPapers];
+      
+      // Apply starred filter if requested
+      if (filter === 'starred') {
+        filtered = filtered.filter(p => p.starred);
+      }
+      
+      return filtered;
+    });
+    
+    useSavedPapersHook.useSavedPapers = jest.fn(() => ({
+      ...defaultHookReturn,
+      getFilteredPapers: mockGetFilteredPapers,
+    }));
   });
 
   describe('rendering', () => {
@@ -278,6 +305,54 @@ describe('PersonalPage', () => {
       await waitFor(() => {
         expect(screen.queryByText('Create New Folder')).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle undefined data from getFilteredPapers gracefully', () => {
+      // This is the bug we found - when getFilteredPapers returns undefined
+      useSavedPapersHook.useSavedPapers = jest.fn(() => ({
+        ...defaultHookReturn,
+        getFilteredPapers: jest.fn(() => undefined), // Returns undefined instead of array
+      }));
+
+      // Should not crash, should render empty state
+      render(<PersonalPage />);
+      expect(screen.getByText('No papers in this view')).toBeInTheDocument();
+    });
+
+    it('should handle null data from getFilteredPapers gracefully', () => {
+      useSavedPapersHook.useSavedPapers = jest.fn(() => ({
+        ...defaultHookReturn,
+        getFilteredPapers: jest.fn(() => null), // Returns null instead of array
+      }));
+
+      // Should not crash, should render empty state
+      render(<PersonalPage />);
+      expect(screen.getByText('No papers in this view')).toBeInTheDocument();
+    });
+
+    it('should properly call getFilteredPapers with correct filter parameter', () => {
+      // Bug #2: getFilteredPapers mock wasn't respecting filter parameter
+      const mockGetFilteredPapers = jest.fn((filter) => {
+        if (filter === 'starred') {
+          return mockPapers.filter(p => p.starred);
+        }
+        return mockPapers;
+      });
+
+      useSavedPapersHook.useSavedPapers = jest.fn(() => ({
+        ...defaultHookReturn,
+        getFilteredPapers: mockGetFilteredPapers,
+      }));
+
+      render(<PersonalPage />);
+      
+      // Verify getFilteredPapers was called with 'all' filter by default
+      expect(mockGetFilteredPapers).toHaveBeenCalledWith('all');
+      
+      // Verify papers are actually rendered
+      expect(screen.getByText('Attention Is All You Need')).toBeInTheDocument();
     });
   });
 
