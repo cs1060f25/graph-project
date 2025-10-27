@@ -6,6 +6,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { apiClient } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -31,8 +32,17 @@ export const AuthProvider = ({ children }) => {
           const idToken = await currentUser.getIdToken();
           setToken(idToken);
           
-          // For now, set a default role. In GRAPH-34, we'll fetch it from the backend.
-          setRole('user');
+          // Call backend to bootstrap auth and get user role
+          try {
+            const userData = await apiClient('/api/auth/bootstrap', {
+              method: 'POST',
+              body: JSON.stringify({ token: idToken }),
+            });
+            setRole(userData.role || 'user');
+          } catch (error) {
+            console.error('Error bootstrapping auth with backend:', error);
+            setRole('user'); // Fallback role
+          }
         } catch (error) {
           console.error('Error getting ID token:', error);
           setToken(null);
