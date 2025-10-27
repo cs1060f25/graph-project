@@ -9,38 +9,51 @@ const __dirname = path.dirname(__filename);
 const serviceAccountPath = path.resolve(__dirname, "../../../serviceAccountKey.json");
 
 class FakeCache {
-  constructor() {
+  constructor({ errors = {} } = {}) {
     this.calls = {
       addRecentPaper: [],
       getRecentPapers: [],
       addRecentQuery: [],
       getRecentQueries: []
     };
+    this.errors = errors;
   }
 
   async addRecentPaper(userId, paper) {
+    if (this.errors.addRecentPaper) {
+      throw this.errors.addRecentPaper;
+    }
     this.calls.addRecentPaper.push({ userId, paper });
     return { userId, paper };
   }
 
   async getRecentPapers(userId, options = {}) {
+    if (this.errors.getRecentPapers) {
+      throw this.errors.getRecentPapers;
+    }
     this.calls.getRecentPapers.push({ userId, options });
     return [{ userId, ...options }];
   }
 
   async addRecentQuery(userId, query) {
+    if (this.errors.addRecentQuery) {
+      throw this.errors.addRecentQuery;
+    }
     this.calls.addRecentQuery.push({ userId, query });
     return { userId, query };
   }
 
   async getRecentQueries(userId, options = {}) {
+    if (this.errors.getRecentQueries) {
+      throw this.errors.getRecentQueries;
+    }
     this.calls.getRecentQueries.push({ userId, options });
     return [{ userId, ...options }];
   }
 }
 
-function setupInterface() {
-  const fakeCache = new FakeCache();
+function setupInterface({ errors } = {}) {
+  const fakeCache = new FakeCache({ errors });
   const cacheInterface = createCacheInterface({ cacheClient: fakeCache });
   return { cacheInterface, fakeCache };
 }
@@ -159,6 +172,73 @@ async function testQueryListenerValidation() {
   );
 }
 
+async function testErrorHandlingWrapsFirebaseErrors() {
+  console.log("\n=== Test: cache interface wraps Firebase errors ===");
+
+  const firebaseError = Object.assign(new Error("permission denied"), {
+    code: "permission-denied"
+  });
+
+  const { cacheInterface } = setupInterface({
+    errors: { addRecentPaper: firebaseError, addRecentQuery: firebaseError }
+  });
+
+  await assert.rejects(
+    () => cacheInterface.addRecentPaper("user-err", { paperId: "p-1" }),
+    (error) => {
+      assert.match(error.message, /addRecentPaper failed/i);
+      assert.match(error.message, /permission denied/i);
+      assert.strictEqual(error.code, firebaseError.code);
+      assert.strictEqual(error.cause, firebaseError);
+      return true;
+    }
+  );
+
+  await assert.rejects(
+    () => cacheInterface.addRecentQuery("user-err", { query: "q" }),
+    (error) => {
+      assert.match(error.message, /addRecentQuery failed/i);
+      assert.match(error.message, /permission denied/i);
+      assert.strictEqual(error.code, firebaseError.code);
+      assert.strictEqual(error.cause, firebaseError);
+      return true;
+    }
+  );
+}
+
+async function testListenerErrorPropagation() {
+  console.log("\n=== Test: listeners propagate wrapped Firebase errors ===");
+
+  const firebaseError = new Error("deadline exceeded");
+  firebaseError.code = "deadline-exceeded";
+
+  const { cacheInterface } = setupInterface({
+    errors: { addRecentPaper: firebaseError, addRecentQuery: firebaseError }
+  });
+
+  await assert.rejects(
+    () => cacheInterface.paperSavedListener({ userId: "user", paper: { paperId: "paper" } }),
+    (error) => {
+      assert.match(error.message, /paperSavedListener failed/i);
+      assert.match(error.message, /deadline exceeded/i);
+      assert.strictEqual(error.code, firebaseError.code);
+      assert.strictEqual(error.cause, firebaseError);
+      return true;
+    }
+  );
+
+  await assert.rejects(
+    () => cacheInterface.queryListener({ userId: "user", query: { query: "q", type: "keyword" } }),
+    (error) => {
+      assert.match(error.message, /queryListener failed/i);
+      assert.match(error.message, /deadline exceeded/i);
+      assert.strictEqual(error.code, firebaseError.code);
+      assert.strictEqual(error.cause, firebaseError);
+      return true;
+    }
+  );
+}
+
 async function testFirestoreIntegration() {
   console.log("\n=== Test: Firestore integration for manual verification ===");
 
@@ -224,7 +304,8 @@ async function run() {
     await testPaperSavedListenerValidation();
     await testQueryListener();
     await testQueryListenerValidation();
-    await testKeywordQueryResultsCacheOnce();
+    await testErrorHandlingWrapsFirebaseErrors();
+    await testListenerErrorPropagation();
     await testFirestoreIntegration();
     console.log("\n✅ Cache interface tests complete (expected to fail until implementation).");
   } catch (error) {

@@ -17,6 +17,20 @@ function requirePayload(payload, fields, context) {
   });
 }
 
+function wrapFirebaseError(context, error) {
+  if (!(error instanceof Error)) {
+    return new Error(`${context} failed`);
+  }
+
+  const cause = error.cause instanceof Error ? error.cause : error;
+  const wrapped = new Error(`${context} failed: ${error.message}`);
+  wrapped.cause = cause;
+  if (error.code || (cause && cause.code)) {
+    wrapped.code = error.code || cause.code;
+  }
+  return wrapped;
+}
+
 export default function createCacheInterface({ serviceAccountPath, cacheClient } = {}) {
   const client = cacheClient || new FirebaseCache({ serviceAccountPath });
 
@@ -25,12 +39,20 @@ export default function createCacheInterface({ serviceAccountPath, cacheClient }
     if (!paper || typeof paper !== "object") {
       throw new Error("addRecentPaper requires a paper object");
     }
-    return client.addRecentPaper(userId, paper);
+    try {
+      return await client.addRecentPaper(userId, paper);
+    } catch (error) {
+      throw wrapFirebaseError("addRecentPaper", error);
+    }
   }
 
   async function getRecentPapers(userId, options) {
     requireUserId(userId, "getRecentPapers");
-    return client.getRecentPapers(userId, options);
+    try {
+      return await client.getRecentPapers(userId, options);
+    } catch (error) {
+      throw wrapFirebaseError("getRecentPapers", error);
+    }
   }
 
   async function addRecentQuery(userId, query) {
@@ -38,12 +60,20 @@ export default function createCacheInterface({ serviceAccountPath, cacheClient }
     if (!query || typeof query !== "object") {
       throw new Error("addRecentQuery requires a query object");
     }
-    return client.addRecentQuery(userId, query);
+    try {
+      return await client.addRecentQuery(userId, query);
+    } catch (error) {
+      throw wrapFirebaseError("addRecentQuery", error);
+    }
   }
 
   async function getRecentQueries(userId, options) {
     requireUserId(userId, "getRecentQueries");
-    return client.getRecentQueries(userId, options);
+    try {
+      return await client.getRecentQueries(userId, options);
+    } catch (error) {
+      throw wrapFirebaseError("getRecentQueries", error);
+    }
   }
 
   async function paperSavedListener(payload) {
@@ -52,7 +82,11 @@ export default function createCacheInterface({ serviceAccountPath, cacheClient }
       { key: "paper", message: "paperSavedListener requires userId and paper" }
     ], "paperSavedListener");
 
-    return addRecentPaper(payload.userId, payload.paper);
+    try {
+      return await addRecentPaper(payload.userId, payload.paper);
+    } catch (error) {
+      throw wrapFirebaseError("paperSavedListener", error);
+    }
   }
 
   async function queryListener(payload) {
@@ -61,7 +95,11 @@ export default function createCacheInterface({ serviceAccountPath, cacheClient }
       { key: "query", message: "queryListener requires userId and query" }
     ], "queryListener");
 
-    return addRecentQuery(payload.userId, payload.query);
+    try {
+      return await addRecentQuery(payload.userId, payload.query);
+    } catch (error) {
+      throw wrapFirebaseError("queryListener", error);
+    }
   }
 
   return {
