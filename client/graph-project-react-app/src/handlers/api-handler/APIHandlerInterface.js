@@ -43,14 +43,18 @@ export default class APIHandlerInterface {
   async addToCache(userId, query, results, type = "keyword") {
     if (!this.cache || !results || !results.length) return;
 
-    const adder = type === "topic"
-      ? this.cache.addRecentPaper
-      : this.cache.addRecentQuery;
-
     try {
-      await Promise.all(
-        results.map((item) => adder(userId, type === "topic" ? item : { query, type, ...item }))
-      );
+      if (type === "topic") {
+        await Promise.all(results.map((item) => this.cache.addRecentPaper(userId, item)));
+      } else {
+        const queryPayload = {
+          query,
+          type,
+          performedAt: new Date().toISOString(),
+          resultsCount: results.length
+        };
+        await this.cache.addRecentQuery(userId, queryPayload);
+      }
       console.log(`Added ${results.length} results to cache for ${type} "${query}"`);
     } catch (error) {
       console.warn("Failed to write to cache", error);

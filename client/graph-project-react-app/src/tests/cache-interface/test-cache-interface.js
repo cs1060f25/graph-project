@@ -120,6 +120,29 @@ async function testQueryListener() {
   assert.deepStrictEqual(fakeCache.calls.addRecentQuery[0], { userId: payload.userId, query: payload.query });
 }
 
+async function testKeywordQueryResultsCacheOnce() {
+  console.log("\n=== Test: keyword queries store once per search ===");
+
+  const { cacheInterface, fakeCache } = setupInterface();
+
+  const payload = {
+    userId: "user-6",
+    query: {
+      query: "gnn",
+      type: "keyword",
+      performedAt: new Date().toISOString(),
+      resultsCount: 3
+    }
+  };
+
+  await cacheInterface.addRecentQuery(payload.userId, payload.query);
+
+  assert.strictEqual(fakeCache.calls.addRecentQuery.length, 1, "should invoke addRecentQuery once");
+  const { query } = fakeCache.calls.addRecentQuery[0];
+  assert.strictEqual(query.resultsCount, 3, "resultsCount should reflect result size");
+  assert.ok(query.performedAt, "performedAt timestamp must be present");
+}
+
 async function testQueryListenerValidation() {
   console.log("\n=== Test: queryListener validates payload ===");
 
@@ -201,6 +224,7 @@ async function run() {
     await testPaperSavedListenerValidation();
     await testQueryListener();
     await testQueryListenerValidation();
+    await testKeywordQueryResultsCacheOnce();
     await testFirestoreIntegration();
     console.log("\n✅ Cache interface tests complete (expected to fail until implementation).");
   } catch (error) {

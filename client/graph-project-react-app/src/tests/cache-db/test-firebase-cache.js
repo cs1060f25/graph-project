@@ -7,7 +7,8 @@ import { fileURLToPath } from "url";
 
 import {
   validateRecentPaper,
-  validateRecentQuery
+  validateRecentQuery,
+  sanitizeRecentQuery
 } from "../../handlers/cache-db/schemas.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +47,27 @@ async function testSchemaValidation() {
   assert.throws(() => validateRecentQuery(invalidQuery), /must be a valid date/);
 }
 
+async function testSanitizeRecentQuery() {
+  console.log("\n=== Test: Query Sanitization ===");
+
+  const rawQuery = {
+    query: "graph neural networks",
+    type: "keyword",
+    performedAt: new Date().toISOString(),
+    filters: { field: "cs.AI" },
+    resultsCount: 12,
+    unexpected: "should be removed"
+  };
+
+  const sanitized = sanitizeRecentQuery(rawQuery);
+
+  assert.strictEqual(sanitized.query, rawQuery.query);
+  assert.strictEqual(sanitized.type, rawQuery.type);
+  assert.strictEqual(sanitized.performedAt, rawQuery.performedAt);
+  assert.strictEqual(sanitized.resultsCount, rawQuery.resultsCount);
+  assert.ok(!Object.prototype.hasOwnProperty.call(sanitized, "unexpected"));
+}
+
 async function testFirebaseCacheOperations() {
   console.log("\n=== Test: Firebase Cache Operations ===");
 
@@ -82,6 +104,7 @@ async function testFirebaseCacheOperations() {
 async function run() {
   try {
     await testSchemaValidation();
+    await testSanitizeRecentQuery();
     await testFirebaseCacheOperations();
     console.log("\n✅ Cache DB tests complete!");
   } catch (error) {
