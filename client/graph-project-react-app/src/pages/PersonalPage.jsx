@@ -32,6 +32,11 @@ export default function PersonalPage() {
   const getDisplayedPapers = () => {
     let filtered = getFilteredPapers(filterMode);
 
+    // Handle undefined/null case (defensive programming)
+    if (!filtered) {
+      return [];
+    }
+
     // Apply search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
