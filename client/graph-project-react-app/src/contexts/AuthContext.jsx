@@ -25,6 +25,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // If Firebase is not configured, just set loading to false
+    if (!auth) {
+      console.warn('Firebase auth is not configured');
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
@@ -60,6 +67,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signInWithGoogle = async () => {
+    if (!auth) {
+      throw new Error('Firebase is not configured');
+    }
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
@@ -70,6 +80,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = async () => {
+    if (!auth) {
+      setUser(null);
+      setToken(null);
+      setRole(null);
+      return;
+    }
     try {
       await firebaseSignOut(auth);
       setUser(null);
