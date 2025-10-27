@@ -2,7 +2,7 @@
 import ArxivAPI from "./ArxivAPI.js";
 import SemanticScholarAPI from "./SemanticScholarAPI.js";
 // import PubMedAPI from "./PubMedAPI.js"; // optional
-import FirebaseCache from "../cache-db/FirebaseCache.js";
+import createCacheInterface from "../cache-db/cacheInterface.js";
 
 export default class APIHandlerInterface {
   constructor({ maxResults = 5, cacheOptions } = {}) {
@@ -13,7 +13,7 @@ export default class APIHandlerInterface {
     ];
     this.maxResults = maxResults;
     this.cache = cacheOptions
-      ? new FirebaseCache(cacheOptions)
+      ? createCacheInterface({ ...cacheOptions })
       : null;
   }
 
@@ -24,8 +24,8 @@ export default class APIHandlerInterface {
     if (!this.cache) return null;
 
     const getter = type === "topic"
-      ? this.cache.getRecentPapers.bind(this.cache)
-      : this.cache.getRecentQueries.bind(this.cache);
+      ? this.cache.getRecentPapers
+      : this.cache.getRecentQueries;
 
     try {
       const results = await getter(userId, { limit: this.maxResults, match: query, type });
@@ -44,12 +44,12 @@ export default class APIHandlerInterface {
     if (!this.cache || !results || !results.length) return;
 
     const adder = type === "topic"
-      ? this.cache.addRecentPaper.bind(this.cache)
-      : this.cache.addRecentQuery.bind(this.cache);
+      ? this.cache.addRecentPaper
+      : this.cache.addRecentQuery;
 
     try {
       await Promise.all(
-        results.map((item) => adder(userId, query, item))
+        results.map((item) => adder(userId, type === "topic" ? item : { query, type, ...item }))
       );
       console.log(`Added ${results.length} results to cache for ${type} "${query}"`);
     } catch (error) {
