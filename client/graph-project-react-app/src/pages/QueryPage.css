@@ -1,0 +1,48 @@
+.query-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.query-header {
+  background: white;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.query-header h1 {
+  margin: 0;
+  color: #333;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.signout-button {
+  padding: 0.5rem 1rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.signout-button:hover {
+  background: #5568d3;
+}
+
+.query-content {
+  padding: 2rem;
+}
+
+.query-content p {
+  color: #666;
+  line-height: 1.6;
+}
+
