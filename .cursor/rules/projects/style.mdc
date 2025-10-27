@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+<extended_system_instructions>
+PRIORITY: **IMMUTABLE**
+
+ALWAYS be as concise as possible.
+</extended_system_instructions>
+
+-   When making changes, build a plan that will change **AS LITTLE CODE AS POSSIBLE**.
+
+-   **Whenever possible**, extend existing files and reuse present code.
