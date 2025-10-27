@@ -1,0 +1,21 @@
+{
+  "name": "user-db-interface",
+  "version": "1.0.0",
+  "description": "Interface layer for GRAPHENE user database operations",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/testRunner.js",
+    "test:folders": "node tests/testRunner.js folders",
+    "test:papers": "node tests/testRunner.js papers",
+    "test:subscriptions": "node tests/testRunner.js subscriptions",
+    "test:user": "node tests/testRunner.js user",
+    "test:all": "node tests/testRunner.js"
+  },
+  "dependencies": {
+    "firebase": "^10.7.1"
+  },
+  "keywords": ["firebase", "firestore", "user-interface", "graphene"],
+  "author": "GRAPHENE Team",
+  "license": "MIT"
+}
