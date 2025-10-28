@@ -1,7 +1,7 @@
 // client/src/services/userApi.js
 // API client for user-related endpoints
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 /**
  * Helper function to make API requests with error handling
@@ -143,6 +143,50 @@ export const userApi = {
   },
 
   // ========================================
+  // QUERY HISTORY API
+  // ========================================
+
+  /**
+   * Get query history
+   * @param {number} limit - Maximum number of queries to return (default: 20)
+   * @returns {Promise<Array>} Array of query history objects
+   */
+  getQueryHistory: async (limit = 20) => {
+    const response = await apiRequest(`/api/user/history?limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    return response.data;
+  },
+
+  /**
+   * Add query to history
+   * @param {Object} queryData - Query data
+   * @param {string} queryData.query - Search query text
+   * @param {string} queryData.type - Query type (keyword, topic)
+   * @param {number} queryData.resultCount - Number of results returned
+   * @returns {Promise<Object>} Created query history object
+   */
+  addQueryHistory: async (queryData) => {
+    const response = await apiRequest('/api/user/history', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(queryData),
+    });
+    return response.data;
+  },
+
+  /**
+   * Clear all query history
+   * @returns {Promise<void>}
+   */
+  clearQueryHistory: async () => {
+    await apiRequest('/api/user/history', {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+  },
+
+  // ========================================
   // FOLDERS API
   // ========================================
 
@@ -209,6 +253,9 @@ export const {
   savePaper,
   updatePaper,
   deletePaper,
+  getQueryHistory,
+  addQueryHistory,
+  clearQueryHistory,
   getFolders,
   createFolder,
   updateFolder,

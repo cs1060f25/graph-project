@@ -125,6 +125,52 @@ app.get('/api/user/data', mockAuth, (req, res) => {
   res.json({ success: true, data: mockUser, error: null });
 });
 
+// Query History endpoints
+app.get('/api/user/history', mockAuth, (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const mockHistory = [
+    {
+      id: 'query-1',
+      query: 'machine learning',
+      type: 'keyword',
+      resultCount: 15,
+      timestamp: Date.now() - 3600000, // 1 hour ago
+      createdAt: new Date(Date.now() - 3600000).toISOString()
+    },
+    {
+      id: 'query-2', 
+      query: 'neural networks',
+      type: 'keyword',
+      resultCount: 23,
+      timestamp: Date.now() - 7200000, // 2 hours ago
+      createdAt: new Date(Date.now() - 7200000).toISOString()
+    },
+    {
+      id: 'query-3',
+      query: 'deep learning',
+      type: 'keyword', 
+      resultCount: 18,
+      timestamp: Date.now() - 10800000, // 3 hours ago
+      createdAt: new Date(Date.now() - 10800000).toISOString()
+    }
+  ];
+  res.json({ success: true, data: mockHistory.slice(0, limit), error: null });
+});
+
+app.post('/api/user/history', mockAuth, (req, res) => {
+  const newQuery = {
+    id: `query-${Date.now()}`,
+    ...req.body,
+    timestamp: Date.now(),
+    createdAt: new Date().toISOString()
+  };
+  res.status(201).json({ success: true, data: newQuery, error: null });
+});
+
+app.delete('/api/user/history', mockAuth, (req, res) => {
+  res.json({ success: true, data: { deletedCount: 0 }, error: null });
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
@@ -151,6 +197,9 @@ app.listen(PORT, () => {
   console.log('  GET  /api/user/folders    - Get folders (mock)');
   console.log('  POST /api/user/folders    - Create folder (mock)');
   console.log('  GET  /api/user/data       - Get user data (mock)');
+  console.log('  GET  /api/user/history    - Get query history (mock)');
+  console.log('  POST /api/user/history    - Add query to history (mock)');
+  console.log('  DELETE /api/user/history - Clear query history (mock)');
   console.log('\n' + '='.repeat(60));
   console.log('💡 TIP: Use this server to develop your frontend!');
   console.log('🔄 Switch to real server once Firebase credentials are ready.');

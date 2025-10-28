@@ -5,7 +5,10 @@ import {
   addUserFolder, 
   addSavedPaper, 
   getSavedPapers,
-  getUserData 
+  getUserData,
+  addQueryHistory,
+  getQueryHistory,
+  clearQueryHistory
 } from '../user-db-interface/index.js';
 
 const router = express.Router();
@@ -77,6 +80,40 @@ router.post('/folders', async (req, res) => {
 router.get('/data', async (req, res) => {
   try {
     const result = await getUserData(req.uid);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== QUERY HISTORY ROUTES ==========
+
+// GET /api/user/history - Get query history
+router.get('/history', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await getQueryHistory(req.uid, limit);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/user/history - Add query to history
+router.post('/history', async (req, res) => {
+  try {
+    const queryData = req.body; // { query, type, resultCount }
+    const result = await addQueryHistory(req.uid, queryData);
+    res.status(result.success ? 201 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/user/history - Clear query history
+router.delete('/history', async (req, res) => {
+  try {
+    const result = await clearQueryHistory(req.uid);
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

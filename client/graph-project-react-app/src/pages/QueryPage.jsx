@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
+import QueryHistoryPanel from '../components/QueryHistoryPanel';
+import { useQueryHistory } from '../hooks/useQueryHistory';
 import './QueryPage.css';
 
 export default function QueryPage() {
@@ -13,8 +15,21 @@ export default function QueryPage() {
   const [error, setError] = useState(null);
   const [queryHistory, setQueryHistory] = useState([]);
 
+  // Mock authentication state - in real app this would come from auth context
+  const isAuthenticated = true; // TODO: Replace with actual auth state
+
   // Initialize API handler
   const apiHandler = new APIHandlerInterface({ maxResults: 10 });
+
+  // Query history hook
+  const {
+    history: dbHistory,
+    loading: historyLoading,
+    error: historyError,
+    addToHistory,
+    clearHistory,
+    formatTimestamp
+  } = useQueryHistory(isAuthenticated);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,11 +41,23 @@ export default function QueryPage() {
     try {
       const searchResults = await apiHandler.makeQuery(query.trim(), { 
         type: "keyword",
-        userId: "demo-user" // Using demo user for now
+        userId: isAuthenticated ? "authenticated-user" : "demo-user"
       });
       
       setResults(searchResults);
-      setQueryHistory(prev => [...prev, { query: query.trim(), timestamp: new Date() }]);
+      
+      // Add to local history for immediate display
+      const newHistoryItem = { query: query.trim(), timestamp: new Date() };
+      setQueryHistory(prev => [newHistoryItem, ...prev]);
+      
+      // Add to database history if authenticated
+      if (isAuthenticated) {
+        await addToHistory({
+          query: query.trim(),
+          type: "keyword",
+          resultCount: searchResults.length
+        });
+      }
     } catch (err) {
       console.error('Search failed:', err);
       setError('Failed to search papers. Please try again.');
@@ -54,6 +81,18 @@ export default function QueryPage() {
   const clearResults = () => {
     setResults([]);
     setError(null);
+  };
+
+  // Handle clicking on a query from history
+  const handleHistoryQueryClick = (queryText) => {
+    setQuery(queryText);
+    // Automatically trigger search
+    setTimeout(() => {
+      const form = document.querySelector('.search-form');
+      if (form) {
+        form.requestSubmit();
+      }
+    }, 100);
   };
 
   return (
@@ -107,7 +146,7 @@ export default function QueryPage() {
                   <button
                     key={index}
                     className="history-item"
-                    onClick={() => setQuery(item.query)}
+                    onClick={() => handleHistoryQueryClick(item.query)}
                   >
                     {item.query}
                   </button>
@@ -235,6 +274,17 @@ export default function QueryPage() {
           )}
         </div>
       </main>
+
+      {/* Query History Panel */}
+      <QueryHistoryPanel
+        history={dbHistory}
+        loading={historyLoading}
+        error={historyError}
+        isAuthenticated={isAuthenticated}
+        onQueryClick={handleHistoryQueryClick}
+        onClearHistory={clearHistory}
+        formatTimestamp={formatTimestamp}
+      />
     </div>
   );
 }
