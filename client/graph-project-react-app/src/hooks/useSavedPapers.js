@@ -51,13 +51,13 @@ export function useSavedPapers() {
    * @param {string} paperId - Paper ID
    */
   const toggleStar = useCallback(async (paperId) => {
+    // Find the paper
+    const paper = papers.find(p => p.id === paperId);
+    if (!paper) return;
+
+    const previousStarred = paper.starred;
+
     try {
-      // Find the paper
-      const paper = papers.find(p => p.id === paperId);
-      if (!paper) return;
-
-      const previousStarred = paper.starred;
-
       // Optimistic update
       setPapers(prev =>
         prev.map(p =>
@@ -86,10 +86,10 @@ export function useSavedPapers() {
    * @param {string} paperId - Paper ID
    */
   const removePaper = useCallback(async (paperId) => {
+    // Save paper for potential revert
+    const paperToRemove = papers.find(p => p.id === paperId);
+    
     try {
-      // Save paper for potential revert
-      const paperToRemove = papers.find(p => p.id === paperId);
-      
       // Optimistic update
       setPapers(prev => prev.filter(p => p.id !== paperId));
 
@@ -128,11 +128,11 @@ export function useSavedPapers() {
    * @param {string} folderId - Folder ID (or null for no folder)
    */
   const movePaperToFolder = useCallback(async (paperId, folderId) => {
+    // Save old folder ID for potential revert
+    const paper = papers.find(p => p.id === paperId);
+    const previousFolderId = paper?.folderId;
+    
     try {
-      // Save old folder ID for potential revert
-      const paper = papers.find(p => p.id === paperId);
-      const previousFolderId = paper?.folderId;
-      
       // Optimistic update
       setPapers(prev =>
         prev.map(p =>
@@ -177,11 +177,11 @@ export function useSavedPapers() {
    * @param {string} newName - New folder name
    */
   const renameFolder = useCallback(async (folderId, newName) => {
+    // Save old name for potential revert
+    const folder = folders.find(f => f.id === folderId);
+    const previousName = folder?.name;
+    
     try {
-      // Save old name for potential revert
-      const folder = folders.find(f => f.id === folderId);
-      const previousName = folder?.name;
-      
       // Optimistic update
       setFolders(prev =>
         prev.map(f =>
@@ -209,10 +209,10 @@ export function useSavedPapers() {
    * @param {string} folderId - Folder ID
    */
   const deleteFolder = useCallback(async (folderId) => {
+    // Save folder for potential revert
+    const folderToDelete = folders.find(f => f.id === folderId);
+    
     try {
-      // Save folder for potential revert
-      const folderToDelete = folders.find(f => f.id === folderId);
-      
       // Optimistic update
       setFolders(prev => prev.filter(f => f.id !== folderId));
 
