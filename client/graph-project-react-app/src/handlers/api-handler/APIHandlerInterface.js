@@ -2,19 +2,18 @@
 import ArxivAPI from "./ArxivAPI.js";
 import SemanticScholarAPI from "./SemanticScholarAPI.js";
 // import PubMedAPI from "./PubMedAPI.js"; // optional
-import createCacheInterface from "../cache-db/cacheInterface.js";
+// Note: Cache interface relies on server-only deps (firebase-admin).
+// To keep the client bundle browser-safe, we disable cache usage in the client.
 
 export default class APIHandlerInterface {
-  constructor({ maxResults = 5, cacheOptions } = {}) {
+  constructor({ maxResults = 5 } = {}) {
     this.apis = [
       new ArxivAPI({ defaultMaxResults: maxResults }),
       new SemanticScholarAPI({ defaultMaxResults: maxResults }),
       // new PubMedAPI({ defaultMaxResults: maxResults })
     ];
     this.maxResults = maxResults;
-    this.cache = cacheOptions
-      ? createCacheInterface({ ...cacheOptions })
-      : null;
+    this.cache = null; // Cache disabled in client bundle
   }
 
   // ----------------------

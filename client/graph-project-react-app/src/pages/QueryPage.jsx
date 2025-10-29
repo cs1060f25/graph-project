@@ -142,7 +142,7 @@ export default function QueryPage() {
             <div className="query-history">
               <h3>Recent Searches</h3>
               <div className="history-list">
-                {queryHistory.slice(-3).reverse().map((item, index) => (
+                {queryHistory.slice(0, 3).map((item, index) => (
                   <button
                     key={index}
                     className="history-item"
