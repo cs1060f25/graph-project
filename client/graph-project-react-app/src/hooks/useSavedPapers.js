@@ -51,7 +51,7 @@ export function useSavedPapers() {
    * @param {string} paperId - Paper ID
    */
   const toggleStar = useCallback(async (paperId) => {
-    // Find the paper
+    // Find the paper and save state for potential revert
     const paper = papers.find(p => p.id === paperId);
     if (!paper) return;
 
