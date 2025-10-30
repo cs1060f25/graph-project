@@ -1,15 +1,13 @@
 // APIHandlerInterface.js
 import ArxivAPI from "./ArxivAPI.js";
-import SemanticScholarAPI from "./SemanticScholarAPI.js";
-// import PubMedAPI from "./PubMedAPI.js"; // optional
+import OpenAlexAPI from "./OpenAlexAPI.js";
 import createCacheInterface from "../cache-db/cacheInterface.js";
 
 export default class APIHandlerInterface {
   constructor({ maxResults = 5, cacheOptions } = {}) {
     this.apis = [
       new ArxivAPI({ defaultMaxResults: maxResults }),
-      new SemanticScholarAPI({ defaultMaxResults: maxResults }),
-      // new PubMedAPI({ defaultMaxResults: maxResults })
+      new OpenAlexAPI({ defaultMaxResults: maxResults }),
     ];
     this.maxResults = maxResults;
     this.cache = cacheOptions
