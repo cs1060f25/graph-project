@@ -16,15 +16,19 @@ const QueryPage = () => {
   return (
     <div className="query-page">
       <div className="query-header">
-        <h1>Query Papers</h1>
-        <div className="user-info">
-          <span>Welcome, {user?.displayName || user?.email}</span>
-          <button onClick={signOut} className="signout-button">Sign Out</button>
+        <div className="query-header-content">
+          <div>
+            <h1 className="query-title">Paper Relationship Graph</h1>
+            <p className="query-subtitle">Explore connections between research papers</p>
+          </div>
+          <div className="user-info">
+            <span>{user?.displayName || user?.email}</span>
+            <button onClick={signOut} className="signout-button">Sign Out</button>
+          </div>
         </div>
       </div>
       <div className="query-content">
         <div className="graph-section">
-          <h2>Paper Relationship Graph</h2>
           <GraphVisualization 
             graphData={graphData} 
             onNodeClick={handleNodeClick}
@@ -33,7 +37,7 @@ const QueryPage = () => {
         </div>
         {selectedNode && (
           <div className="node-details">
-            <h3>Selected Paper Details</h3>
+            <h3>Selected Paper</h3>
             <p><strong>Title:</strong> {selectedNode.title}</p>
             <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
             {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
