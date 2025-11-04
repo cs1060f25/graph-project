@@ -6,7 +6,7 @@ import './LoginPage.css';
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { user, loading, loginDemo, setError } = useAuth();
+  const { user, loading, signUpWithEmail, error: authError, setError } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -43,8 +43,15 @@ export default function Signup() {
     setError(null);
     setSubmitting(true);
     try {
-      // DEMO: bypass backend signup, just set a mock user
-      await loginDemo(email.trim());
+      await signUpWithEmail(email.trim(), password, { name: name.trim() });
+      // onAuthStateChanged will handle redirect (new users go to /setup)
+    } catch (ex) {
+      const message = ex.code === 'auth/email-already-in-use'
+        ? 'This email is already registered. Please sign in instead.'
+        : ex.code === 'auth/weak-password'
+        ? 'Password is too weak. Please choose a stronger password.'
+        : ex.message || 'Failed to create account. Please try again.';
+      setFormError(message);
     } finally {
       setSubmitting(false);
     }
@@ -61,10 +68,10 @@ export default function Signup() {
           <h2 id="signup-title" className="login-title">Create account</h2>
           <p className="login-subtitle">Join to save graphs and papers</p>
 
-          <form className="login-form" onSubmit={onSubmit} noValidate aria-describedby={formError ? 'signup-error' : undefined}>
-            {formError && (
+          <form className="login-form" onSubmit={onSubmit} noValidate aria-describedby={formError || authError ? 'signup-error' : undefined}>
+            {(formError || authError) && (
               <div id="signup-error" className="form-error" role="alert">
-                {formError}
+                {formError || authError}
               </div>
             )}
 

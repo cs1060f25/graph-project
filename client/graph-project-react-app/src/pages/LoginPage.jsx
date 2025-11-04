@@ -8,7 +8,7 @@ import './LoginPage.css';
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading, loginWithGoogle, loginDemo, setError } = useAuth();
+  const { user, loading, loginWithEmail, loginWithGoogle, error: authError, setError } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user && !loading) {
+      // Redirect to queryPage - ProtectedRoute will handle new user redirect to /setup
       const redirectTo = (location.state && location.state.from) || '/queryPage';
       navigate(redirectTo, { replace: true });
     }
@@ -42,9 +43,13 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      // DEMO: bypass backend auth
-      await loginDemo(email.trim());
-      // onAuthStateChanged/ctx state will redirect
+      await loginWithEmail(email.trim(), password);
+      // onAuthStateChanged will handle redirect
+    } catch (ex) {
+      const message = ex.code === 'auth/invalid-credential'
+        ? 'Invalid email or password.'
+        : ex.message || 'Failed to sign in. Please try again.';
+      setFormError(message);
     } finally {
       setSubmitting(false);
     }
@@ -74,10 +79,10 @@ export default function LoginPage() {
           <h2 id="login-title" className="login-title">Sign in</h2>
           <p className="login-subtitle">Access your saved graphs and papers</p>
 
-          <form className="login-form" onSubmit={onSubmit} noValidate aria-describedby={formError ? 'form-error' : undefined}>
-            {formError && (
+          <form className="login-form" onSubmit={onSubmit} noValidate aria-describedby={formError || authError ? 'form-error' : undefined}>
+            {(formError || authError) && (
               <div id="form-error" className="form-error" role="alert">
-                {formError}
+                {formError || authError}
               </div>
             )}
 
