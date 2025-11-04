@@ -9,7 +9,9 @@
     "dev:mock": "node --watch index.mock.js",
     "start": "node index.js",
     "start:mock": "node index.mock.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:interface && npm run test:component",
+    "test:interface": "cd user-db-interface && npm test",
+    "test:component": "node ../__tests__/server/component/testAuth.js && node ../__tests__/server/component/testFirestore.js && node ../__tests__/server/component/testFolderValidation.js && node ../__tests__/server/component/testPreferences.js && node ../__tests__/server/component/testSavedPapers.js && node ../__tests__/server/component/testUnauthorizedAccess.js"
   },
   "keywords": [
     "graphene",

@@ -1,4 +1,15 @@
 {
+  "name": "graph-project",
+  "version": "1.0.0",
+  "description": "GRAPHENE research graph project",
+  "type": "module",
+  "scripts": {
+    "test": "node __tests__/test-runner.js",
+    "test:client": "node __tests__/test-runner.js client",
+    "test:interface": "node __tests__/test-runner.js interface",
+    "test:component": "node __tests__/test-runner.js component",
+    "test:standalone": "node __tests__/test-runner.js standalone"
+  },
   "dependencies": {
     "firebase-admin": "^13.5.0"
   }
