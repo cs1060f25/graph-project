@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useSavedPapers } from '../hooks/useSavedPapers';
 import PaperCard from '../components/PaperCard';
+import SearchFilters from '../components/SearchFilters';
 import './PersonalPage.css';
 
 export default function PersonalPage() {
@@ -27,8 +28,17 @@ export default function PersonalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [filters, setFilters] = useState({
+    dateFrom: '',
+    dateTo: '',
+    minCitations: '',
+    venue: '',
+    tags: [],
+    hasAbstract: false,
+  });
+  const [sortBy, setSortBy] = useState('relevance');
 
-  // Get filtered and searched papers
+  // Get filtered, searched, and sorted papers
   const getDisplayedPapers = () => {
     let filtered = getFilteredPapers(filterMode);
 
@@ -49,7 +59,82 @@ export default function PersonalPage() {
       );
     }
 
-    return filtered;
+    // Apply advanced filters
+    if (filters.dateFrom) {
+      const fromYear = parseInt(filters.dateFrom);
+      filtered = filtered.filter(paper => {
+        const paperYear = paper.year || new Date(paper.date).getFullYear();
+        return paperYear >= fromYear;
+      });
+    }
+
+    if (filters.dateTo) {
+      const toYear = parseInt(filters.dateTo);
+      filtered = filtered.filter(paper => {
+        const paperYear = paper.year || new Date(paper.date).getFullYear();
+        return paperYear <= toYear;
+      });
+    }
+
+    if (filters.minCitations) {
+      const minCites = parseInt(filters.minCitations);
+      filtered = filtered.filter(paper => 
+        (paper.citations || 0) >= minCites
+      );
+    }
+
+    if (filters.venue) {
+      filtered = filtered.filter(paper => paper.venue === filters.venue);
+    }
+
+    if (filters.tags.length > 0) {
+      filtered = filtered.filter(paper => 
+        paper.tags && filters.tags.some(tag => paper.tags.includes(tag))
+      );
+    }
+
+    if (filters.hasAbstract) {
+      filtered = filtered.filter(paper => 
+        paper.abstract && paper.abstract.trim().length > 0
+      );
+    }
+
+    // Apply sorting
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case 'date-desc':
+        sorted.sort((a, b) => {
+          const dateA = a.year || new Date(a.date).getFullYear();
+          const dateB = b.year || new Date(b.date).getFullYear();
+          return dateB - dateA;
+        });
+        break;
+      case 'date-asc':
+        sorted.sort((a, b) => {
+          const dateA = a.year || new Date(a.date).getFullYear();
+          const dateB = b.year || new Date(b.date).getFullYear();
+          return dateA - dateB;
+        });
+        break;
+      case 'citations-desc':
+        sorted.sort((a, b) => (b.citations || 0) - (a.citations || 0));
+        break;
+      case 'citations-asc':
+        sorted.sort((a, b) => (a.citations || 0) - (b.citations || 0));
+        break;
+      case 'title-asc':
+        sorted.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'title-desc':
+        sorted.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case 'relevance':
+      default:
+        // Keep original order (most recently added first)
+        break;
+    }
+
+    return sorted;
   };
 
   const displayedPapers = getDisplayedPapers();
@@ -190,6 +275,14 @@ export default function PersonalPage() {
               </button>
             )}
           </div>
+
+          {/* Advanced Filters */}
+          <SearchFilters 
+            papers={papers}
+            onFiltersChange={setFilters}
+            onSortChange={setSortBy}
+            currentSort={sortBy}
+          />
 
           {/* Papers list */}
           {displayedPapers.length === 0 ? (
