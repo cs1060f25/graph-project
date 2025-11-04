@@ -46,3 +46,31 @@
   line-height: 1.6;
 }
 
+.graph-section {
+  margin-bottom: 2rem;
+}
+
+.graph-section h2 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.node-details {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 1rem;
+}
+
+.node-details h3 {
+  margin: 0 0 1rem 0;
+  color: #667eea;
+}
+
+.node-details p {
+  margin: 0.5rem 0;
+  color: #333;
+}
+
