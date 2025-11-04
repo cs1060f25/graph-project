@@ -1,16 +1,20 @@
+/* Login Page - Dark theme */
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #0f0f10;
+  color: #eaeaea;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
 .login-container {
-  background: white;
+  background: #151517;
+  border: 1px solid #2a2a2e;
   padding: 3rem;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   text-align: center;
   max-width: 400px;
   width: 90%;
@@ -19,12 +23,13 @@
 .login-container h1 {
   margin: 0 0 0.5rem 0;
   font-size: 2.5rem;
-  color: #667eea;
+  font-weight: 600;
+  color: #eaeaea;
 }
 
 .login-subtitle {
   margin: 0 0 2rem 0;
-  color: #666;
+  color: #a0a0a5;
   font-size: 1rem;
 }
 
@@ -35,19 +40,20 @@
   gap: 12px;
   width: 100%;
   padding: 12px 24px;
-  background: white;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px;
   font-size: 16px;
-  font-weight: 500;
-  color: #3c4043;
+  font-weight: 600;
+  color: #111111;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: inherit;
 }
 
 .google-signin-button:hover:not(:disabled) {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-color: #dadce0;
+  filter: brightness(0.98);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .google-signin-button:disabled {
@@ -62,7 +68,11 @@
 
 .error-message {
   margin-top: 1rem;
-  color: #ea4335;
+  color: #ffb3b3;
   font-size: 0.9rem;
+  background: #2a1111;
+  border: 1px solid #5a1a1a;
+  padding: 0.75rem;
+  border-radius: 8px;
 }
 
