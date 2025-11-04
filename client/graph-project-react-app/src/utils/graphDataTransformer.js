@@ -11,17 +11,24 @@ export const transformPapersToGraph = (papers) => {
   }
 
   // Create nodes from papers
-  const nodes = papers.map((paper, index) => ({
-    id: paper.id || `paper-${index}`,
-    title: paper.title || 'Untitled',
-    authors: paper.authors || [],
-    year: paper.year || null,
-    citations: paper.citationCount || 0,
-    url: paper.url || null,
-    // Visual properties
-    group: paper.category || 1,
-    value: paper.citationCount || 1, // Node size based on citations
-  }));
+  const nodes = papers.map((paper, index) => {
+    // Handle both API response format and direct format
+    const year = paper.year || (paper.published ? new Date(paper.published).getFullYear() : null);
+    const url = paper.url || paper.link || null;
+    const citationCount = paper.citationCount || 0;
+    
+    return {
+      id: paper.id || `paper-${index}`,
+      title: paper.title || 'Untitled',
+      authors: paper.authors || [],
+      year: year,
+      citations: citationCount,
+      url: url,
+      // Visual properties
+      group: paper.category || 1,
+      value: citationCount || 1, // Node size based on citations
+    };
+  });
 
   // Create links (edges) based on citations/references
   const links = [];
