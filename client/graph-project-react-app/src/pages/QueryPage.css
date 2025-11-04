@@ -61,6 +61,22 @@
   color: #111827;
 }
 
+.logout-btn {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.logout-btn:hover {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.logout-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Main Content */
 .query-main {
   flex: 1;

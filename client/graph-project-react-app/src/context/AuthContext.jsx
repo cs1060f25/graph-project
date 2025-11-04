@@ -104,11 +104,44 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     setError(null);
     try {
+      // Sign out from Firebase Auth
       await signOut(auth);
+      
+      // Clear all local storage (Firebase tokens, cached user data)
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (storageErr) {
+        console.warn('[AuthContext] Failed to clear storage:', storageErr);
+        // Continue even if storage clear fails
+      }
+      
+      // Reset state (onAuthStateChanged will also set user to null, but this ensures immediate update)
       setIsNewUser(false);
+      setUser(null);
+      
+      console.log('[AuthContext] Successfully logged out');
     } catch (err) {
-      setError('Failed to sign out');
-      throw err;
+      console.error('[AuthContext] Logout error:', err);
+      
+      // Fallback: clear local state even if signOut fails (offline case)
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (storageErr) {
+        console.warn('[AuthContext] Failed to clear storage on error:', storageErr);
+      }
+      
+      setIsNewUser(false);
+      setUser(null);
+      
+      // If we're offline or signOut fails, still reset state but show warning
+      const errorMsg = err.message?.includes('network') || navigator.onLine === false
+        ? 'Logged out locally (offline)'
+        : 'Failed to sign out from server, but local session cleared';
+      
+      setError(errorMsg);
+      // Don't throw - we've cleared local state, user should still be logged out locally
     }
   };
 
