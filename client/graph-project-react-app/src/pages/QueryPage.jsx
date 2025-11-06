@@ -107,6 +107,9 @@ export default function QueryPage() {
             <Link to="/personal" className="nav-link">
               📚 My Saved Papers
             </Link>
+            <Link to="/exploration" className="nav-link">
+              🔍 Explore Topics
+            </Link>
           </div>
         </div>
       </header>

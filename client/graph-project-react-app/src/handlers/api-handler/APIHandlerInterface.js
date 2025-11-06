@@ -64,12 +64,15 @@ export default class APIHandlerInterface {
   // ----------------------
   // Main query function
   // ----------------------
-  async makeQuery(query, options = { type: "keyword" }) {
-    const { type, userId = "global" } = options;
+  async makeQuery(query, options = { type: "keyword", forceRefresh: false }) {
+    const { type, userId = "global", forceRefresh = false } = options;
 
     // Try cache first
-    const cached = await this.getFromCache(userId, query, type);
-    if (cached) return cached;
+    let cached = null;
+    if (!forceRefresh) {
+      cached = await this.getFromCache(userId, query, type);
+      if (cached) return cached;
+    }
 
     let combinedResults = [];
     for (const api of this.apis) {
