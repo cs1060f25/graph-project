@@ -58,10 +58,14 @@ export function useQueryHistory(isAuthenticated = false) {
     }
 
     try {
+      console.log('[useQueryHistory] Sending to API:', queryData);
       const newQuery = await userApi.addQueryHistory(queryData);
+      console.log('[useQueryHistory] Received from API:', newQuery);
       
       // Add to local state (prepend to maintain chronological order)
       setHistory(prev => [newQuery, ...prev]);
+      
+      return newQuery;
     } catch (err) {
       console.error('Error adding to query history:', err);
       // Don't set error for add operations to avoid disrupting user experience

@@ -5,10 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch index.js",
-    "dev:mock": "node --watch index.mock.js",
-    "start": "node index.js",
-    "start:mock": "node index.mock.js",
+    "dev": "node --watch index.mock.js",
+    "dev:prod": "node --watch index.js",
+    "start": "node index.mock.js",
+    "start:prod": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

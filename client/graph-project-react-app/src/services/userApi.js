@@ -8,13 +8,20 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
  */
 async function apiRequest(endpoint, options = {}) {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const { headers: optionsHeaders, ...restOptions } = options;
+    
+    const requestOptions = {
+      ...restOptions,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...optionsHeaders,
       },
-      ...options,
-    });
+    };
+    
+    console.log('[apiRequest] Endpoint:', endpoint);
+    console.log('[apiRequest] Request options:', requestOptions);
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
 
     const data = await response.json();
 

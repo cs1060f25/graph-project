@@ -158,12 +158,14 @@ app.get('/api/user/history', mockAuth, (req, res) => {
 });
 
 app.post('/api/user/history', mockAuth, (req, res) => {
+  console.log('[Mock Server] POST /api/user/history - req.body:', req.body);
   const newQuery = {
     id: `query-${Date.now()}`,
     ...req.body,
     timestamp: Date.now(),
     createdAt: new Date().toISOString()
   };
+  console.log('[Mock Server] Sending response:', newQuery);
   res.status(201).json({ success: true, data: newQuery, error: null });
 });
 

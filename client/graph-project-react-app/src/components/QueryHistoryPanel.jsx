@@ -28,6 +28,15 @@ export default function QueryHistoryPanel({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Debug logging
+  console.log('[QueryHistoryPanel] Props:', {
+    historyLength: history.length,
+    loading,
+    error,
+    isAuthenticated,
+    firstItem: history[0]
+  });
+
   const handleQueryClick = (queryItem) => {
     if (onQueryClick) {
       onQueryClick(queryItem.query);
@@ -51,6 +60,7 @@ export default function QueryHistoryPanel({
       >
         <span className="history-icon">📚</span>
         <span className="history-label">History</span>
+        {error && <span className="history-error-badge">⚠️</span>}
         {history.length > 0 && (
           <span className="history-count">{history.length}</span>
         )}
@@ -100,28 +110,30 @@ export default function QueryHistoryPanel({
               </div>
             ) : (
               <div className="history-list">
-                {history.map((item, index) => (
-                  <div
-                    key={item.id || index}
-                    className="history-item"
-                    onClick={() => handleQueryClick(item)}
-                  >
-                    <div className="history-query">
-                      <span className="query-text">{item.query}</span>
-                      {item.resultCount > 0 && (
-                        <span className="result-count">
-                          {item.resultCount} results
+                {history
+                  .filter(item => item.query && typeof item.query === 'string' && item.query.trim())
+                  .map((item, index) => (
+                    <div
+                      key={item.id || index}
+                      className="history-item"
+                      onClick={() => handleQueryClick(item)}
+                    >
+                      <div className="history-query">
+                        <span className="query-text">{item.query}</span>
+                        {item.resultCount > 0 && (
+                          <span className="result-count">
+                            {item.resultCount} results
+                          </span>
+                        )}
+                      </div>
+                      <div className="history-meta">
+                        <span className="query-type">{item.type}</span>
+                        <span className="query-time">
+                          {formatTimestamp?.(item.timestamp)}
                         </span>
-                      )}
+                      </div>
                     </div>
-                    <div className="history-meta">
-                      <span className="query-type">{item.type}</span>
-                      <span className="query-time">
-                        {formatTimestamp?.(item.timestamp)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

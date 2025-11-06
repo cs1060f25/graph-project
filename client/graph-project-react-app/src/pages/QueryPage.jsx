@@ -1,7 +1,7 @@
 // client/src/pages/QueryPage.jsx
 // Main Query Page component with ChatGPT-style interface
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
@@ -20,8 +20,11 @@ export default function QueryPage() {
   // Mock authentication state - in real app this would come from auth context
   const isAuthenticated = true; // TODO: Replace with actual auth state
 
-  // Initialize API handler
-  const apiHandler = new APIHandlerInterface({ maxResults: 10 });
+  // Initialize API handler once
+  const apiHandler = useMemo(() => new APIHandlerInterface({ maxResults: 10 }), []);
+
+  // Memoize graph data to prevent recalculation on every render
+  const graphData = useMemo(() => papersToGraph(results), [results]);
 
   // Query history hook
   const {
@@ -48,17 +51,24 @@ export default function QueryPage() {
       
       setResults(searchResults);
       
-      // Add to local history for immediate display
-      const newHistoryItem = { query: query.trim(), timestamp: new Date() };
-      setQueryHistory(prev => [newHistoryItem, ...prev]);
+      // Add to local history for immediate display (only if not already in history)
+      const trimmedQuery = query.trim();
+      const isDuplicate = queryHistory.some(item => item.query === trimmedQuery);
+      if (!isDuplicate && trimmedQuery) {
+        const newHistoryItem = { query: trimmedQuery, timestamp: new Date() };
+        setQueryHistory(prev => [newHistoryItem, ...prev]);
+      }
       
       // Add to database history if authenticated
       if (isAuthenticated) {
-        await addToHistory({
-          query: query.trim(),
+        const historyData = {
+          query: trimmedQuery,
           type: "keyword",
           resultCount: searchResults.length
-        });
+        };
+        console.log('[QueryPage] Adding to history:', historyData);
+        const result = await addToHistory(historyData);
+        console.log('[QueryPage] History add result:', result);
       }
     } catch (err) {
       console.error('Search failed:', err);
@@ -77,6 +87,12 @@ export default function QueryPage() {
 
   // Handle clicking on a query from history
   const handleHistoryQueryClick = (queryText) => {
+    // Validate query text before using it
+    if (!queryText || typeof queryText !== 'string' || !queryText.trim()) {
+      console.warn('Invalid query text from history:', queryText);
+      return;
+    }
+    
     setQuery(queryText);
     // Automatically trigger search
     setTimeout(() => {
@@ -92,7 +108,7 @@ export default function QueryPage() {
       {/* Header */}
       <header className="query-header">
         <div className="query-header-content">
-          <h1 className="query-title">Research Graph</h1>
+          <h1 className="query-title">Graphene</h1>
           <p className="query-subtitle">Discover and explore academic papers</p>
           
           <div className="query-nav">
@@ -173,7 +189,7 @@ export default function QueryPage() {
                   Clear Results
                 </button>
               </div>
-              <GraphView data={papersToGraph(results)} height={600} />
+              <GraphView data={graphData} height={600} />
             </div>
           )}
 
