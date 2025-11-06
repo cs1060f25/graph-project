@@ -1,19 +1,16 @@
 // APIHandlerInterface.js
 import ArxivAPI from "./ArxivAPI.js";
-import SemanticScholarAPI from "./SemanticScholarAPI.js";
-// import PubMedAPI from "./PubMedAPI.js"; // optional
-// Note: Cache interface relies on server-only deps (firebase-admin).
-// To keep the client bundle browser-safe, we disable cache usage in the client.
+import OpenAlexAPI from "./OpenAlexAPI.js";
+// import createCacheInterface from "../cache-db/cacheInterface.js";
 
 export default class APIHandlerInterface {
-  constructor({ maxResults = 5 } = {}) {
+  constructor({ maxResults = 5, cacheOptions = {}  } = {}) {
     this.apis = [
       new ArxivAPI({ defaultMaxResults: maxResults }),
-      new SemanticScholarAPI({ defaultMaxResults: maxResults }),
-      // new PubMedAPI({ defaultMaxResults: maxResults })
+      new OpenAlexAPI({ defaultMaxResults: maxResults }),
     ];
     this.maxResults = maxResults;
-    this.cache = null; // Cache disabled in client bundle
+    this.cache = cacheOptions.cacheClient || null; // Cache disabled in client bundle
   }
 
   // ----------------------
@@ -27,7 +24,11 @@ export default class APIHandlerInterface {
       : this.cache.getRecentQueries;
 
     try {
-      const results = await getter(userId, { limit: this.maxResults, match: query, type });
+      const results = await getter.call(this.cache, userId, {
+        limit: this.maxResults,
+        match: query,
+        type
+      });
       if (results && results.length) {
         console.log(`Cache hit for ${type} "${query}"`);
         return results;
