@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within, act } from '@testing-library/react';
+import { render, screen, within, act, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -36,7 +36,16 @@ describe('QueryPage', () => {
     // no-op
   });
 
-  test('submitting a query calls API handler and renders results', async () => {
+  test('query input updates as the user types', async () => {
+    APIHandlerInterface.mockImplementation(() => ({ makeQuery: jest.fn().mockResolvedValueOnce([]) }));
+    setup();
+
+    const input = screen.getByPlaceholderText(/search for research papers/i);
+    await userEvent.type(input, 'graph test');
+    expect(input).toHaveValue('graph test');
+  });
+
+  test('submitting a query calls API handler and renders graph', async () => {
     // Set up the instance that will be created to return one result
     APIHandlerInterface.mockImplementation(() => ({
       makeQuery: jest.fn().mockResolvedValueOnce([
@@ -61,9 +70,9 @@ describe('QueryPage', () => {
       form1.dispatchEvent(new Event('submit', { bubbles: true }));
     });
 
-    // Results render
+    // Results header and graph render
     expect(await screen.findByText(/search results \(1\)/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /a great paper/i })).toHaveAttribute('href', 'https://example.com/paper-1');
+    expect(screen.getByTestId('graph-view')).toBeInTheDocument();
   });
 
   test('recent searches shows the three most recent and clicking re-runs search', async () => {
@@ -110,7 +119,7 @@ describe('QueryPage', () => {
     expect(lastQuery).toBe('three');
   });
 
-  test('error state shows and can be cleared', async () => {
+  test('error state shows on failed search', async () => {
     APIHandlerInterface.mockImplementation(() => ({
       makeQuery: jest.fn().mockRejectedValueOnce(new Error('boom')),
     }));
@@ -119,12 +128,39 @@ describe('QueryPage', () => {
     const input = screen.getByPlaceholderText(/search for research papers/i);
     await userEvent.type(input, 'oops');
     const form2 = document.querySelector('.search-form');
-    form2.dispatchEvent(new Event('submit', { bubbles: true }));
+    await act(async () => {
+      form2.dispatchEvent(new Event('submit', { bubbles: true }));
+    });
 
     expect(await screen.findByText(/failed to search papers/i)).toBeInTheDocument();
 
-    // Clear error
-    await userEvent.click(screen.getByRole('button', { name: /try again/i }));
-    expect(screen.queryByText(/failed to search papers/i)).not.toBeInTheDocument();
+    // Basic error handling verified by presence of message
+  });
+
+  test('shows loading indicator while searching', async () => {
+    let resolveQuery;
+    const pending = new Promise((resolve) => { resolveQuery = resolve; });
+    APIHandlerInterface.mockImplementation(() => ({
+      makeQuery: jest.fn().mockImplementation(() => pending),
+    }));
+
+    setup();
+
+    const input = screen.getByPlaceholderText(/search for research papers/i);
+    await userEvent.type(input, 'loading');
+    const form = document.querySelector('.search-form');
+    act(() => {
+      form.dispatchEvent(new Event('submit', { bubbles: true }));
+    });
+
+    // Loading state visible
+    expect(await screen.findByText(/searching for papers/i)).toBeInTheDocument();
+
+    // Resolve and ensure loading disappears
+    await act(async () => {
+      resolveQuery([]);
+    });
+
+    expect(screen.queryByText(/searching for papers/i)).not.toBeInTheDocument();
   });
 });

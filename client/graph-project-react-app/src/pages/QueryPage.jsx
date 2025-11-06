@@ -7,6 +7,8 @@ import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
 import './QueryPage.css';
+import GraphView from '../components/GraphView';
+import { papersToGraph } from '../utils/transformToGraph';
 
 export default function QueryPage() {
   const [query, setQuery] = useState('');
@@ -66,17 +68,7 @@ export default function QueryPage() {
     }
   };
 
-  const handleSavePaper = async (paper) => {
-    try {
-      // Mock save functionality - in real implementation this would call the user API
-      console.log('Saving paper:', paper.title);
-      // TODO: Implement actual save functionality using user API
-      alert(`Saved "${paper.title}" to your papers!`);
-    } catch (err) {
-      console.error('Save failed:', err);
-      alert('Failed to save paper. Please try again.');
-    }
-  };
+  // Note: Save functionality moved out when switching to graph results UI.
 
   const clearResults = () => {
     setResults([]);
@@ -167,7 +159,7 @@ export default function QueryPage() {
             <div className="error-state">
               <div className="error-icon">⚠️</div>
               <p>{error}</p>
-              <button onClick={clearResults} className="retry-button">
+              <button type="button" onClick={clearResults} className="retry-button">
                 Try Again
               </button>
             </div>
@@ -181,63 +173,7 @@ export default function QueryPage() {
                   Clear Results
                 </button>
               </div>
-              
-              <div className="results-list">
-                {results.map((paper, index) => (
-                  <div key={paper.id || index} className="result-card">
-                    <div className="result-header">
-                      <h3 className="result-title">
-                        <a 
-                          href={paper.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="result-link"
-                        >
-                          {paper.title}
-                        </a>
-                      </h3>
-                      <button
-                        onClick={() => handleSavePaper(paper)}
-                        className="save-button"
-                        title="Save paper"
-                      >
-                        💾 Save
-                      </button>
-                    </div>
-                    
-                    {paper.authors && paper.authors.length > 0 && (
-                      <div className="result-authors">
-                        {Array.isArray(paper.authors) 
-                          ? paper.authors.join(', ')
-                          : paper.authors}
-                      </div>
-                    )}
-                    
-                    {paper.summary && (
-                      <p className="result-summary">
-                        {paper.summary.length > 300 
-                          ? paper.summary.slice(0, 300) + '...'
-                          : paper.summary
-                        }
-                      </p>
-                    )}
-                    
-                    <div className="result-footer">
-                      <span className="result-date">
-                        {paper.published ? new Date(paper.published).getFullYear() : 'Unknown year'}
-                      </span>
-                      <a 
-                        href={paper.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="view-paper-link"
-                      >
-                        View Paper →
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <GraphView data={papersToGraph(results)} height={600} />
             </div>
           )}
 

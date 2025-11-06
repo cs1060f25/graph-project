@@ -11,3 +11,6 @@ jest.mock('./handlers/api-handler/APIHandlerInterface', () => {
 		makeQuery: jest.fn().mockResolvedValue([]),
 	}));
 });
+
+// Mock react-force-graph-2d globally to avoid canvas/WebGL in tests (manual mock in __mocks__)
+jest.mock('react-force-graph-2d');
