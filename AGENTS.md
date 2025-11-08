@@ -1,14 +1,3 @@
-Your project team should create an AGENTS.md file specific to your project. See https://agents.md/ Links to an external site. for basic details; there are lots of examples of these files for various open source projects, and lots of documentation on how to create these files. Some of this will be discussed in class.
-
-(5 points) Create a general AGENTS.md file that describes your project and context in detail. When coding Part 4, experiment with modifying your AGENTS.md file and seeing what happens. You do not need to document these experiments.
-(5 points) In your AGENTS.md file, include a "Testing instructions" or equivalent section that describes (there's one example in https://agents.md/ Links to an external site.):
-A continuous integration plan (if you have CI)
-How to run your tests
-How to run any linters or other static analysis tools
-Instructions on when to update tests
-Instructions NOT to change existing tests unless explicitly requested by the user
-Other instructions you think are relevant.
-
 # AGENTS.md
 
 ## Project description/context
