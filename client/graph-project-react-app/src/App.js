@@ -8,7 +8,10 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import QueryPage from './pages/QueryPage';
 import PersonalPage from './pages/PersonalPage';
+import ExplorationPage from './pages/ExplorationPage';
+import './App.css';
 
+// Main App component with routing
 function App() {
   return (
     <AuthProvider>
@@ -30,6 +33,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <PersonalPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/exploration"
+            element={
+              <ProtectedRoute>
+                <ExplorationPage />
               </ProtectedRoute>
             }
           />

@@ -1,30 +1,28 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+// server/index.js
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import userRoutes from './routes/user.js';
+import { verifyFirebaseToken } from './middleware/auth.js';
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/me', userRoutes);
-
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Protected routes - require authentication
+app.use('/api/user', verifyFirebaseToken, userRoutes);
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
-
-module.exports = app;
-
