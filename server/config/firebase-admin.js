@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+import admin from 'firebase-admin';
 
 // Initialize Firebase Admin with service account or environment variables
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
@@ -16,5 +16,5 @@ if (!admin.apps.length) {
   }
 }
 
-module.exports = admin;
+export default admin;
 
