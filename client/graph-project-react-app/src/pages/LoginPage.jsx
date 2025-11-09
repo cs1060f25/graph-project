@@ -1,26 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './LoginPage.css';
 
 const LoginPage = () => {
-  const { signInWithGoogle } = useAuth();
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignIn = async () => {
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleEmailAuth = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (isSignUp) {
+        await signUpWithEmail(email, password);
+      } else {
+        await signInWithEmail(email, password);
+      }
+      navigate('/');
+    } catch (err) {
+      let errorMessage = 'Failed to authenticate. Please try again.';
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please sign in instead.';
+      } else if (err.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please sign up.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
       setError(null);
       await signInWithGoogle();
       navigate('/');
     } catch (err) {
-      setError(err.message || 'Failed to sign in. Please try again.');
+      setError(err.message || 'Failed to sign in with Google. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="login-page">
+        <div className="login-container">
+          <div>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already authenticated (will redirect)
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="login-page">
@@ -28,9 +87,46 @@ const LoginPage = () => {
         <h1>Graphene</h1>
         <p className="login-subtitle">Research Paper Discovery Platform</p>
         
+        <form onSubmit={handleEmailAuth} className="email-auth-form">
+          <div className="form-group">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+              className="form-input"
+            />
+          </div>
+          <div className="form-group">
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+              className="form-input"
+              minLength={6}
+            />
+          </div>
+          <button 
+            type="submit"
+            className="email-auth-button" 
+            disabled={loading}
+          >
+            {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+          </button>
+        </form>
+
+        <div className="divider">
+          <span>OR</span>
+        </div>
+
         <button 
           className="google-signin-button" 
-          onClick={handleSignIn}
+          onClick={handleGoogleSignIn}
           disabled={loading}
         >
           <svg className="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -41,6 +137,22 @@ const LoginPage = () => {
           </svg>
           {loading ? 'Signing in...' : 'Sign in with Google'}
         </button>
+
+        <div className="toggle-auth">
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError(null);
+            }}
+            className="toggle-button"
+            disabled={loading}
+          >
+            {isSignUp 
+              ? 'Already have an account? Sign in' 
+              : "Don't have an account? Sign up"}
+          </button>
+        </div>
 
         {error && <p className="error-message">{error}</p>}
       </div>
