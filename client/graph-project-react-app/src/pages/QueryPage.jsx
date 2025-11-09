@@ -2,25 +2,25 @@
 // Main Query Page component with search and graph visualization
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
-import GraphVisualization from '../components/GraphVisualization';
-import { transformPapersToGraph } from '../utils/graphDataTransformer';
+import { useAuth } from '../context/AuthContext';
 import './QueryPage.css';
 
 export default function QueryPage() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [queryHistory, setQueryHistory] = useState([]);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'graph'
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  // Mock authentication state - in real app this would come from auth context
-  const isAuthenticated = true; // TODO: Replace with actual auth state
+  // Use actual authentication state
+  const isAuthenticated = !!user;
 
   // Initialize API handler
   const apiHandler = new APIHandlerInterface({ maxResults: 10 });
@@ -104,8 +104,19 @@ export default function QueryPage() {
     }, 100);
   };
 
-  const handleNodeClick = (node) => {
-    setSelectedNode(node);
+  // Handle logout
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Even if logout fails, navigate to login (local state is cleared)
+      navigate('/login', { replace: true });
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -120,9 +131,14 @@ export default function QueryPage() {
             <Link to="/personal" className="nav-link">
               📚 My Saved Papers
             </Link>
-            <Link to="/exploration" className="nav-link">
-              🔍 Explore Topics
-            </Link>
+            <button
+              onClick={handleLogout}
+              className="nav-link logout-btn"
+              disabled={loggingOut}
+              title="Sign out"
+            >
+              {loggingOut ? '⏳' : '🚪'} Sign out
+            </button>
           </div>
         </div>
       </header>
