@@ -1,6 +1,27 @@
-# Getting Started with Create React App
+# Graphene - Graph-Based Research Paper Discovery
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
+## Firebase Setup
+
+Create a `.env` file in the root of this project with the following variables:
+
+```
+REACT_APP_FIREBASE_API_KEY=your-api-key-here
+REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your-project-id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=123456789
+REACT_APP_FIREBASE_APP_ID=1:123456789:web:abcdef
+```
+
+These values can be found in your Firebase project settings under "General" > "Your apps".
+
+### Google Authentication Setup
+
+1. Go to Firebase Console > Authentication > Sign-in method
+2. Enable "Google" as a sign-in provider
+3. Add your authorized domains
 
 ## Available Scripts
 

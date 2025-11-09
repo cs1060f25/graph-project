@@ -1,0 +1,29 @@
+/* Graph Visualization - Dark theme styling */
+.graph-container {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #2a2a2e;
+  border-radius: 16px;
+  background: #151517;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s;
+}
+
+.graph-container:hover {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border-color: #3a3a3e;
+}
+
+.graph-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  background: #0f0f10;
+  border: 1px dashed #2a2a2e;
+  border-radius: 16px;
+  color: #a0a0a5;
+  font-size: 0.9375rem;
+}
+
