@@ -1,5 +1,5 @@
 // client/src/pages/QueryPage.jsx
-// Main Query Page component with ChatGPT-style interface
+// Main Query Page component with search and graph visualization
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -35,12 +35,16 @@ export default function QueryPage() {
     formatTimestamp
   } = useQueryHistory(isAuthenticated);
 
+  // Transform results to graph format
+  const graphData = results.length > 0 ? transformPapersToGraph(results) : null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
 
     setLoading(true);
     setError(null);
+    setSelectedNode(null);
     
     try {
       const searchResults = await apiHandler.makeQuery(query.trim(), { 
@@ -85,6 +89,7 @@ export default function QueryPage() {
   const clearResults = () => {
     setResults([]);
     setError(null);
+    setSelectedNode(null);
   };
 
   // Handle clicking on a query from history
@@ -182,7 +187,25 @@ export default function QueryPage() {
             </div>
           )}
 
-          {/* Results Section */}
+          {/* View Mode Toggle */}
+          {results.length > 0 && (
+            <div className="view-mode-toggle">
+              <button
+                className={`view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                📋 List View
+              </button>
+              <button
+                className={`view-mode-btn ${viewMode === 'graph' ? 'active' : ''}`}
+                onClick={() => setViewMode('graph')}
+              >
+                🕸️ Graph View
+              </button>
+            </div>
+          )}
+
+          {/* Loading State */}
           {loading && (
             <div className="loading-state">
               <div className="loading-spinner"></div>
@@ -190,6 +213,7 @@ export default function QueryPage() {
             </div>
           )}
 
+          {/* Error State */}
           {error && (
             <div className="error-state">
               <div className="error-icon">⚠️</div>
@@ -200,7 +224,8 @@ export default function QueryPage() {
             </div>
           )}
 
-          {!loading && !error && results.length > 0 && (
+          {/* Results Section - List View */}
+          {!loading && !error && results.length > 0 && viewMode === 'list' && (
             <div className="results-section">
               <div className="results-header">
                 <h2>Search Results ({results.length})</h2>
@@ -265,6 +290,41 @@ export default function QueryPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Results Section - Graph View */}
+          {!loading && !error && results.length > 0 && viewMode === 'graph' && graphData && (
+            <div className="graph-results-section">
+              <div className="results-header">
+                <h2>Paper Relationship Graph ({results.length} papers)</h2>
+                <button onClick={clearResults} className="clear-button">
+                  Clear Results
+                </button>
+              </div>
+              <div className="graph-section">
+                <GraphVisualization 
+                  graphData={graphData} 
+                  onNodeClick={handleNodeClick}
+                  height={600}
+                />
+              </div>
+              {selectedNode && (
+                <div className="node-details">
+                  <h3>Selected Paper</h3>
+                  <p><strong>Title:</strong> {selectedNode.title}</p>
+                  <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
+                  {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
+                  {selectedNode.citations && <p><strong>Citations:</strong> {selectedNode.citations}</p>}
+                  {selectedNode.url && (
+                    <p>
+                      <a href={selectedNode.url} target="_blank" rel="noopener noreferrer" className="view-paper-link">
+                        View Paper →
+                      </a>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

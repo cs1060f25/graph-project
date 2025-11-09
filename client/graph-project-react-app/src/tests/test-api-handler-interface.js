@@ -1,8 +1,8 @@
 // how to run: from root project, run:
 // node src/tests/test-api-handler-interface.js
 
+import 'dotenv/config';
 import assert from "assert";
-
 import APIHandlerInterface from "../handlers/api-handler/APIHandlerInterface.js";
 
 class FakeCacheClient {

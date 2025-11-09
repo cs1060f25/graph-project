@@ -2,6 +2,9 @@
 serviceAccountKey.json
 **/node_modules/
 
+# environment file
+.env
+
 # Logs
 logs
 *.log
@@ -71,3 +74,4 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+.cursor/

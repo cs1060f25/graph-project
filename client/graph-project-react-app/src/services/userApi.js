@@ -1,3 +1,5 @@
+import { auth } from '../config/firebase';
+
 // client/src/services/userApi.js
 // API client for user-related endpoints
 
@@ -7,12 +9,17 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
  * Helper function to make API requests with error handling
  */
 async function apiRequest(endpoint, options = {}) {
+  const headers = await options.headers;
+  const newHeaders = {
+    'Content-Type': 'application/json',
+    ...headers,
+  };
+  console.log(newHeaders);
+
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      newHeaders,
       ...options,
     });
 
@@ -30,22 +37,46 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 /**
- * Get authentication token from localStorage or your auth context
- * TODO: Replace this with your actual auth token retrieval logic
+ * Get authentication token from Firebase Auth
+ * 
+ * Firebase ID tokens:
+ * - Expire after ~1 hour
+ * - Automatically refreshed by Firebase SDK before expiration
+ * - Use getIdToken() to get current token (refreshes if needed)
+ * - Use getIdToken(true) to force refresh
+ * 
+ * @returns {Promise<string|null>} ID token or null if user not authenticated
  */
-function getAuthToken() {
-  // For now, mock server doesn't need auth
-  // When using real server, get token from your auth context:
-  // return localStorage.getItem('authToken');
-  // or from Firebase: await user.getIdToken();
-  return null;
+async function getAuthToken() {
+  // Check if Firebase auth is configured
+  if (!auth) {
+    console.warn('Firebase auth is not configured');
+    return null;
+  }
+
+  // Check if user is authenticated
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    return null;
+  }
+
+  try {
+    // getIdToken() automatically refreshes the token if it's expired or about to expire
+    const idToken = await currentUser.getIdToken();
+    return idToken;
+  } catch (error) {
+    console.error('Error getting ID token:', error);
+    // Token might be invalid or user might have been signed out
+    // Return null to indicate no valid token available
+    return null;
+  }
 }
 
 /**
  * Add auth header if token exists
  */
-function getAuthHeaders() {
-  const token = getAuthToken();
+async function getAuthHeaders() {
+  const token = await getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -59,8 +90,9 @@ export const userApi = {
    * @returns {Promise<Object>} User data
    */
   getCurrentUser: async () => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest('/api/user/me', {
-      headers: getAuthHeaders(),
+      headers,
     });
     return response.data;
   },
@@ -70,8 +102,9 @@ export const userApi = {
    * @returns {Promise<Object>} User profile data
    */
   getUserData: async () => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest('/api/user/data', {
-      headers: getAuthHeaders(),
+      headers,
     });
     return response.data;
   },
@@ -85,8 +118,9 @@ export const userApi = {
    * @returns {Promise<Array>} Array of paper objects
    */
   getSavedPapers: async () => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest('/api/user/papers', {
-      headers: getAuthHeaders(),
+      headers,
     });
     return response.data;
   },
@@ -195,8 +229,9 @@ export const userApi = {
    * @returns {Promise<Array>} Array of folder objects
    */
   getFolders: async () => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest('/api/user/folders', {
-      headers: getAuthHeaders(),
+      headers,
     });
     return response.data;
   },
@@ -207,9 +242,10 @@ export const userApi = {
    * @returns {Promise<Object>} Created folder object
    */
   createFolder: async (folderName) => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest('/api/user/folders', {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
       body: JSON.stringify({ name: folderName }),
     });
     return response.data;
@@ -223,9 +259,10 @@ export const userApi = {
    * @returns {Promise<Object>} Updated folder object
    */
   updateFolder: async (folderId, newName) => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest(`/api/user/folders/${folderId}`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers,
       body: JSON.stringify({ name: newName }),
     });
     return response.data;
@@ -238,9 +275,10 @@ export const userApi = {
    * @returns {Promise<void>}
    */
   deleteFolder: async (folderId) => {
+    const headers = await getAuthHeaders();
     await apiRequest(`/api/user/folders/${folderId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers,
     });
   },
 };
