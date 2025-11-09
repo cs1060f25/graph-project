@@ -2,15 +2,11 @@
 // Main Personal Page component for displaying saved papers
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useSavedPapers } from '../hooks/useSavedPapers';
-import { useAuth } from '../context/AuthContext';
 import PaperCard from '../components/PaperCard';
 import './PersonalPage.css';
 
 export default function PersonalPage() {
-  const navigate = useNavigate();
-  const { logout } = useAuth();
   const {
     papers,
     folders,
@@ -31,7 +27,6 @@ export default function PersonalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [loggingOut, setLoggingOut] = useState(false);
 
   // Get filtered and searched papers
   const getDisplayedPapers = () => {
@@ -73,21 +68,6 @@ export default function PersonalPage() {
     }
   };
 
-  // Handle logout
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logout();
-      navigate('/login', { replace: true });
-    } catch (err) {
-      console.error('Logout error:', err);
-      // Even if logout fails, navigate to login (local state is cleared)
-      navigate('/login', { replace: true });
-    } finally {
-      setLoggingOut(false);
-    }
-  };
-
   // Loading state
   if (loading) {
     return (
@@ -105,20 +85,10 @@ export default function PersonalPage() {
       {/* Header */}
       <header className="personal-page-header">
         <div className="header-content">
-          <div>
-            <h1 className="page-title">My Saved Papers</h1>
-            <p className="page-subtitle">
-              {papers.length} {papers.length === 1 ? 'paper' : 'papers'} saved
-            </p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="logout-btn-header"
-            disabled={loggingOut}
-            title="Sign out"
-          >
-            {loggingOut ? '⏳' : '🚪'} Sign out
-          </button>
+          <h1 className="page-title">My Saved Papers</h1>
+          <p className="page-subtitle">
+            {papers.length} {papers.length === 1 ? 'paper' : 'papers'} saved
+          </p>
         </div>
       </header>
 
