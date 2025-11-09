@@ -10,3 +10,6 @@ export { addQueryHistory, getQueryHistory, clearQueryHistory } from './queryHist
 
 // Export utility functions for external use
 export { createResponse, validateUserId, validatePaperData, validateFolderName, validateCallback } from './utils.js';
+
+// Export test function
+// export { testInterface } from './testInterface.js';

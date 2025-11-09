@@ -7,6 +7,8 @@ import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
 import { useAuth } from '../context/AuthContext';
+import GraphVisualization from '../components/GraphVisualization';
+import { transformPapersToGraph } from '../utils/graphDataTransformer';
 import './QueryPage.css';
 
 export default function QueryPage() {
@@ -18,6 +20,8 @@ export default function QueryPage() {
   const [error, setError] = useState(null);
   const [queryHistory, setQueryHistory] = useState([]);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'graph'
+  const [selectedNode, setSelectedNode] = useState(null);
 
   // Use actual authentication state
   const isAuthenticated = !!user;
@@ -117,6 +121,8 @@ export default function QueryPage() {
     } finally {
       setLoggingOut(false);
     }
+  const handleNodeClick = (node) => {
+    setSelectedNode(node);
   };
 
   return (
@@ -139,6 +145,9 @@ export default function QueryPage() {
             >
               {loggingOut ? '⏳' : '🚪'} Sign out
             </button>
+            <Link to="/exploration" className="nav-link">
+              🔍 Explore Topics
+            </Link>
           </div>
         </div>
       </header>
