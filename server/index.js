@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import userRoutes from './routes/user.js';
-import { verifyFirebaseToken } from './middleware/auth.js';
+import { verifyFirebaseToken } from './routes/middleware/auth.js';
 
 dotenv.config();
 
