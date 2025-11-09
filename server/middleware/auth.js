@@ -1,4 +1,4 @@
-import admin from '../config/firebase-admin';
+import admin from '../config/firebase-admin.js';
 
 // Middleware to verify Firebase ID token
 const verifyFirebaseToken = async (req, res, next) => {
