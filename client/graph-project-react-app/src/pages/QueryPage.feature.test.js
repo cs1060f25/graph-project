@@ -172,7 +172,12 @@ describe('QueryPage', () => {
   });
 
   // GRAPH-60: Test query validation
-  test('GRAPH-60: query validation prevents empty or too short queries', async () => {
+  test('GRAPH-60: query validation prevents empty queries but allows any non-empty query', async () => {
+    const makeQueryMock = jest.fn().mockResolvedValue([]);
+    APIHandlerInterface.mockImplementation(() => ({
+      makeQuery: makeQueryMock,
+    }));
+
     setup();
 
     const input = screen.getByPlaceholderText(/search for research papers/i);
@@ -186,13 +191,16 @@ describe('QueryPage', () => {
     // Should show validation error
     expect(await screen.findByText(/please enter a search query/i)).toBeInTheDocument();
 
-    // Try with single character
+    // Single character query should now be allowed
     await userEvent.type(input, 'a');
     await act(async () => {
       form.dispatchEvent(new Event('submit', { bubbles: true }));
     });
 
-    expect(await screen.findByText(/must be at least 2 characters/i)).toBeInTheDocument();
+    // Should proceed to API call (no validation error)
+    await waitFor(() => {
+      expect(makeQueryMock).toHaveBeenCalledWith('a', expect.any(Object));
+    });
   });
 
   // GRAPH-60: Test retry functionality

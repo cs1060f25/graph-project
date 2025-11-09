@@ -49,9 +49,6 @@ export default function QueryPage() {
     if (!queryText || !queryText.trim()) {
       return { valid: false, error: 'Please enter a search query' };
     }
-    if (queryText.trim().length < 2) {
-      return { valid: false, error: 'Query must be at least 2 characters long' };
-    }
     if (queryText.trim().length > 200) {
       return { valid: false, error: 'Query must be less than 200 characters' };
     }
