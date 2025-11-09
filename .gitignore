@@ -74,4 +74,6 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
-.cursor/
+.cursor/.env
+client/graph-project-react-app/.env
+server/.env

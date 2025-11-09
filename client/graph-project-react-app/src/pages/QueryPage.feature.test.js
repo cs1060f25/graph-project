@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, within, act } from '@testing-library/react';
+import { render, screen, within, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -16,6 +16,16 @@ jest.mock('../services/userApi', () => ({
 }));
 
 import QueryPage from './QueryPage';
+
+// Mock AuthContext for GRAPH-60 tests
+jest.mock('../contexts/AuthContext', () => ({
+  useAuth: jest.fn(() => ({
+    user: { uid: 'test-user-123', email: 'test@example.com' },
+    loading: false,
+    signInWithGoogle: jest.fn(),
+    signOut: jest.fn(),
+  })),
+}));
 
 function setup() {
   return render(
@@ -124,7 +134,130 @@ describe('QueryPage', () => {
     expect(await screen.findByText(/failed to search papers/i)).toBeInTheDocument();
 
     // Clear error
-    await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+    await userEvent.click(screen.getByRole('button', { name: /clear/i }));
     expect(screen.queryByText(/failed to search papers/i)).not.toBeInTheDocument();
+  });
+
+  // GRAPH-60: Test query type selector
+  test('GRAPH-60: query type selector allows switching between keyword and topic', async () => {
+    const makeQueryMock = jest.fn().mockResolvedValue([]);
+    APIHandlerInterface.mockImplementation(() => ({
+      makeQuery: makeQueryMock,
+    }));
+
+    setup();
+
+    const queryTypeSelector = screen.getByTitle(/search type/i);
+    expect(queryTypeSelector).toBeInTheDocument();
+    expect(queryTypeSelector.value).toBe('keyword');
+
+    // Change to topic
+    await userEvent.selectOptions(queryTypeSelector, 'topic');
+    expect(queryTypeSelector.value).toBe('topic');
+
+    // Submit query with topic type
+    const input = screen.getByPlaceholderText(/search for research papers/i);
+    await userEvent.type(input, 'machine learning');
+    const form = document.querySelector('.search-form');
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(makeQueryMock).toHaveBeenCalledWith(
+        'machine learning',
+        expect.objectContaining({ type: 'topic' })
+      );
+    });
+  });
+
+  // GRAPH-60: Test query validation
+  test('GRAPH-60: query validation prevents empty queries but allows any non-empty query', async () => {
+    const makeQueryMock = jest.fn().mockResolvedValue([]);
+    APIHandlerInterface.mockImplementation(() => ({
+      makeQuery: makeQueryMock,
+    }));
+
+    setup();
+
+    const input = screen.getByPlaceholderText(/search for research papers/i);
+    const form = document.querySelector('.search-form');
+
+    // Try to submit empty query
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true }));
+    });
+
+    // Should show validation error
+    expect(await screen.findByText(/please enter a search query/i)).toBeInTheDocument();
+
+    // Single character query should now be allowed
+    await userEvent.type(input, 'a');
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true }));
+    });
+
+    // Should proceed to API call (no validation error)
+    await waitFor(() => {
+      expect(makeQueryMock).toHaveBeenCalledWith('a', expect.any(Object));
+    });
+  });
+
+  // GRAPH-60: Test retry functionality
+  test('GRAPH-60: retry button allows retrying failed queries', async () => {
+    const makeQueryMock = jest.fn()
+      .mockRejectedValueOnce(new Error('network error'))
+      .mockResolvedValueOnce([{ id: 'paper-1', title: 'Success Paper' }]);
+
+    APIHandlerInterface.mockImplementation(() => ({
+      makeQuery: makeQueryMock,
+    }));
+
+    setup();
+
+    const input = screen.getByPlaceholderText(/search for research papers/i);
+    await userEvent.type(input, 'test query');
+    const form = document.querySelector('.search-form');
+    
+    // First attempt fails
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true }));
+    });
+
+    expect(await screen.findByText(/failed to search papers/i)).toBeInTheDocument();
+
+    // Click retry
+    const retryButton = screen.getByRole('button', { name: /retry search/i });
+    await userEvent.click(retryButton);
+
+    // Should retry and succeed
+    await waitFor(() => {
+      expect(screen.getByText(/success paper/i)).toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
+
+  // GRAPH-60: Test authentication integration
+  test('GRAPH-60: uses authenticated user ID when user is logged in', async () => {
+    const makeQueryMock = jest.fn().mockResolvedValue([]);
+    APIHandlerInterface.mockImplementation(() => ({
+      makeQuery: makeQueryMock,
+    }));
+
+    setup();
+
+    const input = screen.getByPlaceholderText(/search for research papers/i);
+    await userEvent.type(input, 'test');
+    const form = document.querySelector('.search-form');
+    
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(makeQueryMock).toHaveBeenCalledWith(
+        'test',
+        expect.objectContaining({ userId: 'test-user-123' })
+      );
+    });
   });
 });

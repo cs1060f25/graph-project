@@ -1,33 +1,35 @@
 // client/src/pages/QueryPage.jsx
 // Main Query Page component with search and graph visualization
+// HW9 GRAPH-60: Enhanced Query Input & API Integration
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
-import { useAuth } from '../context/AuthContext';
 import GraphVisualization from '../components/GraphVisualization';
 import { transformPapersToGraph } from '../utils/graphDataTransformer';
+import { useAuth } from '../contexts/AuthContext';
 import './QueryPage.css';
 
 export default function QueryPage() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
   const [query, setQuery] = useState('');
+  const [queryType, setQueryType] = useState('keyword'); // 'keyword' or 'topic'
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [queryHistory, setQueryHistory] = useState([]);
-  const [loggingOut, setLoggingOut] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'graph'
   const [selectedNode, setSelectedNode] = useState(null);
+  const queryInputRef = useRef(null);
 
-  // Use actual authentication state
+  // Use actual authentication context (GRAPH-60 enhancement)
+  const { user, loading: authLoading } = useAuth();
   const isAuthenticated = !!user;
 
   // Initialize API handler
-  const apiHandler = new APIHandlerInterface({ maxResults: 10 });
+  const apiHandler = useRef(new APIHandlerInterface({ maxResults: 10 })).current;
 
   // Query history hook
   const {
@@ -42,40 +44,94 @@ export default function QueryPage() {
   // Transform results to graph format
   const graphData = results.length > 0 ? transformPapersToGraph(results) : null;
 
-  const handleSubmit = async (e) => {
+  // Validate query input (GRAPH-60 enhancement)
+  const validateQuery = (queryText) => {
+    if (!queryText || !queryText.trim()) {
+      return { valid: false, error: 'Please enter a search query' };
+    }
+    if (queryText.trim().length > 200) {
+      return { valid: false, error: 'Query must be less than 200 characters' };
+    }
+    return { valid: true };
+  };
+
+  // Enhanced error handling with retry logic (GRAPH-60 enhancement)
+  const handleSubmit = async (e, retry = false) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    
+    // Validate query
+    const validation = validateQuery(query);
+    if (!validation.valid) {
+      setError(validation.error);
+      queryInputRef.current?.focus();
+      return;
+    }
+
+    if (!retry) {
+      setRetryCount(0);
+    }
 
     setLoading(true);
     setError(null);
     setSelectedNode(null);
     
     try {
+      const userId = isAuthenticated && user?.uid ? user.uid : 'demo-user';
       const searchResults = await apiHandler.makeQuery(query.trim(), { 
-        type: "keyword",
-        userId: isAuthenticated ? "authenticated-user" : "demo-user"
+        type: queryType,
+        userId: userId,
+        forceRefresh: retry // Force refresh on retry
       });
       
-      setResults(searchResults);
-      
-      // Add to local history for immediate display
-      const newHistoryItem = { query: query.trim(), timestamp: new Date() };
-      setQueryHistory(prev => [newHistoryItem, ...prev]);
-      
-      // Add to database history if authenticated
-      if (isAuthenticated) {
-        await addToHistory({
-          query: query.trim(),
-          type: "keyword",
-          resultCount: searchResults.length
-        });
+      if (!searchResults || searchResults.length === 0) {
+        setError('No papers found. Try different keywords or a broader search term.');
+        setResults([]);
+      } else {
+        setResults(searchResults);
+        setRetryCount(0); // Reset retry count on success
+        
+        // Add to local history for immediate display
+        const newHistoryItem = { 
+          query: query.trim(), 
+          type: queryType,
+          timestamp: new Date() 
+        };
+        setQueryHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 10
+        
+        // Add to database history if authenticated
+        if (isAuthenticated) {
+          try {
+            await addToHistory({
+              query: query.trim(),
+              type: queryType,
+              resultCount: searchResults.length
+            });
+          } catch (historyError) {
+            console.warn('Failed to save query history:', historyError);
+            // Don't block the user if history save fails
+          }
+        }
       }
     } catch (err) {
       console.error('Search failed:', err);
-      setError('Failed to search papers. Please try again.');
+      const errorMessage = err.message || 'Failed to search papers. Please try again.';
+      setError(errorMessage);
+      
+      // Auto-retry logic for network errors (GRAPH-60 enhancement)
+      if (retryCount < 2 && (err.message?.includes('network') || err.message?.includes('fetch'))) {
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          handleSubmit(e, true);
+        }, 1000 * (retryCount + 1)); // Exponential backoff
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = (e) => {
+    e.preventDefault();
+    handleSubmit(e, true);
   };
 
   const handleSavePaper = async (paper) => {
@@ -108,19 +164,6 @@ export default function QueryPage() {
     }, 100);
   };
 
-  // Handle logout
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logout();
-      navigate('/login', { replace: true });
-    } catch (err) {
-      console.error('Logout error:', err);
-      // Even if logout fails, navigate to login (local state is cleared)
-      navigate('/login', { replace: true });
-    } finally {
-      setLoggingOut(false);
-    }
   const handleNodeClick = (node) => {
     setSelectedNode(node);
   };
@@ -137,14 +180,6 @@ export default function QueryPage() {
             <Link to="/personal" className="nav-link">
               📚 My Saved Papers
             </Link>
-            <button
-              onClick={handleLogout}
-              className="nav-link logout-btn"
-              disabled={loggingOut}
-              title="Sign out"
-            >
-              {loggingOut ? '⏳' : '🚪'} Sign out
-            </button>
             <Link to="/exploration" className="nav-link">
               🔍 Explore Topics
             </Link>
@@ -155,26 +190,51 @@ export default function QueryPage() {
       {/* Main Content */}
       <main className="query-main">
         <div className="query-container">
-          {/* Search Input */}
+          {/* Search Input - GRAPH-60: Enhanced with query type selector */}
           <div className="search-section">
             <form onSubmit={handleSubmit} className="search-form">
               <div className="search-input-container">
                 <input
+                  ref={queryInputRef}
                   type="text"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setError(null); // Clear error when user types
+                  }}
                   placeholder="Search for research papers..."
                   className="search-input"
-                  disabled={loading}
+                  disabled={loading || authLoading}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !loading) {
+                      handleSubmit(e);
+                    }
+                  }}
                 />
+                <select
+                  value={queryType}
+                  onChange={(e) => setQueryType(e.target.value)}
+                  className="query-type-selector"
+                  disabled={loading || authLoading}
+                  title="Search type"
+                >
+                  <option value="keyword">Keywords</option>
+                  <option value="topic">Topic</option>
+                </select>
                 <button 
                   type="submit" 
                   className="search-button"
-                  disabled={loading || !query.trim()}
+                  disabled={loading || !query.trim() || authLoading}
+                  title={queryType === 'keyword' ? 'Search by keywords' : 'Search by topic'}
                 >
                   {loading ? '⏳' : '🔍'}
                 </button>
               </div>
+              {error && retryCount > 0 && (
+                <div className="retry-info">
+                  <span>Retrying... ({retryCount}/2)</span>
+                </div>
+              )}
             </form>
           </div>
 
@@ -222,14 +282,19 @@ export default function QueryPage() {
             </div>
           )}
 
-          {/* Error State */}
+          {/* Error State - GRAPH-60: Enhanced with retry */}
           {error && (
             <div className="error-state">
               <div className="error-icon">⚠️</div>
               <p>{error}</p>
-              <button onClick={clearResults} className="retry-button">
-                Try Again
-              </button>
+              <div className="error-actions">
+                <button onClick={handleRetry} className="retry-button" disabled={loading}>
+                  {loading ? 'Retrying...' : 'Retry Search'}
+                </button>
+                <button onClick={clearResults} className="clear-error-button">
+                  Clear
+                </button>
+              </div>
             </div>
           )}
 
@@ -315,6 +380,7 @@ export default function QueryPage() {
                 <GraphVisualization 
                   graphData={graphData} 
                   onNodeClick={handleNodeClick}
+                  selectedNode={selectedNode}
                   height={600}
                 />
               </div>
