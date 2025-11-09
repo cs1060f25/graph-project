@@ -12,4 +12,4 @@ export { addQueryHistory, getQueryHistory, clearQueryHistory } from './queryHist
 export { createResponse, validateUserId, validatePaperData, validateFolderName, validateCallback } from './utils.js';
 
 // Export test function
-export { testInterface } from './testInterface.js';
+// export { testInterface } from './testInterface.js';

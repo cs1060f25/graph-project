@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import userRoutes from './routes/user.js';
+import authRoutes from './routes/auth.js';
 import { verifyFirebaseToken } from './middleware/auth.js';
 
 dotenv.config();
@@ -18,6 +19,9 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// Auth routes (no authentication required for bootstrap)
+app.use('/api/auth', authRoutes);
 
 // Protected routes - require authentication
 app.use('/api/user', verifyFirebaseToken, userRoutes);

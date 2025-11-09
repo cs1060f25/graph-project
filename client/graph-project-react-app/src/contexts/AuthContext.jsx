@@ -3,6 +3,8 @@ import {
   signInWithPopup, 
   signOut as firebaseSignOut, 
   GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -79,6 +81,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signInWithEmail = async (email, password) => {
+    if (!auth) {
+      throw new Error('Firebase is not configured');
+    }
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error('Error signing in with email:', error);
+      throw error;
+    }
+  };
+
+  const signUpWithEmail = async (email, password) => {
+    if (!auth) {
+      throw new Error('Firebase is not configured');
+    }
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error('Error signing up with email:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     if (!auth) {
       setUser(null);
@@ -103,6 +129,8 @@ export const AuthProvider = ({ children }) => {
     role,
     loading,
     signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
     signOut,
   };
 

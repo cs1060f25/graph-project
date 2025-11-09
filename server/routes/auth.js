@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import admin from '../config/firebase-admin.js';
+import User from '../models/User.js';
+
 const router = express.Router();
-const admin = require('../config/firebase-admin');
-const User = require('../models/User');
 
 // POST /api/auth/bootstrap
 // Verifies Firebase ID token and upserts user
@@ -36,5 +37,5 @@ router.post('/bootstrap', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
 

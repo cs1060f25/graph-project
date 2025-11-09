@@ -1,7 +1,7 @@
-const admin = require('../config/firebase-admin');
+import admin from '../config/firebase-admin';
 
 // Middleware to verify Firebase ID token
-const verifyToken = async (req, res, next) => {
+const verifyFirebaseToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
@@ -20,5 +20,5 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-module.exports = { verifyToken };
+export { verifyFirebaseToken };
 
