@@ -824,19 +824,20 @@ export default function QueryPage() {
               </div>
               {/* Layer Legend */}
               <div className="layer-legend">
-                <div className="legend-title">Layer Colors:</div>
+                <div className="legend-title">Visual Guide:</div>
                 <div className="legend-items">
                   <div className="legend-item">
-                    <div className="legend-color" style={{ background: '#6366f1' }}></div>
-                    <span>Layer 1 (Seed Papers)</span>
+                    <div className="legend-color-group">
+                      <div className="legend-color" style={{ background: '#3a82ff', opacity: 1.0 }}></div>
+                      <div className="legend-color" style={{ background: '#3a82ff', opacity: 0.75 }}></div>
+                      <div className="legend-color" style={{ background: '#3a82ff', opacity: 0.5 }}></div>
+                    </div>
+                    <span>Layer Depth → Opacity (1.0 / 0.75 / 0.5)</span>
                   </div>
                   <div className="legend-item">
-                    <div className="legend-color" style={{ background: '#06b6d4', border: '1px dashed #06b6d4' }}></div>
-                    <span>Layer 2</span>
-                  </div>
-                  <div className="legend-item">
-                    <div className="legend-color" style={{ background: '#f97316', border: '1px dashed #f97316' }}></div>
-                    <span>Layer 3</span>
+                    <div className="legend-note">
+                      <span>Each query has a unique color. Opacity indicates layer depth.</span>
+                    </div>
                   </div>
                 </div>
               </div>

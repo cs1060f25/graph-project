@@ -667,15 +667,21 @@
 .legend-color-group {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
 .legend-color {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 1px solid #2a2a2e;
   flex-shrink: 0;
+}
+
+.legend-note {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-style: italic;
 }
 
 /* Node Details Card */

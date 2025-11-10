@@ -48,59 +48,59 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     }
   }, [memoizedData.links, selectedNode, connectedNodeIds]);
 
-  // GRAPH-63: Enhanced node color with hover, selection, and layer states
+  /**
+   * Converts hex color to rgba with specified opacity
+   * @param {string} hex - Hex color string (e.g., '#3a82ff')
+   * @param {number} opacity - Opacity value between 0 and 1
+   * @returns {string} RGBA color string
+   */
+  const hexToRgba = useCallback((hex, opacity) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }, []);
+
+  /**
+   * Gets layer opacity based on layer depth
+   * Layer 1 = 1.0 (full opacity), Layer 2 = 0.75, Layer 3 = 0.5
+   */
+  const getLayerOpacity = useCallback((layer) => {
+    const layerOpacityMap = {
+      1: 1.0,   // Seed nodes - full opacity
+      2: 0.75,  // Mid-depth - medium opacity
+      3: 0.5,   // Deep layer - low opacity
+    };
+    return layerOpacityMap[layer] || 1.0;
+  }, []);
+
+  // Refactored node color: Query color with opacity based on layer depth
   const getNodeColor = useCallback((node) => {
     const nodeId = node.id;
     const isSelected = selectedNode && selectedNode.id === nodeId;
     const isHovered = hoveredNode && hoveredNode.id === nodeId;
     const isHighlighted = highlightedNodes.has(nodeId);
     const isConnected = selectedNode && connectedNodeIds.has(nodeId) && nodeId !== selectedNode.id;
-    const layer = node.layer || 1; // Default to layer 1 if not specified
+    const layer = node.layer || 1;
 
-    // Selected node - bright highlight (always visible)
+    // Selected, hovered, connected, or highlighted nodes - always fully opaque for accessibility
     if (isSelected) return '#ffd700'; // Gold for selected
-    
-    // Hovered node - bright blue (always visible)
     if (isHovered) return '#60a5fa'; // Light blue for hover
-    
-    // Connected nodes when selected - lighter blue (always visible)
     if (isConnected) return '#3a82ff'; // Bright blue for connected
-    
-    // Highlighted nodes on hover - medium blue (always visible)
     if (isHighlighted && hoveredNode) return '#4a90ff'; // Medium blue for highlighted
     
-    // Multi-query support: Use query color if available
+    // Multi-query support: Use query color with layer-based opacity
     if (node.queryColors && node.queryColors.length > 0) {
-      // If node belongs to multiple queries, use the first color (primary)
-      // For multi-query nodes, we could blend colors, but for simplicity use primary
-      return node.primaryColor || node.queryColors[0];
+      const baseColor = node.primaryColor || node.queryColors[0];
+      const opacity = getLayerOpacity(layer);
+      return hexToRgba(baseColor, opacity);
     }
     
-    // Legacy layer-based colors with distinct color families for visual distinction
-    // Layer 1 (seed papers) - Bright blues/purples, full vibrancy
-    if (layer === 1) {
-      if (node.citations > 50) return '#3a82ff'; // High citations - bright blue
-      if (node.citations > 20) return '#8b5cf6'; // Medium citations - vibrant purple
-      return '#6366f1'; // Low citations - indigo
-    }
-    
-    // Layer 2 - Green/teal color family, distinct from Layer 1
-    if (layer === 2) {
-      if (node.citations > 50) return '#10b981'; // High citations - emerald green
-      if (node.citations > 20) return '#14b8a6'; // Medium citations - teal
-      return '#06b6d4'; // Low citations - cyan
-    }
-    
-    // Layer 3 - Orange/amber color family, distinct from Layers 1 & 2
-    if (layer === 3) {
-      if (node.citations > 50) return '#f59e0b'; // High citations - amber
-      if (node.citations > 20) return '#fb923c'; // Medium citations - orange
-      return '#f97316'; // Low citations - deep orange
-    }
-    
-    // Fallback - default color
-    return '#6366f1';
-  }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds]);
+    // Legacy fallback: If no query color, use default with layer opacity
+    const defaultColor = '#6366f1'; // Default indigo
+    const opacity = getLayerOpacity(layer);
+    return hexToRgba(defaultColor, opacity);
+  }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
   // GRAPH-63: Enhanced node size with selection/hover states and layer-based sizing
   const getNodeSize = useCallback((node) => {
@@ -120,13 +120,13 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return baseSize * layerScale;
   }, [selectedNode, hoveredNode]);
 
-  // GRAPH-63: Enhanced link color based on selection/hover and layer
+  // Refactored link color: Query color with opacity based on layer depth
   const getLinkColor = useCallback((link) => {
     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
     const linkLayer = link.layer || 1;
     
-    // Highlight links connected to selected or hovered node (always bright)
+    // Highlight links connected to selected or hovered node (always fully opaque)
     if (selectedNode) {
       const selectedId = selectedNode.id;
       if (sourceId === selectedId || targetId === selectedId) {
@@ -148,26 +148,23 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       }
     }
     
-    // Multi-query support: Use query color for links if available
+    // Multi-query support: Use query color with layer-based opacity
     if (link.color) {
-      return link.color;
+      const opacity = getLayerOpacity(linkLayer);
+      return hexToRgba(link.color, opacity);
     }
     
     if (link.queryColors && link.queryColors.length > 0) {
-      // If link belongs to multiple queries, use the first color
-      return link.queryColors[0];
+      const baseColor = link.queryColors[0];
+      const opacity = getLayerOpacity(linkLayer);
+      return hexToRgba(baseColor, opacity);
     }
     
-    // Legacy layer-based link colors: Match the node color families
-    // Layer 1 links - blue/purple tones
-    if (linkLayer === 1) return '#4a4a4e'; // Default link color (gray)
-    // Layer 2 links - green/teal tones
-    if (linkLayer === 2) return '#10b981'; // Emerald green, slightly transparent
-    // Layer 3 links - orange/amber tones
-    if (linkLayer === 3) return '#f59e0b'; // Amber, slightly transparent
-    
-    return '#4a4a4e'; // Default link color
-  }, [selectedNode, hoveredNode, highlightedNodes]);
+    // Legacy fallback: Default gray with layer opacity
+    const defaultColor = '#4a4a4e';
+    const opacity = getLayerOpacity(linkLayer);
+    return hexToRgba(defaultColor, opacity);
+  }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
 
   // GRAPH-63: Enhanced link width
   const getLinkWidth = useCallback((link) => {
@@ -237,12 +234,13 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
           }
           
           // Multi-query support: Add border for nodes belonging to multiple queries
+          // Draw multi-color segmented border to show all query affiliations
           if (node.queryColors && node.queryColors.length > 1) {
-            // Node belongs to multiple queries - draw multi-color border
             const colors = node.queryColors;
             const segmentAngle = (2 * Math.PI) / colors.length;
             
             colors.forEach((color, index) => {
+              // Use full opacity for borders to ensure visibility
               ctx.strokeStyle = color;
               ctx.lineWidth = 2 / globalScale;
               ctx.beginPath();
@@ -257,26 +255,21 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             });
           }
           
-          // Legacy layer-based border/ring for visual distinction
-          // Layer 1: No border (primary layer)
-          // Layer 2: Thin green border
-          // Layer 3: Thin orange border
-          if (!node.queryColors && layer === 2) {
-            ctx.strokeStyle = '#10b981';
-            ctx.lineWidth = 1.5 / globalScale;
-            ctx.setLineDash([3 / globalScale, 3 / globalScale]); // Dashed border
+          // Layer depth indicator: Add subtle border for deeper layers
+          // Layer 2 and 3 get a dashed border to indicate depth
+          if (layer === 2 || layer === 3) {
+            const baseColor = node.queryColors && node.queryColors.length > 0 
+              ? node.queryColors[0] 
+              : '#6366f1';
+            ctx.strokeStyle = baseColor;
+            ctx.globalAlpha = 0.5; // Subtle border
+            ctx.lineWidth = 1 / globalScale;
+            ctx.setLineDash([3 / globalScale, 3 / globalScale]);
             ctx.beginPath();
             ctx.arc(node.x, node.y, nodeSize + 2, 0, 2 * Math.PI);
             ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
-          } else if (!node.queryColors && layer === 3) {
-            ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 1.5 / globalScale;
-            ctx.setLineDash([2 / globalScale, 2 / globalScale]); // Dashed border
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeSize + 2, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1.0; // Reset alpha
           }
         }}
         height={height}
