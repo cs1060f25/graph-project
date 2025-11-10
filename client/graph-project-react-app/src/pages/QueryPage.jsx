@@ -6,10 +6,17 @@ import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
+import QueryFilterPanel from '../components/QueryFilterPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
 import GraphVisualization from '../components/GraphVisualization';
 import { transformPapersToGraph } from '../utils/graphDataTransformer';
 import { fetchNextLayer, createLayerLinks } from '../utils/graphLayerHelper';
+import { 
+  createQueryGraph, 
+  mergeQueryGraphs, 
+  toggleQueryVisibility, 
+  removeQueryGraph
+} from '../utils/queryGraphManager';
 import { useAuth } from '../contexts/AuthContext';
 import './QueryPage.css';
 
@@ -20,12 +27,14 @@ export default function QueryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [queryHistory, setQueryHistory] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'graph'
   const [selectedNode, setSelectedNode] = useState(null);
   const queryInputRef = useRef(null);
 
-  // Graph layer expansion state
+  // Multi-query graph state
+  const [queryGraphs, setQueryGraphs] = useState([]); // Array of query graph objects
+
+  // Graph layer expansion state (legacy - kept for backward compatibility)
   const [currentDepth, setCurrentDepth] = useState(1); // Current layer depth (1-3)
   const [layerPapers, setLayerPapers] = useState({}); // Papers organized by layer: { 1: [...], 2: [...], 3: [...] }
   const [expandingLayer, setExpandingLayer] = useState(false); // Loading state for expansion
@@ -50,10 +59,16 @@ export default function QueryPage() {
     formatTimestamp
   } = useQueryHistory(isAuthenticated);
 
-  // Transform results to graph format with layer support
+  // Transform results to graph format with multi-query support
   const graphData = useMemo(() => {
     if (viewMode !== 'graph') return null;
     
+    // If we have query graphs, merge them with layer support
+    if (queryGraphs.length > 0) {
+      return mergeQueryGraphs(queryGraphs, transformPapersToGraph, createLayerLinks);
+    }
+    
+    // Fallback to legacy layer-based system if no query graphs exist
     // Combine all papers from all visible layers
     const allVisiblePapers = [];
     for (let layer = 1; layer <= currentDepth; layer++) {
@@ -103,30 +118,62 @@ export default function QueryPage() {
       nodes: transformed.nodes,
       links: uniqueLinks
     };
-  }, [results, layerPapers, currentDepth, viewMode]);
+  }, [queryGraphs, results, layerPapers, currentDepth, viewMode]);
+
+  /**
+   * Parses multiple queries from input (comma or semicolon separated)
+   * @param {string} input - Input string that may contain multiple queries
+   * @returns {Array} Array of trimmed query strings
+   */
+  const parseMultipleQueries = (input) => {
+    if (!input || !input.trim()) {
+      return [];
+    }
+    
+    // Split by comma or semicolon, then filter out empty strings
+    const queries = input
+      .split(/[,;]/)
+      .map(q => q.trim())
+      .filter(q => q.length > 0);
+    
+    return queries;
+  };
 
   // Validate query input (GRAPH-60 enhancement)
   const validateQuery = (queryText) => {
     if (!queryText || !queryText.trim()) {
       return { valid: false, error: 'Please enter a search query' };
     }
-    if (queryText.trim().length > 200) {
-      return { valid: false, error: 'Query must be less than 200 characters' };
+    
+    const queries = parseMultipleQueries(queryText);
+    if (queries.length === 0) {
+      return { valid: false, error: 'Please enter at least one search query' };
     }
-    return { valid: true };
+    
+    // Validate each individual query
+    for (const q of queries) {
+      if (q.length > 200) {
+        return { valid: false, error: `Query "${q.substring(0, 30)}..." is too long (max 200 characters)` };
+      }
+    }
+    
+    return { valid: true, queries };
   };
 
   // Enhanced error handling with retry logic (GRAPH-60 enhancement)
+  // Now supports multiple queries separated by commas or semicolons
   const handleSubmit = async (e, retry = false) => {
     e.preventDefault();
     
-    // Validate query
+    // Validate query and parse multiple queries
     const validation = validateQuery(query);
     if (!validation.valid) {
       setError(validation.error);
       queryInputRef.current?.focus();
       return;
     }
+
+    const queries = validation.queries || [query.trim()];
 
     if (!retry) {
       setRetryCount(0);
@@ -138,53 +185,90 @@ export default function QueryPage() {
     
     try {
       const userId = isAuthenticated && user?.uid ? user.uid : 'demo-user';
-      const searchResults = await apiHandler.makeQuery(query.trim(), { 
-        type: queryType,
-        userId: userId,
-        forceRefresh: retry // Force refresh on retry
-      });
-      
-      if (!searchResults || searchResults.length === 0) {
-        setError('No papers found. Try different keywords or a broader search term.');
+      const newQueryGraphs = [];
+      const allResults = [];
+      const errors = [];
+
+      // Process each query
+      for (const queryText of queries) {
+        try {
+          const searchResults = await apiHandler.makeQuery(queryText, { 
+            type: queryType,
+            userId: userId,
+            forceRefresh: retry
+          });
+          
+          if (!searchResults || searchResults.length === 0) {
+            errors.push(`No papers found for "${queryText}"`);
+            continue;
+          }
+
+          // Create a new query graph for this query
+          const newQueryGraph = createQueryGraph(
+            queryText,
+            searchResults.slice(0, LAYER_LIMITS[1]), // Limit to 10 papers for layer 1
+            queryGraphs.length + newQueryGraphs.length
+          );
+          
+          newQueryGraphs.push(newQueryGraph);
+          allResults.push(...searchResults);
+          
+          // Add to database history if authenticated
+          if (isAuthenticated) {
+            try {
+              await addToHistory({
+                query: queryText,
+                type: queryType,
+                resultCount: searchResults.length
+              });
+            } catch (historyError) {
+              console.warn(`Failed to save query history for "${queryText}":`, historyError);
+            }
+          }
+        } catch (err) {
+          console.error(`Search failed for "${queryText}":`, err);
+          errors.push(`Failed to search "${queryText}": ${err.message || 'Unknown error'}`);
+        }
+      }
+
+      // Update state with all new query graphs
+      if (newQueryGraphs.length > 0) {
+        setQueryGraphs(prev => [...prev, ...newQueryGraphs]);
+        setResults(allResults);
+        setRetryCount(0);
+
+        // Legacy layer system (for backward compatibility) - use first query's results
+        if (allResults.length > 0) {
+          const seedPapers = allResults
+            .slice(0, LAYER_LIMITS[1])
+            .map(paper => ({
+              ...paper,
+              layer: 1
+            }));
+          setLayerPapers({ 1: seedPapers });
+          setCurrentDepth(1);
+        }
+
+        // Show success message or partial errors
+        if (errors.length > 0 && errors.length < queries.length) {
+          setError(`Some queries failed: ${errors.join('; ')}`);
+        } else if (errors.length === queries.length) {
+          setError(`All queries failed: ${errors.join('; ')}`);
+          setResults([]);
+          setLayerPapers({});
+          setCurrentDepth(1);
+        } else {
+          setError(null);
+        }
+      } else {
+        // All queries failed
+        const errorMessage = errors.length > 0 
+          ? errors.join('; ')
+          : 'No papers found. Try different keywords or a broader search term.';
+        setError(errorMessage);
         setResults([]);
-        // Reset graph layers
         setLayerPapers({});
         setCurrentDepth(1);
-      } else {
-        setResults(searchResults);
-        setRetryCount(0); // Reset retry count on success
-        
-        // Initialize layer 1 with seed papers (limit to 10)
-        const seedPapers = searchResults
-          .slice(0, LAYER_LIMITS[1])
-          .map(paper => ({
-            ...paper,
-            layer: 1
-          }));
-        setLayerPapers({ 1: seedPapers });
-        setCurrentDepth(1);
-        
-        // Add to local history for immediate display
-        const newHistoryItem = { 
-          query: query.trim(), 
-          type: queryType,
-          timestamp: new Date() 
-        };
-        setQueryHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 10
-        
-        // Add to database history if authenticated
-        if (isAuthenticated) {
-          try {
-            await addToHistory({
-              query: query.trim(),
-              type: queryType,
-              resultCount: searchResults.length
-            });
-          } catch (historyError) {
-            console.warn('Failed to save query history:', historyError);
-            // Don't block the user if history save fails
-          }
-        }
       }
     } catch (err) {
       console.error('Search failed:', err);
@@ -224,24 +308,40 @@ export default function QueryPage() {
     setResults([]);
     setError(null);
     setSelectedNode(null);
+    // Clear all query graphs
+    setQueryGraphs([]);
     // Reset graph layers
     setLayerPapers({});
     setCurrentDepth(1);
   };
 
   /**
-   * Expands the graph to a specific layer
+   * Handles toggling visibility of a query graph
+   */
+  const handleToggleQueryVisibility = (queryId) => {
+    setQueryGraphs(prev => toggleQueryVisibility(prev, queryId));
+  };
+
+  /**
+   * Handles removing a query graph
+   */
+  const handleRemoveQuery = (queryId) => {
+    setQueryGraphs(prev => removeQueryGraph(prev, queryId));
+    // If this was the last query, clear results
+    if (queryGraphs.length === 1) {
+      setResults([]);
+      setLayerPapers({});
+      setCurrentDepth(1);
+    }
+  };
+
+  /**
+   * Expands the graph to a specific layer for all visible query graphs
    * Fetches related papers for all papers in previous layers up to the target layer
    */
   const expandToLayer = async (targetLayer) => {
     if (targetLayer < 1 || targetLayer > 3) {
       console.warn('[QueryPage] Invalid target layer:', targetLayer);
-      return;
-    }
-
-    if (targetLayer <= currentDepth) {
-      // Just update the depth to show/hide layers (no fetching needed)
-      setCurrentDepth(targetLayer);
       return;
     }
 
@@ -254,92 +354,207 @@ export default function QueryPage() {
     setError(null);
 
     try {
-      // Expand layer by layer until we reach the target
-      for (let nextLayer = currentDepth + 1; nextLayer <= targetLayer; nextLayer++) {
-        // Check if layer already exists
-        if (layerPapers[nextLayer] && layerPapers[nextLayer].length > 0) {
-          console.log(`[QueryPage] Layer ${nextLayer} already exists, skipping`);
-          continue;
-        }
+      // If we have query graphs, expand layers for each visible query
+      if (queryGraphs.length > 0) {
+        const updatedQueryGraphs = await Promise.all(
+          queryGraphs.map(async (queryGraph) => {
+            if (!queryGraph.visible) {
+              // Just update depth for hidden queries without fetching
+              return {
+                ...queryGraph,
+                currentDepth: Math.min(targetLayer, queryGraph.currentDepth || 1)
+              };
+            }
 
-        // Get all papers from previous layers
-        const previousLayerPapers = [];
-        for (let layer = 1; layer < nextLayer; layer++) {
-          if (layerPapers[layer]) {
-            previousLayerPapers.push(...layerPapers[layer]);
-          }
-        }
+            const currentQueryDepth = queryGraph.currentDepth || 1;
+            
+            // If target is less than current depth, just update (no fetching)
+            if (targetLayer <= currentQueryDepth) {
+              return {
+                ...queryGraph,
+                currentDepth: targetLayer
+              };
+            }
 
-        if (previousLayerPapers.length === 0) {
-          console.warn(`[QueryPage] No papers in previous layers to expand from for layer ${nextLayer}`);
-          break;
-        }
+            // Expand layer by layer until we reach the target
+            let updatedLayerPapers = { ...queryGraph.layerPapers };
+            let nextDepth = currentQueryDepth;
 
-        // Get all existing papers across all layers
-        const allExistingPapers = [];
-        for (let layer = 1; layer < nextLayer; layer++) {
-          if (layerPapers[layer]) {
-            allExistingPapers.push(...layerPapers[layer]);
-          }
-        }
+            for (let nextLayer = currentQueryDepth + 1; nextLayer <= targetLayer; nextLayer++) {
+              // Check if layer already exists
+              if (updatedLayerPapers[nextLayer] && updatedLayerPapers[nextLayer].length > 0) {
+                console.log(`[QueryPage] Query ${queryGraph.id} layer ${nextLayer} already exists, skipping`);
+                nextDepth = nextLayer;
+                continue;
+              }
 
-        console.log(`[QueryPage] Expanding to layer ${nextLayer} from ${previousLayerPapers.length} previous papers`);
+              // Get all papers from previous layers for this query
+              const previousLayerPapers = [];
+              for (let layer = 1; layer < nextLayer; layer++) {
+                if (updatedLayerPapers[layer]) {
+                  previousLayerPapers.push(...updatedLayerPapers[layer]);
+                }
+              }
 
-        // Calculate how many papers we need for this layer
-        // Layer limits are cumulative: Layer 1 = 10 total, Layer 2 = 40 total, Layer 3 = 80 total
-        const currentCount = allExistingPapers.length;
-        const targetLimit = LAYER_LIMITS[nextLayer];
-        const needed = Math.max(0, targetLimit - currentCount);
+              if (previousLayerPapers.length === 0) {
+                console.warn(`[QueryPage] No papers in previous layers for query ${queryGraph.id}`);
+                break;
+              }
 
-        if (needed <= 0) {
-          console.log(`[QueryPage] Layer ${nextLayer} limit (${targetLimit}) already reached with ${currentCount} papers`);
-          setLayerPapers(prev => ({
-            ...prev,
-            [nextLayer]: []
-          }));
-          continue;
-        }
+              // Get all existing papers across all layers for this query
+              const allExistingPapers = [];
+              for (let layer = 1; layer < nextLayer; layer++) {
+                if (updatedLayerPapers[layer]) {
+                  allExistingPapers.push(...updatedLayerPapers[layer]);
+                }
+              }
 
-        console.log(`[QueryPage] Need ${needed} more papers to reach layer ${nextLayer} limit of ${targetLimit}`);
+              // Calculate how many papers we need for this layer
+              const currentCount = allExistingPapers.length;
+              const targetLimit = LAYER_LIMITS[nextLayer];
+              const needed = Math.max(0, targetLimit - currentCount);
 
-        // Fetch next layer papers (limit per source paper based on how many we need)
-        const maxPerPaper = Math.ceil(needed / Math.max(1, previousLayerPapers.length));
-        const newPapers = await fetchNextLayer(
-          previousLayerPapers,
-          allExistingPapers,
-          apiHandler,
-          Math.max(1, Math.min(maxPerPaper, 5)) // Between 1 and 5 papers per source
+              if (needed <= 0) {
+                console.log(`[QueryPage] Query ${queryGraph.id} layer ${nextLayer} limit already reached`);
+                updatedLayerPapers[nextLayer] = [];
+                nextDepth = nextLayer;
+                continue;
+              }
+
+              // Fetch next layer papers
+              const maxPerPaper = Math.ceil(needed / Math.max(1, previousLayerPapers.length));
+              const newPapers = await fetchNextLayer(
+                previousLayerPapers,
+                allExistingPapers,
+                apiHandler,
+                Math.max(1, Math.min(maxPerPaper, 5))
+              );
+
+              // Limit to exactly what we need
+              const limitedPapers = newPapers.slice(0, needed);
+
+              if (limitedPapers.length === 0) {
+                console.log(`[QueryPage] No new papers found for query ${queryGraph.id} layer ${nextLayer}`);
+                updatedLayerPapers[nextLayer] = [];
+                nextDepth = nextLayer;
+                continue;
+              }
+
+              // Mark new papers with their layer
+              const layerMarkedPapers = limitedPapers.map(paper => ({
+                ...paper,
+                layer: nextLayer
+              }));
+
+              updatedLayerPapers[nextLayer] = layerMarkedPapers;
+              nextDepth = nextLayer;
+
+              console.log(`[QueryPage] Query ${queryGraph.id} expanded to layer ${nextLayer} with ${layerMarkedPapers.length} papers`);
+            }
+
+            return {
+              ...queryGraph,
+              layerPapers: updatedLayerPapers,
+              currentDepth: nextDepth
+            };
+          })
         );
 
-        // Limit to exactly what we need to reach the target limit
-        const limitedPapers = newPapers.slice(0, needed);
-
-        if (limitedPapers.length === 0) {
-          console.log(`[QueryPage] No new papers found for layer ${nextLayer}`);
-          setLayerPapers(prev => ({
-            ...prev,
-            [nextLayer]: []
-          }));
-          continue;
+        setQueryGraphs(updatedQueryGraphs);
+      } else {
+        // Legacy single-query layer expansion (for backward compatibility)
+        if (targetLayer <= currentDepth) {
+          setCurrentDepth(targetLayer);
+          setExpandingLayer(false);
+          return;
         }
 
-        // Mark new papers with their layer
-        const layerMarkedPapers = limitedPapers.map(paper => ({
-          ...paper,
-          layer: nextLayer
-        }));
+        // Expand layer by layer until we reach the target
+        for (let nextLayer = currentDepth + 1; nextLayer <= targetLayer; nextLayer++) {
+          // Check if layer already exists
+          if (layerPapers[nextLayer] && layerPapers[nextLayer].length > 0) {
+            console.log(`[QueryPage] Layer ${nextLayer} already exists, skipping`);
+            continue;
+          }
 
-        // Update layer papers state
-        setLayerPapers(prev => ({
-          ...prev,
-          [nextLayer]: layerMarkedPapers
-        }));
+          // Get all papers from previous layers
+          const previousLayerPapers = [];
+          for (let layer = 1; layer < nextLayer; layer++) {
+            if (layerPapers[layer]) {
+              previousLayerPapers.push(...layerPapers[layer]);
+            }
+          }
 
-        console.log(`[QueryPage] Successfully expanded to layer ${nextLayer} with ${layerMarkedPapers.length} new papers`);
+          if (previousLayerPapers.length === 0) {
+            console.warn(`[QueryPage] No papers in previous layers to expand from for layer ${nextLayer}`);
+            break;
+          }
+
+          // Get all existing papers across all layers
+          const allExistingPapers = [];
+          for (let layer = 1; layer < nextLayer; layer++) {
+            if (layerPapers[layer]) {
+              allExistingPapers.push(...layerPapers[layer]);
+            }
+          }
+
+          console.log(`[QueryPage] Expanding to layer ${nextLayer} from ${previousLayerPapers.length} previous papers`);
+
+          // Calculate how many papers we need for this layer
+          const currentCount = allExistingPapers.length;
+          const targetLimit = LAYER_LIMITS[nextLayer];
+          const needed = Math.max(0, targetLimit - currentCount);
+
+          if (needed <= 0) {
+            console.log(`[QueryPage] Layer ${nextLayer} limit (${targetLimit}) already reached with ${currentCount} papers`);
+            setLayerPapers(prev => ({
+              ...prev,
+              [nextLayer]: []
+            }));
+            continue;
+          }
+
+          console.log(`[QueryPage] Need ${needed} more papers to reach layer ${nextLayer} limit of ${targetLimit}`);
+
+          // Fetch next layer papers
+          const maxPerPaper = Math.ceil(needed / Math.max(1, previousLayerPapers.length));
+          const newPapers = await fetchNextLayer(
+            previousLayerPapers,
+            allExistingPapers,
+            apiHandler,
+            Math.max(1, Math.min(maxPerPaper, 5))
+          );
+
+          // Limit to exactly what we need
+          const limitedPapers = newPapers.slice(0, needed);
+
+          if (limitedPapers.length === 0) {
+            console.log(`[QueryPage] No new papers found for layer ${nextLayer}`);
+            setLayerPapers(prev => ({
+              ...prev,
+              [nextLayer]: []
+            }));
+            continue;
+          }
+
+          // Mark new papers with their layer
+          const layerMarkedPapers = limitedPapers.map(paper => ({
+            ...paper,
+            layer: nextLayer
+          }));
+
+          // Update layer papers state
+          setLayerPapers(prev => ({
+            ...prev,
+            [nextLayer]: layerMarkedPapers
+          }));
+
+          console.log(`[QueryPage] Successfully expanded to layer ${nextLayer} with ${layerMarkedPapers.length} new papers`);
+        }
+
+        // Update depth to target layer
+        setCurrentDepth(targetLayer);
       }
-
-      // Update depth to target layer
-      setCurrentDepth(targetLayer);
     } catch (err) {
       console.error('[QueryPage] Error expanding layer:', err);
       setError(`Failed to expand graph layer: ${err.message}`);
@@ -406,7 +621,7 @@ export default function QueryPage() {
                     setQuery(e.target.value);
                     setError(null); // Clear error when user types
                   }}
-                  placeholder="Search for research papers..."
+                  placeholder="Search for research papers... (separate multiple queries with commas or semicolons)"
                   className="search-input"
                   disabled={loading || authLoading}
                   onKeyDown={(e) => {
@@ -441,24 +656,6 @@ export default function QueryPage() {
               )}
             </form>
           </div>
-
-          {/* Query History */}
-          {queryHistory.length > 0 && (
-            <div className="query-history">
-              <h3>Recent Searches</h3>
-              <div className="history-list">
-                {queryHistory.slice(0, 3).map((item, index) => (
-                  <button
-                    key={index}
-                    className="history-item"
-                    onClick={() => handleHistoryQueryClick(item.query)}
-                  >
-                    {item.query}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* View Mode Toggle */}
           {results.length > 0 && (
@@ -572,26 +769,46 @@ export default function QueryPage() {
           )}
 
           {/* Results Section - Graph View */}
-          {!loading && !error && results.length > 0 && viewMode === 'graph' && graphData && (
+          {!loading && !error && (results.length > 0 || queryGraphs.length > 0) && viewMode === 'graph' && graphData && (
             <div className="graph-results-section">
+              {/* Query Filter Panel */}
+              {queryGraphs.length > 0 && (
+                <QueryFilterPanel
+                  queryGraphs={queryGraphs}
+                  onToggleVisibility={handleToggleQueryVisibility}
+                  onRemoveQuery={handleRemoveQuery}
+                />
+              )}
+              
               <div className="results-header">
                 <h2>Paper Relationship Graph ({graphData.nodes.length} papers)</h2>
                 <div className="graph-controls">
                   {/* Layer Slider Controls */}
                   <div className="layer-controls">
                     <label htmlFor="layer-slider" className="layer-label">
-                      Layer: <span className="layer-value">{currentDepth}</span>
+                      Layer: <span className="layer-value">
+                        {queryGraphs.length > 0 
+                          ? Math.max(...queryGraphs.map(qg => qg.currentDepth || 1))
+                          : currentDepth
+                        }
+                      </span>
                     </label>
                     <input
                       id="layer-slider"
                       type="range"
                       min="1"
                       max="3"
-                      value={currentDepth}
+                      value={queryGraphs.length > 0 
+                        ? Math.max(...queryGraphs.map(qg => qg.currentDepth || 1))
+                        : currentDepth
+                      }
                       onChange={handleLayerSliderChange}
                       className="layer-slider"
                       disabled={expandingLayer || loading}
-                      title={`Current layer: ${currentDepth}/3`}
+                      title={`Current layer: ${queryGraphs.length > 0 
+                        ? Math.max(...queryGraphs.map(qg => qg.currentDepth || 1))
+                        : currentDepth
+                      }/3`}
                     />
                     <div className="layer-limits">
                       <span className="layer-limit-text">Limits: 10 / 40 / 80</span>
@@ -651,7 +868,7 @@ export default function QueryPage() {
           )}
 
           {/* Empty State */}
-          {!loading && !error && results.length === 0 && queryHistory.length === 0 && (
+          {!loading && !error && results.length === 0 && queryGraphs.length === 0 && (
             <div className="empty-state">
               <div className="empty-icon">🔍</div>
               <h3>Start Your Research Journey</h3>

@@ -69,7 +69,14 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     // Highlighted nodes on hover - medium blue (always visible)
     if (isHighlighted && hoveredNode) return '#4a90ff'; // Medium blue for highlighted
     
-    // Layer-based colors with distinct color families for visual distinction
+    // Multi-query support: Use query color if available
+    if (node.queryColors && node.queryColors.length > 0) {
+      // If node belongs to multiple queries, use the first color (primary)
+      // For multi-query nodes, we could blend colors, but for simplicity use primary
+      return node.primaryColor || node.queryColors[0];
+    }
+    
+    // Legacy layer-based colors with distinct color families for visual distinction
     // Layer 1 (seed papers) - Bright blues/purples, full vibrancy
     if (layer === 1) {
       if (node.citations > 50) return '#3a82ff'; // High citations - bright blue
@@ -141,7 +148,17 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       }
     }
     
-    // Layer-based link colors: Match the node color families
+    // Multi-query support: Use query color for links if available
+    if (link.color) {
+      return link.color;
+    }
+    
+    if (link.queryColors && link.queryColors.length > 0) {
+      // If link belongs to multiple queries, use the first color
+      return link.queryColors[0];
+    }
+    
+    // Legacy layer-based link colors: Match the node color families
     // Layer 1 links - blue/purple tones
     if (linkLayer === 1) return '#4a4a4e'; // Default link color (gray)
     // Layer 2 links - green/teal tones
@@ -219,11 +236,32 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             ctx.stroke();
           }
           
-          // Add layer-based border/ring for visual distinction
+          // Multi-query support: Add border for nodes belonging to multiple queries
+          if (node.queryColors && node.queryColors.length > 1) {
+            // Node belongs to multiple queries - draw multi-color border
+            const colors = node.queryColors;
+            const segmentAngle = (2 * Math.PI) / colors.length;
+            
+            colors.forEach((color, index) => {
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 2 / globalScale;
+              ctx.beginPath();
+              ctx.arc(
+                node.x, 
+                node.y, 
+                nodeSize + 3, 
+                index * segmentAngle, 
+                (index + 1) * segmentAngle
+              );
+              ctx.stroke();
+            });
+          }
+          
+          // Legacy layer-based border/ring for visual distinction
           // Layer 1: No border (primary layer)
           // Layer 2: Thin green border
           // Layer 3: Thin orange border
-          if (layer === 2) {
+          if (!node.queryColors && layer === 2) {
             ctx.strokeStyle = '#10b981';
             ctx.lineWidth = 1.5 / globalScale;
             ctx.setLineDash([3 / globalScale, 3 / globalScale]); // Dashed border
@@ -231,7 +269,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             ctx.arc(node.x, node.y, nodeSize + 2, 0, 2 * Math.PI);
             ctx.stroke();
             ctx.setLineDash([]); // Reset dash
-          } else if (layer === 3) {
+          } else if (!node.queryColors && layer === 3) {
             ctx.strokeStyle = '#f59e0b';
             ctx.lineWidth = 1.5 / globalScale;
             ctx.setLineDash([2 / globalScale, 2 / globalScale]); // Dashed border
