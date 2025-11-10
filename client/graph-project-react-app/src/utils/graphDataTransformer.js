@@ -3,9 +3,10 @@
  * for visualization libraries like react-force-graph
  * 
  * @param {Array} papers - Array of paper objects from API
+ * @param {number} layer - Layer number (1 = seed, 2 = first expansion, 3 = second expansion)
  * @returns {Object} Graph data with nodes and links
  */
-export const transformPapersToGraph = (papers) => {
+export const transformPapersToGraph = (papers, layer = 1) => {
   if (!papers || !Array.isArray(papers) || papers.length === 0) {
     return { nodes: [], links: [] };
   }
@@ -27,6 +28,8 @@ export const transformPapersToGraph = (papers) => {
       // Visual properties
       group: paper.category || 1,
       value: citationCount || 1, // Node size based on citations
+      // Layer information for visual distinction
+      layer: paper.layer || layer, // Track which layer this node belongs to
     };
   });
 
