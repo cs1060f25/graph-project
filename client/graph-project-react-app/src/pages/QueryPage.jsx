@@ -2,13 +2,14 @@
 // Main Query Page component with search and graph visualization
 // HW9 GRAPH-60: Enhanced Query Input & API Integration
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
 import GraphVisualization from '../components/GraphVisualization';
 import { transformPapersToGraph } from '../utils/graphDataTransformer';
+import { fetchNextLayer, createLayerLinks } from '../utils/graphLayerHelper';
 import { useAuth } from '../contexts/AuthContext';
 import './QueryPage.css';
 
@@ -23,6 +24,14 @@ export default function QueryPage() {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'graph'
   const [selectedNode, setSelectedNode] = useState(null);
   const queryInputRef = useRef(null);
+
+  // Graph layer expansion state
+  const [currentDepth, setCurrentDepth] = useState(1); // Current layer depth (1-3)
+  const [layerPapers, setLayerPapers] = useState({}); // Papers organized by layer: { 1: [...], 2: [...], 3: [...] }
+  const [expandingLayer, setExpandingLayer] = useState(false); // Loading state for expansion
+  
+  // Layer paper limits: Layer 1 = 10, Layer 2 = 40, Layer 3 = 80
+  const LAYER_LIMITS = { 1: 10, 2: 40, 3: 80 };
 
   // Use actual authentication context (GRAPH-60 enhancement)
   const { user, loading: authLoading } = useAuth();
@@ -41,8 +50,60 @@ export default function QueryPage() {
     formatTimestamp
   } = useQueryHistory(isAuthenticated);
 
-  // Transform results to graph format
-  const graphData = results.length > 0 ? transformPapersToGraph(results) : null;
+  // Transform results to graph format with layer support
+  const graphData = useMemo(() => {
+    if (viewMode !== 'graph') return null;
+    
+    // Combine all papers from all visible layers
+    const allVisiblePapers = [];
+    for (let layer = 1; layer <= currentDepth; layer++) {
+      if (layerPapers[layer] && layerPapers[layer].length > 0) {
+        allVisiblePapers.push(...layerPapers[layer]);
+      }
+    }
+    
+    // If no layer papers exist yet, use initial results as layer 1
+    if (allVisiblePapers.length === 0 && results.length > 0) {
+      return transformPapersToGraph(results, 1);
+    }
+    
+    if (allVisiblePapers.length === 0) {
+      return null;
+    }
+    
+    // Transform all visible papers to graph format
+    const transformed = transformPapersToGraph(allVisiblePapers);
+    
+    // Start with existing links from transformation
+    const allLinks = [...transformed.links];
+    
+    // Create links between layers (connect new layer papers to their source papers)
+    for (let layer = 2; layer <= currentDepth; layer++) {
+      if (layerPapers[layer] && layerPapers[layer].length > 0) {
+        // Create links from source papers to new layer papers
+        const layerLinks = createLayerLinks(layerPapers[layer], transformed.nodes);
+        allLinks.push(...layerLinks);
+      }
+    }
+    
+    // Deduplicate links (in case some were created in both transform and createLayerLinks)
+    const uniqueLinks = [];
+    const linkSet = new Set();
+    allLinks.forEach(link => {
+      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+      const linkKey = `${sourceId}-${targetId}`;
+      if (!linkSet.has(linkKey)) {
+        linkSet.add(linkKey);
+        uniqueLinks.push(link);
+      }
+    });
+    
+    return {
+      nodes: transformed.nodes,
+      links: uniqueLinks
+    };
+  }, [results, layerPapers, currentDepth, viewMode]);
 
   // Validate query input (GRAPH-60 enhancement)
   const validateQuery = (queryText) => {
@@ -86,9 +147,22 @@ export default function QueryPage() {
       if (!searchResults || searchResults.length === 0) {
         setError('No papers found. Try different keywords or a broader search term.');
         setResults([]);
+        // Reset graph layers
+        setLayerPapers({});
+        setCurrentDepth(1);
       } else {
         setResults(searchResults);
         setRetryCount(0); // Reset retry count on success
+        
+        // Initialize layer 1 with seed papers (limit to 10)
+        const seedPapers = searchResults
+          .slice(0, LAYER_LIMITS[1])
+          .map(paper => ({
+            ...paper,
+            layer: 1
+          }));
+        setLayerPapers({ 1: seedPapers });
+        setCurrentDepth(1);
         
         // Add to local history for immediate display
         const newHistoryItem = { 
@@ -150,6 +224,136 @@ export default function QueryPage() {
     setResults([]);
     setError(null);
     setSelectedNode(null);
+    // Reset graph layers
+    setLayerPapers({});
+    setCurrentDepth(1);
+  };
+
+  /**
+   * Expands the graph to a specific layer
+   * Fetches related papers for all papers in previous layers up to the target layer
+   */
+  const expandToLayer = async (targetLayer) => {
+    if (targetLayer < 1 || targetLayer > 3) {
+      console.warn('[QueryPage] Invalid target layer:', targetLayer);
+      return;
+    }
+
+    if (targetLayer <= currentDepth) {
+      // Just update the depth to show/hide layers (no fetching needed)
+      setCurrentDepth(targetLayer);
+      return;
+    }
+
+    if (expandingLayer) {
+      console.log('[QueryPage] Layer expansion already in progress');
+      return;
+    }
+
+    setExpandingLayer(true);
+    setError(null);
+
+    try {
+      // Expand layer by layer until we reach the target
+      for (let nextLayer = currentDepth + 1; nextLayer <= targetLayer; nextLayer++) {
+        // Check if layer already exists
+        if (layerPapers[nextLayer] && layerPapers[nextLayer].length > 0) {
+          console.log(`[QueryPage] Layer ${nextLayer} already exists, skipping`);
+          continue;
+        }
+
+        // Get all papers from previous layers
+        const previousLayerPapers = [];
+        for (let layer = 1; layer < nextLayer; layer++) {
+          if (layerPapers[layer]) {
+            previousLayerPapers.push(...layerPapers[layer]);
+          }
+        }
+
+        if (previousLayerPapers.length === 0) {
+          console.warn(`[QueryPage] No papers in previous layers to expand from for layer ${nextLayer}`);
+          break;
+        }
+
+        // Get all existing papers across all layers
+        const allExistingPapers = [];
+        for (let layer = 1; layer < nextLayer; layer++) {
+          if (layerPapers[layer]) {
+            allExistingPapers.push(...layerPapers[layer]);
+          }
+        }
+
+        console.log(`[QueryPage] Expanding to layer ${nextLayer} from ${previousLayerPapers.length} previous papers`);
+
+        // Calculate how many papers we need for this layer
+        // Layer limits are cumulative: Layer 1 = 10 total, Layer 2 = 40 total, Layer 3 = 80 total
+        const currentCount = allExistingPapers.length;
+        const targetLimit = LAYER_LIMITS[nextLayer];
+        const needed = Math.max(0, targetLimit - currentCount);
+
+        if (needed <= 0) {
+          console.log(`[QueryPage] Layer ${nextLayer} limit (${targetLimit}) already reached with ${currentCount} papers`);
+          setLayerPapers(prev => ({
+            ...prev,
+            [nextLayer]: []
+          }));
+          continue;
+        }
+
+        console.log(`[QueryPage] Need ${needed} more papers to reach layer ${nextLayer} limit of ${targetLimit}`);
+
+        // Fetch next layer papers (limit per source paper based on how many we need)
+        const maxPerPaper = Math.ceil(needed / Math.max(1, previousLayerPapers.length));
+        const newPapers = await fetchNextLayer(
+          previousLayerPapers,
+          allExistingPapers,
+          apiHandler,
+          Math.max(1, Math.min(maxPerPaper, 5)) // Between 1 and 5 papers per source
+        );
+
+        // Limit to exactly what we need to reach the target limit
+        const limitedPapers = newPapers.slice(0, needed);
+
+        if (limitedPapers.length === 0) {
+          console.log(`[QueryPage] No new papers found for layer ${nextLayer}`);
+          setLayerPapers(prev => ({
+            ...prev,
+            [nextLayer]: []
+          }));
+          continue;
+        }
+
+        // Mark new papers with their layer
+        const layerMarkedPapers = limitedPapers.map(paper => ({
+          ...paper,
+          layer: nextLayer
+        }));
+
+        // Update layer papers state
+        setLayerPapers(prev => ({
+          ...prev,
+          [nextLayer]: layerMarkedPapers
+        }));
+
+        console.log(`[QueryPage] Successfully expanded to layer ${nextLayer} with ${layerMarkedPapers.length} new papers`);
+      }
+
+      // Update depth to target layer
+      setCurrentDepth(targetLayer);
+    } catch (err) {
+      console.error('[QueryPage] Error expanding layer:', err);
+      setError(`Failed to expand graph layer: ${err.message}`);
+    } finally {
+      setExpandingLayer(false);
+    }
+  };
+
+  /**
+   * Handles slider change to expand/collapse layers
+   */
+  const handleLayerSliderChange = async (e) => {
+    const newDepth = parseInt(e.target.value, 10);
+    await expandToLayer(newDepth);
   };
 
   // Handle clicking on a query from history
@@ -371,10 +575,53 @@ export default function QueryPage() {
           {!loading && !error && results.length > 0 && viewMode === 'graph' && graphData && (
             <div className="graph-results-section">
               <div className="results-header">
-                <h2>Paper Relationship Graph ({results.length} papers)</h2>
-                <button onClick={clearResults} className="clear-button">
-                  Clear Results
-                </button>
+                <h2>Paper Relationship Graph ({graphData.nodes.length} papers)</h2>
+                <div className="graph-controls">
+                  {/* Layer Slider Controls */}
+                  <div className="layer-controls">
+                    <label htmlFor="layer-slider" className="layer-label">
+                      Layer: <span className="layer-value">{currentDepth}</span>
+                    </label>
+                    <input
+                      id="layer-slider"
+                      type="range"
+                      min="1"
+                      max="3"
+                      value={currentDepth}
+                      onChange={handleLayerSliderChange}
+                      className="layer-slider"
+                      disabled={expandingLayer || loading}
+                      title={`Current layer: ${currentDepth}/3`}
+                    />
+                    <div className="layer-limits">
+                      <span className="layer-limit-text">Limits: 10 / 40 / 80</span>
+                    </div>
+                    {expandingLayer && (
+                      <span className="expanding-indicator">⏳ Expanding...</span>
+                    )}
+                  </div>
+                  <button onClick={clearResults} className="clear-button">
+                    Clear Results
+                  </button>
+                </div>
+              </div>
+              {/* Layer Legend */}
+              <div className="layer-legend">
+                <div className="legend-title">Layer Colors:</div>
+                <div className="legend-items">
+                  <div className="legend-item">
+                    <div className="legend-color" style={{ background: '#6366f1' }}></div>
+                    <span>Layer 1 (Seed Papers)</span>
+                  </div>
+                  <div className="legend-item">
+                    <div className="legend-color" style={{ background: '#06b6d4', border: '1px dashed #06b6d4' }}></div>
+                    <span>Layer 2</span>
+                  </div>
+                  <div className="legend-item">
+                    <div className="legend-color" style={{ background: '#f97316', border: '1px dashed #f97316' }}></div>
+                    <span>Layer 3</span>
+                  </div>
+                </div>
               </div>
               <div className="graph-section">
                 <GraphVisualization 
