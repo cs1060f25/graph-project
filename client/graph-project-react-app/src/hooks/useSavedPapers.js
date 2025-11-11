@@ -31,11 +31,15 @@ export function useSavedPapers() {
         userApi.getFolders(),
       ]);
 
-      setPapers(papersData);
-      setFolders(foldersData);
+      // Ensure papers and folders are always arrays, even if API returns undefined/null
+      setPapers(Array.isArray(papersData) ? papersData : []);
+      setFolders(Array.isArray(foldersData) ? foldersData : []);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Failed to load papers and folders');
+      // Ensure state is always valid arrays even on error
+      setPapers([]);
+      setFolders([]);
     } finally {
       setLoading(false);
     }
@@ -51,8 +55,12 @@ export function useSavedPapers() {
    * @param {string} paperId - Paper ID
    */
   const toggleStar = useCallback(async (paperId) => {
+    // Ensure papers is an array
+    if (!Array.isArray(papers)) {
+      return;
+    }
     // Find the paper and save state for potential revert
-    const paper = papers.find(p => p.id === paperId);
+    const paper = papers.find(p => p?.id === paperId);
     if (!paper) return;
 
     const previousStarred = paper.starred;
@@ -65,9 +73,12 @@ export function useSavedPapers() {
         )
       );
 
-      // TODO: Implement updatePaper in backend
-      // For now, this is just optimistic UI
-      // await userApi.updatePaper(paperId, { starred: !paper.starred });
+      // Update in backend
+      const result = await userApi.updatePaper(paperId, { starred: !paper.starred });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update star status');
+      }
 
     } catch (err) {
       console.error('Error toggling star:', err);
@@ -86,15 +97,23 @@ export function useSavedPapers() {
    * @param {string} paperId - Paper ID
    */
   const removePaper = useCallback(async (paperId) => {
+    // Ensure papers is an array
+    if (!Array.isArray(papers)) {
+      return;
+    }
     // Save paper for potential revert
-    const paperToRemove = papers.find(p => p.id === paperId);
+    const paperToRemove = papers.find(p => p?.id === paperId);
     
     try {
       // Optimistic update
-      setPapers(prev => prev.filter(p => p.id !== paperId));
+      setPapers(prev => prev.filter(p => p?.id !== paperId));
 
-      // TODO: Implement deletePaper in backend
-      // await userApi.deletePaper(paperId);
+      // Delete from backend
+      const result = await userApi.deletePaper(paperId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete paper');
+      }
 
     } catch (err) {
       console.error('Error removing paper:', err);
@@ -112,9 +131,13 @@ export function useSavedPapers() {
    */
   const addPaper = useCallback(async (paperData) => {
     try {
-      const newPaper = await userApi.savePaper(paperData);
-      setPapers(prev => [newPaper, ...prev]);
-      return newPaper;
+      const result = await userApi.savePaper(paperData);
+      if (result.success && result.data) {
+        setPapers(prev => [result.data, ...prev]);
+        return result.data;
+      } else {
+        throw new Error(result.error || 'Failed to save paper');
+      }
     } catch (err) {
       console.error('Error adding paper:', err);
       setError('Failed to save paper');
@@ -128,8 +151,12 @@ export function useSavedPapers() {
    * @param {string} folderId - Folder ID (or null for no folder)
    */
   const movePaperToFolder = useCallback(async (paperId, folderId) => {
+    // Ensure papers is an array
+    if (!Array.isArray(papers)) {
+      return;
+    }
     // Save old folder ID for potential revert
-    const paper = papers.find(p => p.id === paperId);
+    const paper = papers.find(p => p?.id === paperId);
     const previousFolderId = paper?.folderId;
     
     try {
@@ -140,8 +167,12 @@ export function useSavedPapers() {
         )
       );
 
-      // TODO: Implement updatePaper in backend
-      // await userApi.updatePaper(paperId, { folderId });
+      // Update in backend
+      const result = await userApi.updatePaper(paperId, { folderId });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to move paper');
+      }
 
     } catch (err) {
       console.error('Error moving paper:', err);
@@ -161,9 +192,13 @@ export function useSavedPapers() {
    */
   const createFolder = useCallback(async (folderName) => {
     try {
-      const newFolder = await userApi.createFolder(folderName);
-      setFolders(prev => [...prev, newFolder]);
-      return newFolder;
+      const result = await userApi.createFolder(folderName);
+      if (result.success && result.data) {
+        setFolders(prev => [...prev, result.data]);
+        return result.data;
+      } else {
+        throw new Error(result.error || 'Failed to create folder');
+      }
     } catch (err) {
       console.error('Error creating folder:', err);
       setError('Failed to create folder');
@@ -177,8 +212,12 @@ export function useSavedPapers() {
    * @param {string} newName - New folder name
    */
   const renameFolder = useCallback(async (folderId, newName) => {
+    // Ensure folders is an array
+    if (!Array.isArray(folders)) {
+      return;
+    }
     // Save old name for potential revert
-    const folder = folders.find(f => f.id === folderId);
+    const folder = folders.find(f => f?.id === folderId);
     const previousName = folder?.name;
     
     try {
@@ -209,8 +248,12 @@ export function useSavedPapers() {
    * @param {string} folderId - Folder ID
    */
   const deleteFolder = useCallback(async (folderId) => {
+    // Ensure folders is an array
+    if (!Array.isArray(folders)) {
+      return;
+    }
     // Save folder for potential revert
-    const folderToDelete = folders.find(f => f.id === folderId);
+    const folderToDelete = folders.find(f => f?.id === folderId);
     
     try {
       // Optimistic update
@@ -240,16 +283,21 @@ export function useSavedPapers() {
    * Get filtered papers based on selected folder or filter
    */
   const getFilteredPapers = useCallback((filter = 'all') => {
+    // Ensure papers is always an array
+    if (!Array.isArray(papers)) {
+      return [];
+    }
+
     let filtered = [...papers];
 
     // Filter by folder
     if (selectedFolder) {
-      filtered = filtered.filter(p => p.folderId === selectedFolder);
+      filtered = filtered.filter(p => p?.folderId === selectedFolder);
     }
 
     // Additional filters
     if (filter === 'starred') {
-      filtered = filtered.filter(p => p.starred);
+      filtered = filtered.filter(p => p?.starred);
     }
 
     return filtered;
@@ -259,7 +307,10 @@ export function useSavedPapers() {
    * Get papers count for a specific folder
    */
   const getPaperCountForFolder = useCallback((folderId) => {
-    return papers.filter(p => p.folderId === folderId).length;
+    if (!Array.isArray(papers)) {
+      return 0;
+    }
+    return papers.filter(p => p?.folderId === folderId).length;
   }, [papers]);
 
   /**

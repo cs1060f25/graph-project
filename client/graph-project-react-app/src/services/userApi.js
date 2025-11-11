@@ -3,7 +3,7 @@ import { auth } from '../config/firebase';
 // client/src/services/userApi.js
 // API client for user-related endpoints
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 /**
  * Helper function to make API requests with error handling
@@ -14,13 +14,11 @@ async function apiRequest(endpoint, options = {}) {
     'Content-Type': 'application/json',
     ...headers,
   };
-  console.log(newHeaders);
-
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      newHeaders,
       ...options,
+      headers: newHeaders,
     });
 
     const data = await response.json();
@@ -122,7 +120,8 @@ export const userApi = {
     const response = await apiRequest('/api/user/papers', {
       headers,
     });
-    return response.data;
+    // Ensure we always return an array
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   /**
@@ -134,46 +133,49 @@ export const userApi = {
    * @param {string} [paperData.abstract] - Paper abstract
    * @param {string} [paperData.publishedDate] - Publication date
    * @param {string} [paperData.folderId] - Folder ID
-   * @returns {Promise<Object>} Created paper object
+   * @returns {Promise<Object>} Response object with { success: boolean, data: Object, error: string|null }
    */
   savePaper: async (paperData) => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest('/api/user/papers', {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify(paperData),
     });
-    return response.data;
+    // Backend returns { success, data, error } format
+    return response;
   },
 
   /**
    * Update paper properties (star status, folder, etc.)
-   * Note: This endpoint doesn't exist yet in the backend
-   * You may need to add it or use patch
    * @param {string} paperId - Paper ID
    * @param {Object} updates - Properties to update
-   * @returns {Promise<Object>} Updated paper object
+   * @returns {Promise<Object>} Response object with { success: boolean, data: Object, error: string|null }
    */
   updatePaper: async (paperId, updates) => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest(`/api/user/papers/${paperId}`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify(updates),
     });
-    return response.data;
+    // Backend returns { success, data, error } format
+    return response;
   },
 
   /**
    * Delete a paper
-   * Note: This endpoint doesn't exist yet in the backend
-   * You may need to add it
    * @param {string} paperId - Paper ID
-   * @returns {Promise<void>}
+   * @returns {Promise<Object>} Response object with { success: boolean, data: Object, error: string|null }
    */
   deletePaper: async (paperId) => {
-    await apiRequest(`/api/user/papers/${paperId}`, {
+    const headers = await getAuthHeaders();
+    const response = await apiRequest(`/api/user/papers/${paperId}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers: headers,
     });
+    // Backend returns { success, data, error } format
+    return response;
   },
 
   // ========================================
@@ -186,8 +188,9 @@ export const userApi = {
    * @returns {Promise<Array>} Array of query history objects
    */
   getQueryHistory: async (limit = 20) => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest(`/api/user/history?limit=${limit}`, {
-      headers: getAuthHeaders(),
+      headers: headers,
     });
     return response.data;
   },
@@ -201,9 +204,10 @@ export const userApi = {
    * @returns {Promise<Object>} Created query history object
    */
   addQueryHistory: async (queryData) => {
+    const headers = await getAuthHeaders();
     const response = await apiRequest('/api/user/history', {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify(queryData),
     });
     return response.data;
@@ -214,9 +218,10 @@ export const userApi = {
    * @returns {Promise<void>}
    */
   clearQueryHistory: async () => {
+    const headers = await getAuthHeaders();
     await apiRequest('/api/user/history', {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers: headers,
     });
   },
 
@@ -233,7 +238,8 @@ export const userApi = {
     const response = await apiRequest('/api/user/folders', {
       headers,
     });
-    return response.data;
+    // Ensure we always return an array
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   /**

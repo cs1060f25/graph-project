@@ -19,6 +19,7 @@ import {
 } from '../utils/queryGraphManager';
 import { useAuth } from '../contexts/AuthContext';
 import './QueryPage.css';
+import { userApi } from '../services/userApi';
 
 export default function QueryPage() {
   const [query, setQuery] = useState('');
@@ -294,13 +295,43 @@ export default function QueryPage() {
 
   const handleSavePaper = async (paper) => {
     try {
-      // Mock save functionality - in real implementation this would call the user API
-      console.log('Saving paper:', paper.title);
-      // TODO: Implement actual save functionality using user API
-      alert(`Saved "${paper.title}" to your papers!`);
+      // Check if user is authenticated
+      if (!isAuthenticated) {
+        alert('Please log in to save papers.');
+        return;
+      }
+
+      // Map paper fields to backend format
+      // Backend expects: title, authors, link (required), abstract, publishedDate (optional)
+      // QueryPage papers have: title, authors, link, summary, published
+      // Graph nodes might have: title, authors, url, summary, year
+      const paperData = {
+        title: paper.title,
+        authors: Array.isArray(paper.authors) 
+          ? paper.authors 
+          : (paper.authors ? [paper.authors] : []),
+        link: paper.link || paper.url || '',
+        abstract: paper.summary || paper.abstract || '',
+        publishedDate: paper.published || paper.publishedDate || (paper.year ? `${paper.year}-01-01` : null),
+      };
+
+      // Validate required fields
+      if (!paperData.title || !paperData.link || !paperData.authors || paperData.authors.length === 0) {
+        alert('Cannot save paper: missing required fields (title, authors, or link).');
+        return;
+      }
+
+      console.log('Saving paper:', paperData.title);
+      const result = await userApi.savePaper(paperData);
+      
+      if (result.success) {
+        alert(`Saved "${paper.title}" to your papers!`);
+      } else {
+        alert(`Failed to save "${paper.title}": ${result.error || 'Unknown error'}`);
+      }
     } catch (err) {
       console.error('Save failed:', err);
-      alert('Failed to save paper. Please try again.');
+      alert(`Failed to save paper: ${err.message || 'Please try again.'}`);
     }
   };
 
@@ -863,6 +894,13 @@ export default function QueryPage() {
                       </a>
                     </p>
                   )}
+                  <button
+                    onClick={() => handleSavePaper(selectedNode)}
+                    className="save-button"
+                    title="Save paper"
+                  >
+                    💾 Save Paper
+                  </button>
                 </div>
               )}
             </div>
