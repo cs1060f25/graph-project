@@ -4,7 +4,7 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 ## Firebase Setup
 
-Create a `.env` file in the root of this project with the following variables:
+Create a `.env` file in the `client/graph-project-react-app/` directory (same directory as this README) with the following variables:
 
 ```
 REACT_APP_FIREBASE_API_KEY=your-api-key-here

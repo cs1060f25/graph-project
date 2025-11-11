@@ -74,8 +74,8 @@ export default class APIHandlerInterface {
       if (cached) return cached;
     }
 
-    let combinedResults = [];
-    for (const api of this.apis) {
+    // Run all API calls in parallel for better performance
+    const apiPromises = this.apis.map(async (api) => {
       try {
         let results = [];
         if (type === "topic" && typeof api.queryByTopic === "function") {
@@ -83,11 +83,18 @@ export default class APIHandlerInterface {
         } else if (type === "keyword" && typeof api.queryByKeyword === "function") {
           results = await api.queryByKeyword(query, this.maxResults);
         }
-        combinedResults.push(...results);
+        return results;
       } catch (err) {
         console.warn(`${api.constructor.name} failed:`, err.message);
+        return []; // Return empty array on error
       }
-    }
+    });
+
+    // Wait for all API calls to complete (or timeout)
+    const apiResults = await Promise.allSettled(apiPromises);
+    const combinedResults = apiResults
+      .filter(result => result.status === 'fulfilled')
+      .flatMap(result => result.value);
 
     // Deduplicate by paper ID
     const uniqueResults = Object.values(
