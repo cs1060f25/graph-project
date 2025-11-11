@@ -9,18 +9,17 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
  * Helper function to make API requests with error handling
  */
 async function apiRequest(endpoint, options = {}) {
-  const headers = await options.headers;
-  const newHeaders = {
+  const headersFromOption = await options.headers; // options.headers may be a Promise
+  const mergedHeaders = {
     'Content-Type': 'application/json',
-    ...headers,
+    ...(headersFromOption || {}),
   };
-  console.log(newHeaders);
 
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      newHeaders,
       ...options,
+      headers: mergedHeaders,
     });
 
     const data = await response.json();

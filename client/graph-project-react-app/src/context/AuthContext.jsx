@@ -1,173 +1,161 @@
 // client/src/context/AuthContext.jsx
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { auth, googleProvider } from '../services/firebaseClient';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   onAuthStateChanged,
-  signInWithEmailAndPassword,
+  onIdTokenChanged,
   signInWithPopup,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { syncUserToFirestore } from '../services/userService';
+import { auth } from '../config/firebase';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isNewUser, setIsNewUser] = useState(false);
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
+};
 
+// tiny helper to POST JSON and return parsed JSON or throw with status text
+async function postJson(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // no credentials unless your backend uses cookies; bootstrap expects JSON body
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+  if (!res.ok) {
+    const msg = (data && (data.error || data.message)) || text || res.statusText;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);    // Firebase user
+  const [token, setToken] = useState(null);  // Firebase ID token
+  const [role, setRole] = useState(null);    // backend role (optional)
+  const [loading, setLoading] = useState(true);
+
+  // POST { token } → /api/auth/bootstrap
+  const bootstrapAuthWithBackend = async (idToken) => {
+    if (!idToken) throw new Error('No token to bootstrap');
+    const data = await postJson(`${API_BASE_URL}/api/auth/bootstrap`, { token: idToken });
+    // Expecting shape: { email, role, displayName }
+    setRole(data?.role ?? 'user');
+    return data;
+  };
+
+  // First load: track auth state
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Sync user data to Firestore
-        try {
-          const { isNewUser: newUser, error: syncError } = await syncUserToFirestore(firebaseUser);
-          if (syncError) {
-            console.error('[AuthContext] Failed to sync user:', syncError);
-            setError(`Failed to sync user data: ${syncError}`);
-          } else {
-            setIsNewUser(newUser);
-            setError(null);
-          }
-        } catch (err) {
-          console.error('[AuthContext] Error in auth state change:', err);
-          setError('Failed to initialize user session');
-        }
-      } else {
-        setIsNewUser(false);
-        setError(null);
-      }
-      setUser(firebaseUser);
+    if (!auth) {
+      console.warn('Firebase auth is not configured');
       setLoading(false);
+      return;
+    }
+
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
+      try {
+        if (currentUser) {
+          setUser(currentUser);
+          // getIdToken() refreshes if needed
+          const idToken = await currentUser.getIdToken();
+          setToken(idToken);
+          try {
+            await bootstrapAuthWithBackend(idToken);
+          } catch (e) {
+            // Don’t block the app: fall back to a default role
+            console.error('Error bootstrapping auth with backend:', e);
+            setRole('user');
+          }
+        } else {
+          setUser(null);
+          setToken(null);
+          setRole(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => unsub();
+  }, []);
+
+  // Also listen for token refreshes (hourly or manual)
+  useEffect(() => {
+    if (!auth) return;
+    const unsub = onIdTokenChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        setToken(null);
+        setRole(null);
+        return;
+      }
+      try {
+        const idToken = await currentUser.getIdToken();
+        setToken(idToken);
+        // Re-bootstrap to refresh role/session server-side; non-fatal if it fails
+        try {
+          await bootstrapAuthWithBackend(idToken);
+        } catch (e) {
+          console.warn('Re-bootstrap failed (token change):', e);
+          // keep existing role or default
+          setRole((r) => r ?? 'user');
+        }
+      } catch (e) {
+        console.error('Error refreshing ID token:', e);
+        setToken(null);
+      }
     });
     return () => unsub();
   }, []);
 
-  const loginWithEmail = async (email, password) => {
-    setError(null);
-    try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      // User sync happens in onAuthStateChanged
-      return userCred;
-    } catch (err) {
-      const errorMsg = err.code === 'auth/invalid-credential' 
-        ? 'Invalid email or password'
-        : err.message || 'Failed to sign in';
-      setError(errorMsg);
-      throw err;
+  // Auth actions
+  const signInWithGoogle = async () => {
+    if (!auth) throw new Error('Firebase is not configured');
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+    // popup “Cross-Origin-Opener-Policy would block window.close” warnings are harmless in dev
+  };
+
+  const signInWithEmail = async (email, password) => {
+    if (!auth) throw new Error('Firebase is not configured');
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signUpWithEmail = async (email, password) => {
+    if (!auth) throw new Error('Firebase is not configured');
+    await createUserWithEmailAndPassword(auth, email, password);
+  };
+
+  const signOut = async () => {
+    if (!auth) {
+      setUser(null); setToken(null); setRole(null);
+      return;
     }
+    await firebaseSignOut(auth);
+    setUser(null); setToken(null); setRole(null);
   };
 
-  const loginWithGoogle = async () => {
-    setError(null);
-    try {
-      const userCred = await signInWithPopup(auth, googleProvider);
-      // User sync happens in onAuthStateChanged
-      return userCred;
-    } catch (err) {
-      const errorMsg = err.message || 'Failed to sign in with Google';
-      setError(errorMsg);
-      throw err;
-    }
-  };
-
-  const signUpWithEmail = async (email, password, additionalData = {}) => {
-    setError(null);
-    try {
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      // Sync with additional data (e.g., name)
-      await syncUserToFirestore(userCred.user, additionalData);
-      return userCred;
-    } catch (err) {
-      const errorMsg = err.code === 'auth/email-already-in-use'
-        ? 'This email is already registered'
-        : err.message || 'Failed to create account';
-      setError(errorMsg);
-      throw err;
-    }
-  };
-
-  // DEMO: client-only login to bypass Firebase (for development/testing)
-  const loginDemo = async (email = 'demo@user.local') => {
-    setUser({
-      uid: 'demo-user',
-      email,
-      displayName: 'Demo User',
-      providerData: [{ providerId: 'password' }],
-    });
-    setIsNewUser(false);
-    setError(null);
-  };
-
-  const logout = async () => {
-    setError(null);
-    try {
-      // Sign out from Firebase Auth
-      await signOut(auth);
-      
-      // Clear all local storage (Firebase tokens, cached user data)
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch (storageErr) {
-        console.warn('[AuthContext] Failed to clear storage:', storageErr);
-        // Continue even if storage clear fails
-      }
-      
-      // Reset state (onAuthStateChanged will also set user to null, but this ensures immediate update)
-      setIsNewUser(false);
-      setUser(null);
-      
-      console.log('[AuthContext] Successfully logged out');
-    } catch (err) {
-      console.error('[AuthContext] Logout error:', err);
-      
-      // Fallback: clear local state even if signOut fails (offline case)
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch (storageErr) {
-        console.warn('[AuthContext] Failed to clear storage on error:', storageErr);
-      }
-      
-      setIsNewUser(false);
-      setUser(null);
-      
-      // If we're offline or signOut fails, still reset state but show warning
-      const errorMsg = err.message?.includes('network') || navigator.onLine === false
-        ? 'Logged out locally (offline)'
-        : 'Failed to sign out from server, but local session cleared';
-      
-      setError(errorMsg);
-      // Don't throw - we've cleared local state, user should still be logged out locally
-    }
-  };
-
-  const value = useMemo(
-    () => ({ 
-      user, 
-      loading, 
-      error, 
-      isNewUser,
-      setError, 
-      loginWithEmail, 
-      loginWithGoogle, 
-      signUpWithEmail,
-      loginDemo, 
-      logout 
-    }),
-    [user, loading, error, isNewUser]
-  );
+  const value = useMemo(() => ({
+    user,
+    token,
+    role,
+    loading,
+    signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
+    signOut,
+  }), [user, token, role, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}
-
-
+};

@@ -2,15 +2,37 @@
 // Main Personal Page component for displaying saved papers
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useSavedPapers } from '../hooks/useSavedPapers';
 import { useAuth } from '../context/AuthContext';
 import PaperCard from '../components/PaperCard';
 import './PersonalPage.css';
 
 export default function PersonalPage() {
-  const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, currentUser, loading: authLoading } = useAuth();
+
+  // While auth is initializing, show spinner. No other hooks are used here.
+  if (authLoading) {
+    return (
+      <div className="personal-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not signed in, kick to login (rendering null to avoid calling inner hooks).
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Auth is ready and user exists — now mount the inner component that uses other hooks
+  return <PersonalPageContent logout={logout} />;
+}
+
+function PersonalPageContent({ logout, navigate }) {
   const {
     papers,
     folders,
@@ -37,19 +59,13 @@ export default function PersonalPage() {
   const getDisplayedPapers = () => {
     let filtered = getFilteredPapers(filterMode);
 
-    // Handle undefined/null case (defensive programming)
-    if (!filtered) {
-      return [];
-    }
+    if (!filtered) return [];
 
-    // Apply search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(paper =>
         paper.title.toLowerCase().includes(query) ||
-        paper.authors?.some(author => 
-          author.toLowerCase().includes(query)
-        ) ||
+        paper.authors?.some(author => author.toLowerCase().includes(query)) ||
         paper.abstract?.toLowerCase().includes(query)
       );
     }
@@ -81,14 +97,13 @@ export default function PersonalPage() {
       navigate('/login', { replace: true });
     } catch (err) {
       console.error('Logout error:', err);
-      // Even if logout fails, navigate to login (local state is cleared)
       navigate('/login', { replace: true });
     } finally {
       setLoggingOut(false);
     }
   };
 
-  // Loading state
+  // Loading state for saved papers
   if (loading) {
     return (
       <div className="personal-page">
