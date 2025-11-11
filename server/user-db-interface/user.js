@@ -2,7 +2,6 @@
 // User data functions for the interface layer
 
 import { db } from "../user-db-component/firebaseConfig.js";
-import { doc, getDoc } from "firebase/firestore";
 import { createResponse, validateUserId } from "./utils.js";
 
 /**
@@ -17,10 +16,10 @@ export async function getUserData(uid) {
       return createResponse(false, null, validation.error);
     }
 
-    const userRef = doc(db, "users", uid);
-    const userDoc = await getDoc(userRef);
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
     
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return createResponse(false, null, "User not found");
     }
 

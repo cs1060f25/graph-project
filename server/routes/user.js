@@ -34,6 +34,7 @@ router.use(extractUid);
 router.get('/papers', async (req, res) => {
   try {
     const result = await getSavedPapers(req.uid);
+    console.log('result', result);
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -43,6 +44,7 @@ router.get('/papers', async (req, res) => {
 // POST /api/user/papers - Add a saved paper
 router.post('/papers', async (req, res) => {
   try {
+    console.log('req.body', req.body);
     const paperData = req.body; // { title, authors, link, ... }
     const result = await addSavedPaper(req.uid, paperData);
     res.status(result.success ? 201 : 400).json(result);

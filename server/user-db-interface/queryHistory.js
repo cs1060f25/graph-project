@@ -2,7 +2,6 @@
 // Query history functions for the interface layer
 
 import { db } from "../user-db-component/firebaseConfig.js";
-import { collection, addDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { createResponse, validateUserId } from "./utils.js";
 
 /**
@@ -25,8 +24,8 @@ export async function addQueryHistory(uid, queryData) {
       return createResponse(false, null, "Query text is required");
     }
 
-    const queryHistoryRef = collection(db, "users", uid, "queryHistory");
-    const docRef = await addDoc(queryHistoryRef, {
+    const queryHistoryRef = db.collection("users").doc(uid).collection("queryHistory");
+    const docRef = await queryHistoryRef.add({
       query: queryData.query.trim(),
       type: queryData.type || "keyword",
       resultCount: queryData.resultCount || 0,
@@ -54,9 +53,11 @@ export async function getQueryHistory(uid, limitCount = 20) {
       return createResponse(false, null, validation.error);
     }
 
-    const queryHistoryRef = collection(db, "users", uid, "queryHistory");
-    const q = query(queryHistoryRef, orderBy("timestamp", "desc"), limit(limitCount));
-    const snapshot = await getDocs(q);
+    const queryHistoryRef = db.collection("users").doc(uid).collection("queryHistory");
+    const snapshot = await queryHistoryRef
+      .orderBy("timestamp", "desc")
+      .limit(limitCount)
+      .get();
     
     const queries = snapshot.docs.map(doc => ({ 
       id: doc.id, 
@@ -82,16 +83,16 @@ export async function clearQueryHistory(uid) {
       return createResponse(false, null, validation.error);
     }
 
-    const queryHistoryRef = collection(db, "users", uid, "queryHistory");
-    const snapshot = await getDocs(queryHistoryRef);
+    const queryHistoryRef = db.collection("users").doc(uid).collection("queryHistory");
+    const snapshot = await queryHistoryRef.get();
     
     // Delete all documents in batch
-    const batch = [];
+    const batch = db.batch();
     snapshot.docs.forEach(doc => {
-      batch.push(doc.ref.delete());
+      batch.delete(doc.ref);
     });
     
-    await Promise.all(batch);
+    await batch.commit();
 
     return createResponse(true, { deletedCount: snapshot.docs.length }, null);
   } catch (error) {

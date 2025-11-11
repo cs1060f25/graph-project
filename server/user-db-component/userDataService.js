@@ -1,6 +1,5 @@
 // user-db/userDataService.js
 import { db } from "./firebaseConfig.js";
-import { collection, addDoc, getDocs, doc, updateDoc } from "firebase/firestore";
 
 export async function addFolder(uid, folderName) {
   // Input validation for UID
@@ -27,8 +26,8 @@ export async function addFolder(uid, folderName) {
     throw new Error('Folder name cannot contain newlines, tabs, or carriage returns');
   }
 
-  const folderRef = collection(db, "users", uid, "folders");
-  await addDoc(folderRef, { name: trimmedName, createdAt: Date.now() });
+  const folderRef = db.collection("users").doc(uid).collection("folders");
+  await folderRef.add({ name: trimmedName, createdAt: Date.now() });
 }
 
 export async function getFolders(uid) {
@@ -37,12 +36,12 @@ export async function getFolders(uid) {
     throw new Error('User ID is required and must be a non-empty string');
   }
 
-  const folderRef = collection(db, "users", uid, "folders");
-  const snapshot = await getDocs(folderRef);
+  const folderRef = db.collection("users").doc(uid).collection("folders");
+  const snapshot = await folderRef.get();
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function updatePreferences(uid, prefs) {
-  const userRef = doc(db, "users", uid);
-  await updateDoc(userRef, { preferences: prefs });
+  const userRef = db.collection("users").doc(uid);
+  await userRef.update({ preferences: prefs });
 }
