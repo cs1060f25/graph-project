@@ -5,6 +5,8 @@ import {
   addUserFolder, 
   addSavedPaper, 
   getSavedPapers,
+  updateSavedPaper,
+  deleteSavedPaper,
   getUserData,
   addQueryHistory,
   getQueryHistory,
@@ -48,6 +50,29 @@ router.post('/papers', async (req, res) => {
     const paperData = req.body; // { title, authors, link, ... }
     const result = await addSavedPaper(req.uid, paperData);
     res.status(result.success ? 201 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PATCH /api/user/papers/:paperId - Update a saved paper
+router.patch('/papers/:paperId', async (req, res) => {
+  try {
+    const { paperId } = req.params;
+    const updateData = req.body; // { starred, folderId, title, etc. }
+    const result = await updateSavedPaper(req.uid, paperId, updateData);
+    res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/user/papers/:paperId - Delete a saved paper
+router.delete('/papers/:paperId', async (req, res) => {
+  try {
+    const { paperId } = req.params;
+    const result = await deleteSavedPaper(req.uid, paperId);
+    res.status(result.success ? 200 : 404).json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
