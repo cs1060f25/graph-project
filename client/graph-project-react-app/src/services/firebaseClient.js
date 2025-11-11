@@ -5,22 +5,47 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Use environment variables or fallback to server config values
+// Use environment variables or fallback to demo values
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyDI6jt4aI8gqF2BdVt2a0b5uzgjq7b3Wrc",
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "graphene-3b05a.firebaseapp.com",
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "graphene-3b05a",
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "graphene-3b05a.firebasestorage.app",
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "355128430723",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:355128430723:web:f54f883525ba6491f1cbb6",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || 'demo-api-key',
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || 'demo.firebaseapp.com',
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || 'demo-project',
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || 'demo-project.appspot.com',
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || '123456789',
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || '1:123456789:web:demo',
 };
 
-const app = initializeApp(firebaseConfig);
+// Warn if environment variables are not loaded
+if (!process.env.REACT_APP_FIREBASE_API_KEY) {
+  console.warn(
+    '⚠️ Firebase environment variables not found. ' +
+    'Please create a .env file in client/graph-project-react-app/ with REACT_APP_FIREBASE_* variables. ' +
+    'See README.md for setup instructions. ' +
+    'Note: You must restart the dev server after creating/modifying .env files.'
+  );
+}
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const googleProvider = new GoogleAuthProvider();
+// Initialize Firebase with error handling
+let app;
+let auth;
+let db;
+let googleProvider;
 
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  googleProvider = new GoogleAuthProvider();
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+  console.warn('Firebase is not properly configured. Please check your .env file.');
+  // Set to null so components can check for Firebase availability
+  auth = null;
+  db = null;
+  googleProvider = null;
+}
+
+export { auth, db, googleProvider };
 export default app;
 
 

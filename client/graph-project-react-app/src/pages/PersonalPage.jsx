@@ -35,10 +35,15 @@ export default function PersonalPage() {
 
   // Get filtered and searched papers
   const getDisplayedPapers = () => {
+    // Ensure papers is always an array
+    if (!Array.isArray(papers)) {
+      return [];
+    }
+
     let filtered = getFilteredPapers(filterMode);
 
     // Handle undefined/null case (defensive programming)
-    if (!filtered) {
+    if (!Array.isArray(filtered)) {
       return [];
     }
 
@@ -46,11 +51,11 @@ export default function PersonalPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(paper =>
-        paper.title.toLowerCase().includes(query) ||
-        paper.authors?.some(author => 
-          author.toLowerCase().includes(query)
+        paper?.title?.toLowerCase().includes(query) ||
+        paper?.authors?.some(author => 
+          author?.toLowerCase().includes(query)
         ) ||
-        paper.abstract?.toLowerCase().includes(query)
+        paper?.abstract?.toLowerCase().includes(query)
       );
     }
 
@@ -108,7 +113,7 @@ export default function PersonalPage() {
           <div>
             <h1 className="page-title">My Saved Papers</h1>
             <p className="page-subtitle">
-              {papers.length} {papers.length === 1 ? 'paper' : 'papers'} saved
+              {Array.isArray(papers) ? papers.length : 0} {Array.isArray(papers) && papers.length === 1 ? 'paper' : 'papers'} saved
             </p>
           </div>
           <button
@@ -145,7 +150,7 @@ export default function PersonalPage() {
             >
               <span className="filter-icon">📄</span>
               All Papers
-              <span className="filter-count">{papers.length}</span>
+              <span className="filter-count">{Array.isArray(papers) ? papers.length : 0}</span>
             </button>
             <button
               className={`filter-btn ${filterMode === 'starred' ? 'active' : ''}`}
@@ -157,7 +162,7 @@ export default function PersonalPage() {
               <span className="filter-icon">⭐</span>
               Starred
               <span className="filter-count">
-                {papers.filter(p => p.starred).length}
+                {Array.isArray(papers) ? papers.filter(p => p?.starred).length : 0}
               </span>
             </button>
           </div>
@@ -224,7 +229,7 @@ export default function PersonalPage() {
           {/* Papers list */}
           {displayedPapers.length === 0 ? (
             <div className="empty-state">
-              {papers.length === 0 ? (
+              {!Array.isArray(papers) || papers.length === 0 ? (
                 <>
                   <div className="empty-icon">📚</div>
                   <h2>No papers saved yet</h2>

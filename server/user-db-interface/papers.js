@@ -2,7 +2,6 @@
 // Saved papers functions for the interface layer
 
 import { db } from "../user-db-component/firebaseConfig.js";
-import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
 import { createResponse, validateUserId, validatePaperData } from "./utils.js";
 
 /**
@@ -23,8 +22,8 @@ export async function addSavedPaper(uid, paperData) {
       return createResponse(false, null, dataValidation.error);
     }
 
-    const savedPapersRef = collection(db, "users", uid, "savedPapers");
-    const docRef = await addDoc(savedPapersRef, {
+    const savedPapersRef = db.collection("users").doc(uid).collection("savedPapers");
+    const docRef = await savedPapersRef.add({
       ...paperData,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -49,8 +48,8 @@ export async function getSavedPapers(uid) {
       return createResponse(false, null, validation.error);
     }
 
-    const savedPapersRef = collection(db, "users", uid, "savedPapers");
-    const snapshot = await getDocs(savedPapersRef);
+    const savedPapersRef = db.collection("users").doc(uid).collection("savedPapers");
+    const snapshot = await savedPapersRef.get();
     const papers = snapshot.docs.map(doc => ({ 
       id: doc.id, 
       ...doc.data() 
