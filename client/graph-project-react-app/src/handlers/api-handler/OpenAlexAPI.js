@@ -34,6 +34,29 @@ export default class OpenAlexAPI {
   }
 
   /**
+   * Fetch with timeout helper
+   * @param {string} url - URL to fetch
+   * @param {number} timeoutMs - Timeout in milliseconds (default: 15000)
+   * @returns {Promise<Response>}
+   */
+  async #fetchWithTimeout(url, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeoutMs}ms`);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Internal fetch helper
    * @param {string} searchQuery - Keyword or topic query
    * @param {number} maxResults
@@ -45,7 +68,7 @@ export default class OpenAlexAPI {
     )}&per-page=${limit}`;
 
     try {
-      const response = await fetch(queryUrl);
+      const response = await this.#fetchWithTimeout(queryUrl, 15000);
 
       if (!response.ok) {
         console.error(

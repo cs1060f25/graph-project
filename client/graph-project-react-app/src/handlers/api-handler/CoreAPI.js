@@ -25,6 +25,33 @@ export default class CoreAPI {
   }
 
   /**
+   * Fetch with timeout helper
+   * @param {string} url - URL to fetch
+   * @param {object} options - Fetch options
+   * @param {number} timeoutMs - Timeout in milliseconds (default: 15000)
+   * @returns {Promise<Response>}
+   */
+  async #fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeoutMs}ms`);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Internal fetch helper
    * @param {string} endpoint - CORE API endpoint
    * @param {string} searchQuery - The search keyword or topic
@@ -38,12 +65,16 @@ export default class CoreAPI {
     )}&limit=${limit}`;
 
     try {
-      const response = await fetch(queryUrl, {
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
+      const response = await this.#fetchWithTimeout(
+        queryUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+        15000
+      );
 
       if (!response.ok) {
         console.error("CORE API failed:", response.status, response.statusText);

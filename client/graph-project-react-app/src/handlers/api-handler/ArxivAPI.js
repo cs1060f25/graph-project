@@ -39,6 +39,29 @@ export default class ArxivAPI {
   }
 
   /**
+   * Fetch with timeout helper
+   * @param {string} url - URL to fetch
+   * @param {number} timeoutMs - Timeout in milliseconds (default: 15000)
+   * @returns {Promise<Response>}
+   */
+  async #fetchWithTimeout(url, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeoutMs}ms`);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * General query function for Arxiv API
    * @param {string} searchQuery - Arxiv-compatible search term (e.g., "cat:cs.AI")
    * @param {number} maxResults - Max number of results to return
@@ -50,29 +73,40 @@ export default class ArxivAPI {
             searchQuery
         )}&start=0&max_results=${maxResults ?? this.defaultMaxResults}`;
 
-        const response = await fetch(queryUrl);
-        const text = await response.text();
+        try {
+          const response = await this.#fetchWithTimeout(queryUrl, 15000);
+          
+          if (!response.ok) {
+            console.error("Arxiv API failed:", response.status, response.statusText);
+            throw new Error(`Failed to fetch papers: ${response.statusText}`);
+          }
 
-        // Parse XML -> JSON
-        const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
-        const jsonObj = parser.parse(text);
+          const text = await response.text();
 
-        // Normalize results
-        const entries = jsonObj.feed.entry || [];
-        const results = Array.isArray(entries) ? entries : [entries];
+          // Parse XML -> JSON
+          const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
+          const jsonObj = parser.parse(text);
 
-        return results.map((entry) => ({
-            id: entry.id,
-            title: entry.title?.trim(),
-            summary: entry.summary?.trim(),
-            published: entry.published,
-            authors: Array.isArray(entry.author)
-            ? entry.author.map((a) => a.name)
-            : [entry.author?.name],
-            link: Array.isArray(entry.link)
-            ? entry.link[0].href
-            : entry.link?.href,
-        }));
+          // Normalize results
+          const entries = jsonObj.feed?.entry || [];
+          const results = Array.isArray(entries) ? entries : [entries];
+
+          return results.map((entry) => ({
+              id: entry.id,
+              title: entry.title?.trim(),
+              summary: entry.summary?.trim(),
+              published: entry.published,
+              authors: Array.isArray(entry.author)
+              ? entry.author.map((a) => a.name)
+              : [entry.author?.name],
+              link: Array.isArray(entry.link)
+              ? entry.link[0].href
+              : entry.link?.href,
+          }));
+        } catch (err) {
+          console.error("Arxiv fetch failed:", err);
+          return []; // Return empty array on error
+        }
     }
 
   /**
