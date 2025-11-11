@@ -148,11 +148,9 @@ export const userApi = {
 
   /**
    * Update paper properties (star status, folder, etc.)
-   * Note: This endpoint doesn't exist yet in the backend
-   * You may need to add it or use patch
    * @param {string} paperId - Paper ID
    * @param {Object} updates - Properties to update
-   * @returns {Promise<Object>} Updated paper object
+   * @returns {Promise<Object>} Response object with { success: boolean, data: Object, error: string|null }
    */
   updatePaper: async (paperId, updates) => {
     const headers = await getAuthHeaders();
@@ -161,22 +159,23 @@ export const userApi = {
       headers: headers,
       body: JSON.stringify(updates),
     });
-    return response.data;
+    // Backend returns { success, data, error } format
+    return response;
   },
 
   /**
    * Delete a paper
-   * Note: This endpoint doesn't exist yet in the backend
-   * You may need to add it
    * @param {string} paperId - Paper ID
-   * @returns {Promise<void>}
+   * @returns {Promise<Object>} Response object with { success: boolean, data: Object, error: string|null }
    */
   deletePaper: async (paperId) => {
     const headers = await getAuthHeaders();
-    await apiRequest(`/api/user/papers/${paperId}`, {
+    const response = await apiRequest(`/api/user/papers/${paperId}`, {
       method: 'DELETE',
       headers: headers,
     });
+    // Backend returns { success, data, error } format
+    return response;
   },
 
   // ========================================

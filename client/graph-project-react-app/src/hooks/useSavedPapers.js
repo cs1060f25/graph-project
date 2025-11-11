@@ -73,9 +73,12 @@ export function useSavedPapers() {
         )
       );
 
-      // TODO: Implement updatePaper in backend
-      // For now, this is just optimistic UI
-      // await userApi.updatePaper(paperId, { starred: !paper.starred });
+      // Update in backend
+      const result = await userApi.updatePaper(paperId, { starred: !paper.starred });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update star status');
+      }
 
     } catch (err) {
       console.error('Error toggling star:', err);
@@ -105,8 +108,12 @@ export function useSavedPapers() {
       // Optimistic update
       setPapers(prev => prev.filter(p => p?.id !== paperId));
 
-      // TODO: Implement deletePaper in backend
-      // await userApi.deletePaper(paperId);
+      // Delete from backend
+      const result = await userApi.deletePaper(paperId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete paper');
+      }
 
     } catch (err) {
       console.error('Error removing paper:', err);
@@ -124,9 +131,13 @@ export function useSavedPapers() {
    */
   const addPaper = useCallback(async (paperData) => {
     try {
-      const newPaper = await userApi.savePaper(paperData);
-      setPapers(prev => [newPaper, ...prev]);
-      return newPaper;
+      const result = await userApi.savePaper(paperData);
+      if (result.success && result.data) {
+        setPapers(prev => [result.data, ...prev]);
+        return result.data;
+      } else {
+        throw new Error(result.error || 'Failed to save paper');
+      }
     } catch (err) {
       console.error('Error adding paper:', err);
       setError('Failed to save paper');
@@ -156,8 +167,12 @@ export function useSavedPapers() {
         )
       );
 
-      // TODO: Implement updatePaper in backend
-      // await userApi.updatePaper(paperId, { folderId });
+      // Update in backend
+      const result = await userApi.updatePaper(paperId, { folderId });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to move paper');
+      }
 
     } catch (err) {
       console.error('Error moving paper:', err);
@@ -177,9 +192,13 @@ export function useSavedPapers() {
    */
   const createFolder = useCallback(async (folderName) => {
     try {
-      const newFolder = await userApi.createFolder(folderName);
-      setFolders(prev => [...prev, newFolder]);
-      return newFolder;
+      const result = await userApi.createFolder(folderName);
+      if (result.success && result.data) {
+        setFolders(prev => [...prev, result.data]);
+        return result.data;
+      } else {
+        throw new Error(result.error || 'Failed to create folder');
+      }
     } catch (err) {
       console.error('Error creating folder:', err);
       setError('Failed to create folder');
