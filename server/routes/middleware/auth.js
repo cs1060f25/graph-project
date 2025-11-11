@@ -1,17 +1,10 @@
-// server/middleware/auth.js
-import admin from 'firebase-admin';
+// server/routes/middleware/auth.js
+// Note: This file appears to be unused. The main auth middleware is in server/middleware/auth.js
+// If you need to use this file, import admin from '../config/firebase-admin.js' instead
+import admin from '../../config/firebase-admin.js';
 
-// Initialize Firebase Admin (do this once in your server setup)
-// You'll need to download service account JSON from Firebase Console
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
+// Firebase Admin is already initialized in firebase-admin.js
+// No need to initialize here - just use the admin instance
 
 export const verifyFirebaseToken = async (req, res, next) => {
   try {
