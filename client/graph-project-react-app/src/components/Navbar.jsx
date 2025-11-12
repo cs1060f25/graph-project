@@ -16,6 +16,7 @@ const Navbar = () => {
         <Link to="/" className="navbar-brand">
           Graphene
         </Link>
+        <p className="query-subtitle">Discover and explore academic papers</p>
         <div className="navbar-links">
           {user ? (
             <>
