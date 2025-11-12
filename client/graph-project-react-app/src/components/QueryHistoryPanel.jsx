@@ -2,6 +2,7 @@
 // Component for displaying query history in a sidebar panel
 
 import { useState } from 'react';
+import Icon from './Icon';
 import './QueryHistoryPanel.css';
 
 /**
@@ -49,12 +50,12 @@ export default function QueryHistoryPanel({
         onClick={() => setIsExpanded(!isExpanded)}
         title={isExpanded ? 'Hide history' : 'Show history'}
       >
-        <span className="history-icon">📚</span>
+        <span className="history-icon"><Icon name="book" ariaLabel="History" /></span>
         <span className="history-label">History</span>
         {history.length > 0 && (
           <span className="history-count">{history.length}</span>
         )}
-        <span className="expand-icon">
+        <span className="expand-icon" aria-hidden>
           {isExpanded ? '▼' : '▶'}
         </span>
       </button>
@@ -78,8 +79,8 @@ export default function QueryHistoryPanel({
           <div className="history-body">
             {/* Authentication States */}
             {!isAuthenticated ? (
-              <div className="history-empty">
-                <div className="empty-icon">🔒</div>
+                <div className="history-empty">
+                <div className="empty-icon"><Icon name="lock" ariaLabel="Locked" /></div>
                 <p>Login to view your search history</p>
               </div>
             ) : loading ? (
@@ -89,12 +90,12 @@ export default function QueryHistoryPanel({
               </div>
             ) : error ? (
               <div className="history-error">
-                <div className="error-icon">⚠️</div>
+                <div className="error-icon"><Icon name="warning" ariaLabel="Error" /></div>
                 <p>{error}</p>
               </div>
             ) : history.length === 0 ? (
               <div className="history-empty">
-                <div className="empty-icon">🔍</div>
+                <div className="empty-icon"><Icon name="search" ariaLabel="No searches" /></div>
                 <p>No searches yet</p>
                 <small>Your search history will appear here</small>
               </div>

@@ -20,7 +20,7 @@ export default class CoreAPI {
     this.apiKey = process.env.REACT_APP_CORE_API_KEY;
 
     if (!this.apiKey) {
-      console.warn("⚠️ CORE API key not found. Set REACT_APP_CORE_API_KEY in your .env file.");
+      console.warn("CORE API key not found. Set REACT_APP_CORE_API_KEY in your .env file.");
     }
   }
 

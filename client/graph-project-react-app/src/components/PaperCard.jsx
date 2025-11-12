@@ -2,6 +2,7 @@
 // Component for displaying an individual saved paper
 
 import { useState } from 'react';
+import Icon from './Icon';
 import './PaperCard.css';
 
 /**
@@ -54,7 +55,7 @@ export default function PaperCard({
       <div className="paper-card-header">
         <div className="paper-card-meta">
           <span className="paper-card-date">{formatDate(paper.createdAt)}</span>
-          {paper.starred && <span className="paper-card-badge">⭐ Starred</span>}
+          {paper.starred && <span className="paper-card-badge"><Icon name="star" ariaLabel="Starred" /> <span style={{ marginLeft: 6 }}>Starred</span></span>}
         </div>
         
         <div className="paper-card-actions">
@@ -63,7 +64,7 @@ export default function PaperCard({
             onClick={() => onToggleStar(paper.id)}
             title={paper.starred ? 'Unstar' : 'Star'}
           >
-            {paper.starred ? '★' : '☆'}
+            <Icon name="star" ariaLabel={paper.starred ? 'Unstar' : 'Star'} />
           </button>
           
           <button
@@ -90,7 +91,7 @@ export default function PaperCard({
                       setShowActions(false);
                     }}
                   >
-                    📁 {folder.name}
+                    <Icon name="folder" ariaLabel={`Folder ${folder.name}`} /> <span style={{ marginLeft: 8 }}>{folder.name}</span>
                   </button>
                 ))}
               </div>
@@ -103,7 +104,7 @@ export default function PaperCard({
                 setShowActions(false);
               }}
             >
-              🗑️ Remove paper
+              <Icon name="warning" ariaLabel="Remove" /> <span style={{ marginLeft: 8 }}>Remove paper</span>
             </button>
           </div>
         )}

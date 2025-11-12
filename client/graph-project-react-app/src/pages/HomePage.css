@@ -32,6 +32,7 @@
   display: flex;
   gap: 2rem;
   justify-content: center;
+  align-items: stretch;
   flex-wrap: wrap;
   margin-top: 3rem;
 }
@@ -40,13 +41,19 @@
   background: #151517;
   border: 1px solid #2a2a2e;
   color: #eaeaea;
-  padding: 2rem;
+  padding: 1.25rem;
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.3s;
-  max-width: 300px;
+  max-width: 320px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* vertical centering */
+  gap: 0.5rem;
+  min-height: 120px; /* make cards visually consistent */
+  flex: 0 1 320px;
 }
 
 .action-card:hover {
@@ -60,6 +67,19 @@
   font-size: 1.5rem;
   font-weight: 600;
   color: #eaeaea;
+}
+
+.action-card h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-card .gp-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .action-card p {
