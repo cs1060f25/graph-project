@@ -1,0 +1,23 @@
+:root {
+  /* Color palette (dark theme) */
+  --bg: #0f0f10; /* page background */
+  --surface: #151517; /* cards, panels */
+  --surface-2: #1a1a1c; /* slightly lighter surface */
+  --border: #2a2a2e; /* subtle border */
+  --text: #eaeaea; /* primary text */
+  --muted: #9ca3af; /* secondary text */
+  --accent: #3a82ff; /* primary accent */
+  --success: #10b981;
+  --danger: #ef4444;
+
+  /* Spacing and radius tokens */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+/* Utility classes to help migrate components */
+.gp-surface { background: var(--surface); color: var(--text); }
+.gp-surface-2 { background: var(--surface-2); color: var(--text); }
+.gp-muted { color: var(--muted); }
+.gp-accent { color: var(--accent); }

@@ -4,6 +4,7 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import Icon from '../components/Icon';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import QueryFilterPanel from '../components/QueryFilterPanel';
@@ -626,14 +627,7 @@ export default function QueryPage() {
           <h1 className="query-title">Research Graph</h1>
           <p className="query-subtitle">Discover and explore academic papers</p>
           
-          <div className="query-nav">
-            <Link to="/personal" className="nav-link">
-              📚 My Saved Papers
-            </Link>
-            <Link to="/exploration" className="nav-link">
-              🔍 Explore Topics
-            </Link>
-          </div>
+          {/* Navigation links are available in the main Navbar; remove duplicate links here to reduce clutter */}
         </div>
       </header>
 
@@ -677,7 +671,7 @@ export default function QueryPage() {
                   disabled={loading || !query.trim() || authLoading}
                   title={queryType === 'keyword' ? 'Search by keywords' : 'Search by topic'}
                 >
-                  {loading ? '⏳' : '🔍'}
+                  {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="search" ariaLabel="Search" />}
                 </button>
               </div>
               {error && retryCount > 0 && (
@@ -695,13 +689,15 @@ export default function QueryPage() {
                 className={`view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
                 onClick={() => setViewMode('list')}
               >
-                📋 List View
+                <Icon name="clipboard" ariaLabel="List view" />
+                <span style={{ marginLeft: 8 }}>List View</span>
               </button>
               <button
                 className={`view-mode-btn ${viewMode === 'graph' ? 'active' : ''}`}
                 onClick={() => setViewMode('graph')}
               >
-                🕸️ Graph View
+                <Icon name="graph" ariaLabel="Graph view" />
+                <span style={{ marginLeft: 8 }}>Graph View</span>
               </button>
             </div>
           )}
@@ -717,7 +713,7 @@ export default function QueryPage() {
           {/* Error State - GRAPH-60: Enhanced with retry */}
           {error && (
             <div className="error-state">
-              <div className="error-icon">⚠️</div>
+              <div className="error-icon"><Icon name="warning" ariaLabel="Error" /></div>
               <p>{error}</p>
               <div className="error-actions">
                 <button onClick={handleRetry} className="retry-button" disabled={loading}>
@@ -759,7 +755,8 @@ export default function QueryPage() {
                         className="save-button"
                         title="Save paper"
                       >
-                        💾 Save
+                        <Icon name="save" ariaLabel="Save" />
+                        <span style={{ marginLeft: 8 }}>Save</span>
                       </button>
                     </div>
                     
@@ -845,7 +842,7 @@ export default function QueryPage() {
                       <span className="layer-limit-text">Limits: 10 / 40 / 80</span>
                     </div>
                     {expandingLayer && (
-                      <span className="expanding-indicator">⏳ Expanding...</span>
+                      <span className="expanding-indicator"><Icon name="hourglass" ariaLabel="Expanding" /> <span style={{ marginLeft: 6 }}>Expanding...</span></span>
                     )}
                   </div>
                   <button onClick={clearResults} className="clear-button">
@@ -899,7 +896,8 @@ export default function QueryPage() {
                     className="save-button"
                     title="Save paper"
                   >
-                    💾 Save Paper
+                    <Icon name="save" ariaLabel="Save paper" />
+                    <span style={{ marginLeft: 8 }}>Save Paper</span>
                   </button>
                 </div>
               )}
@@ -909,11 +907,11 @@ export default function QueryPage() {
           {/* Empty State */}
           {!loading && !error && results.length === 0 && queryGraphs.length === 0 && (
             <div className="empty-state">
-              <div className="empty-icon">🔍</div>
+              <div className="empty-icon"><Icon name="search" ariaLabel="Start searching" /></div>
               <h3>Start Your Research Journey</h3>
               <p>Enter a research question or keywords to discover relevant academic papers.</p>
               <div className="example-queries">
-                <p>Try searching for:</p>
+                <p className="empty-try">Try searching for:</p>
                 <div className="example-list">
                   <button 
                     className="example-query"

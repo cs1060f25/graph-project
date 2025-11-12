@@ -748,7 +748,13 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: #c9c9ce;
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 1.25rem 0;
+}
+
+.example-queries .empty-try {
+  margin-bottom: 0.75rem;
+  display: block;
+  line-height: 1.4;
 }
 
 .example-list {

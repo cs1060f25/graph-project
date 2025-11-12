@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import './PersonalPage.css'; // reuse existing styles
+import Icon from '../components/Icon';
 
 export default function ExplorationPage() {
   const luckyTopics = [
@@ -74,7 +75,7 @@ export default function ExplorationPage() {
           <div className="sidebar-section">
             <h3 className="sidebar-title">I'm Feeling Lucky</h3>
             <button className="filter-btn" onClick={handleFeelingLucky}>
-              🎲 Pick a Random Topic
+              <Icon name="dice" ariaLabel="Pick a random topic" /> <span style={{ marginLeft: 8 }}>Pick a Random Topic</span>
             </button>
           </div>
 
@@ -90,7 +91,7 @@ export default function ExplorationPage() {
                   className="filter-btn"
                   onClick={() => handleSelectTopic(topic)}
                 >
-                  📌 {topic}
+                  <Icon name="pin" ariaLabel={`Saved topic ${topic}`} /> <span style={{ marginLeft: 8 }}>{topic}</span>
                 </button>
               ))
             )}
@@ -103,10 +104,10 @@ export default function ExplorationPage() {
             <div className="topic-header" style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '12px' }}>
               <h2 style={{ margin: 0 }}>{selectedTopic}</h2>
               <button className="btn btn-primary" onClick={handleSaveTopic}>
-                💾 Save Topic
+                <Icon name="save" ariaLabel="Save topic" /> <span style={{ marginLeft: 8 }}>Save Topic</span>
               </button>
               <button className="btn btn-secondary" onClick={handleRefreshTopic}>
-                🔄 Refresh
+                <Icon name="refresh" ariaLabel="Refresh" /> <span style={{ marginLeft: 8 }}>Refresh</span>
               </button>
             </div>
           )}
@@ -118,18 +119,18 @@ export default function ExplorationPage() {
             </div>
           ) : error ? (
             <div className="empty-state">
-              <div className="empty-icon">⚠️</div>
+              <div className="empty-icon"><Icon name="warning" ariaLabel="Error" /></div>
               <h2>{error}</h2>
             </div>
           ) : !selectedTopic ? (
             <div className="empty-state">
-              <div className="empty-icon">🎲</div>
+              <div className="empty-icon"><Icon name="dice" ariaLabel="Feeling lucky" /></div>
               <h2>Pick a topic or feel lucky!</h2>
               <p>Click a topic on the left or press "I'm Feeling Lucky" to explore papers.</p>
             </div>
           ) : papers.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">📄</div>
+              <div className="empty-icon"><Icon name="clipboard" ariaLabel="No papers" /></div>
               <h2>No papers found</h2>
               <p>Try selecting another topic</p>
             </div>

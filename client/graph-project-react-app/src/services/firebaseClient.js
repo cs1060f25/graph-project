@@ -18,7 +18,7 @@ const firebaseConfig = {
 // Warn if environment variables are not loaded
 if (!process.env.REACT_APP_FIREBASE_API_KEY) {
   console.warn(
-    '⚠️ Firebase environment variables not found. ' +
+    'Firebase environment variables not found. ' +
     'Please create a .env file in client/graph-project-react-app/ with REACT_APP_FIREBASE_* variables. ' +
     'See README.md for setup instructions. ' +
     'Note: You must restart the dev server after creating/modifying .env files.'

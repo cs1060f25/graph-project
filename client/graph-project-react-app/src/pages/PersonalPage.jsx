@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Icon from '../components/Icon';
 import { useSavedPapers } from '../hooks/useSavedPapers';
 import { useAuth } from '../context/AuthContext';
 import PaperCard from '../components/PaperCard';
@@ -107,23 +108,12 @@ export default function PersonalPage() {
 
   return (
     <div className="personal-page">
-      {/* Header */}
-      <header className="personal-page-header">
-        <div className="header-content">
+      {/* Header: match Query page header style and remove sign-out button per UX request */}
+      <header className="personal-page-header query-header">
+        <div className="query-header-content">
           <div>
-            <h1 className="page-title">My Saved Papers</h1>
-            <p className="page-subtitle">
-              {Array.isArray(papers) ? papers.length : 0} {Array.isArray(papers) && papers.length === 1 ? 'paper' : 'papers'} saved
-            </p>
+            <h1 className="query-title">My Saved Papers</h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="logout-btn-header"
-            disabled={loggingOut}
-            title="Sign out"
-          >
-            {loggingOut ? '⏳' : '🚪'} Sign out
-          </button>
         </div>
       </header>
 
@@ -148,8 +138,8 @@ export default function PersonalPage() {
                 setSelectedFolder(null);
               }}
             >
-              <span className="filter-icon">📄</span>
-              All Papers
+              <Icon name="clipboard" ariaLabel="All papers" />
+              <span style={{ marginLeft: 8 }}>All Papers</span>
               <span className="filter-count">{Array.isArray(papers) ? papers.length : 0}</span>
             </button>
             <button
@@ -159,8 +149,8 @@ export default function PersonalPage() {
                 setSelectedFolder(null);
               }}
             >
-              <span className="filter-icon">⭐</span>
-              Starred
+              <Icon name="star" ariaLabel="Starred" />
+              <span style={{ marginLeft: 8 }}>Starred</span>
               <span className="filter-count">
                 {Array.isArray(papers) ? papers.filter(p => p?.starred).length : 0}
               </span>
@@ -193,8 +183,8 @@ export default function PersonalPage() {
                       setFilterMode('all');
                     }}
                   >
-                    <span className="filter-icon">📁</span>
-                    {folder.name}
+                    <Icon name="folder" ariaLabel="Folder" />
+                    <span style={{ marginLeft: 8 }}>{folder.name}</span>
                     <span className="filter-count">
                       {getPaperCountForFolder(folder.id)}
                     </span>
@@ -230,24 +220,24 @@ export default function PersonalPage() {
           {displayedPapers.length === 0 ? (
             <div className="empty-state">
               {!Array.isArray(papers) || papers.length === 0 ? (
-                <>
-                  <div className="empty-icon">📚</div>
-                  <h2>No papers saved yet</h2>
-                  <p>Start exploring research papers and save them here for later!</p>
-                </>
-              ) : searchQuery ? (
-                <>
-                  <div className="empty-icon">🔍</div>
-                  <h2>No papers found</h2>
-                  <p>Try a different search term</p>
-                </>
-              ) : (
-                <>
-                  <div className="empty-icon">📁</div>
-                  <h2>No papers in this view</h2>
-                  <p>Try selecting a different filter or folder</p>
-                </>
-              )}
+                  <>
+                    <div className="empty-icon"><Icon name="book" ariaLabel="No papers" /></div>
+                    <h2>No papers saved yet</h2>
+                    <p>Start exploring research papers and save them here for later!</p>
+                  </>
+                ) : searchQuery ? (
+                  <>
+                    <div className="empty-icon"><Icon name="search" ariaLabel="No results" /></div>
+                    <h2>No papers found</h2>
+                    <p>Try a different search term</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="empty-icon"><Icon name="folder" ariaLabel="Empty folder" /></div>
+                    <h2>No papers in this view</h2>
+                    <p>Try selecting a different filter or folder</p>
+                  </>
+                )}
             </div>
           ) : (
             <div className="papers-list">
@@ -267,19 +257,21 @@ export default function PersonalPage() {
       </div>
 
       {/* New folder modal */}
-      {showNewFolderModal && (
+          {showNewFolderModal && (
         <div className="modal-overlay" onClick={() => setShowNewFolderModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">Create New Folder</h2>
             <form onSubmit={handleCreateFolder}>
-              <input
-                type="text"
-                placeholder="Folder name"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                className="modal-input"
-                autoFocus
-              />
+              <div className="modal-input-container">
+                <input
+                  type="text"
+                  placeholder="Folder name"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  className="modal-input"
+                  autoFocus
+                />
+              </div>
               <div className="modal-actions">
                 <button
                   type="button"
