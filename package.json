@@ -1,5 +1,14 @@
 {
+  "name": "graph-project",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently -k -n \"server,client\" -c \"blue,green\" \"npm start --prefix server\" \"npm start --prefix client/graph-project-react-app\""
+  },
   "dependencies": {
     "firebase-admin": "^13.5.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
   }
 }
