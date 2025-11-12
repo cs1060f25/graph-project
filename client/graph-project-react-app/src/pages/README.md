@@ -1,5 +1,4 @@
 where all the page components go
-query
+query + exploration
 personal
-exploration
 etc.
