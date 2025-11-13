@@ -569,11 +569,15 @@
   border: none;
   padding: 0.375rem 0.75rem;
   border-radius: 6px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
 }
 
 .save-button:hover {
