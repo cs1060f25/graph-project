@@ -1,4 +1,12 @@
 {
+  "name": "graph-project",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd client/graph-project-react-app && npm install && CI=false npm run build",
+    "start": "cd client/graph-project-react-app && npm start",
+    "server": "cd server && npm start"
+  },
   "dependencies": {
     "firebase-admin": "^13.5.0"
   }
