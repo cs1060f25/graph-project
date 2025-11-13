@@ -9,10 +9,9 @@ Link: https://drive.google.com/drive/folders/1ils67r6OZdDwiRTr5ZC19TXRTMHw6Yrr?u
 
 You can start both the backend API server and the React client from the repository root using a single command.
 
-1. Install dependencies at the repository root (this will install `concurrently` into the root devDependencies):
-
+1. Install dependencies:
 ```bash
-npm install
+(cd client && npm install) && (cd server && npm install) && npm install
 ```
 
 2. Start both services from the root:
