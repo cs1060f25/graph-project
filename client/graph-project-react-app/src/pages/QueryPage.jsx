@@ -164,18 +164,37 @@ export default function QueryPage() {
 
   // Enhanced error handling with retry logic (GRAPH-60 enhancement)
   // Now supports multiple queries separated by commas or semicolons
-  const handleSubmit = async (e, retry = false) => {
-    e.preventDefault();
-
-    // Validate query and parse multiple queries
-    const validation = validateQuery(query);
-    if (!validation.valid) {
-      setError(validation.error);
-      queryInputRef.current?.focus();
-      return;
+  const handleSubmit = async (e, retry = false, initialQueries = null) => {
+    // preventDefault if an event-like object was passed
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
     }
 
-    const queries = validation.queries || [query.trim()];
+    // Determine which queries to run: optional override (string or array) or current state
+    let queries = null;
+    if (initialQueries) {
+      if (typeof initialQueries === 'string') {
+        const validation = validateQuery(initialQueries);
+        if (!validation.valid) {
+          setError(validation.error);
+          queryInputRef.current?.focus();
+          return;
+        }
+        queries = validation.queries || [initialQueries.trim()];
+      } else if (Array.isArray(initialQueries)) {
+        queries = initialQueries;
+      }
+    } else {
+      // Validate query and parse multiple queries from input state
+      const validation = validateQuery(query);
+      if (!validation.valid) {
+        setError(validation.error);
+        queryInputRef.current?.focus();
+        return;
+      }
+
+      queries = validation.queries || [query.trim()];
+    }
 
     if (!retry) {
       setRetryCount(0);
@@ -670,18 +689,19 @@ export default function QueryPage() {
                 >
                   {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="search" ariaLabel="Search" />}
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="button"
                   className="search-button"
                   disabled={false}
                   onClick={(e) => {
-                    setQuery("machine learning");
-                    // wait until React updates query, then submit
-                    setTimeout(() => handleSubmit(e), 0);
+                    // Submit a preset query immediately without waiting for state update
+                    handleSubmit(e, false, 'machine learning');
+                    // also update the input so the user sees the selected query
+                    setQuery('machine learning');
                   }}
-                  title={'Im feeling lucky'}
+                  title={"I'm feeling lucky"}
                 >
-                  {loading ? '⏳' : '🎲'}
+                  {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="dice" ariaLabel="I'm feeling lucky" />}
                 </button>
               </div>
               {error && retryCount > 0 && (

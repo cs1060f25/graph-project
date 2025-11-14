@@ -253,6 +253,10 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center; /* vertically center icon + text */
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .view-mode-btn:hover {
