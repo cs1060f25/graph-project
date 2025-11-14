@@ -166,7 +166,7 @@ export default function QueryPage() {
   // Now supports multiple queries separated by commas or semicolons
   const handleSubmit = async (e, retry = false) => {
     e.preventDefault();
-    
+
     // Validate query and parse multiple queries
     const validation = validateQuery(query);
     if (!validation.valid) {
@@ -625,9 +625,6 @@ export default function QueryPage() {
       <header className="query-header">
         <div className="query-header-content">
           <h1 className="query-title">Research Graph</h1>
-          <p className="query-subtitle">Discover and explore academic papers</p>
-          
-          {/* Navigation links are available in the main Navbar; remove duplicate links here to reduce clutter */}
         </div>
       </header>
 
@@ -672,6 +669,19 @@ export default function QueryPage() {
                   title={queryType === 'keyword' ? 'Search by keywords' : 'Search by topic'}
                 >
                   {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="search" ariaLabel="Search" />}
+                </button>
+                <button 
+                  type="submit" 
+                  className="search-button"
+                  disabled={false}
+                  onClick={(e) => {
+                    setQuery("machine learning");
+                    // wait until React updates query, then submit
+                    setTimeout(() => handleSubmit(e), 0);
+                  }}
+                  title={'Im feeling lucky'}
+                >
+                  {loading ? '⏳' : '🎲'}
                 </button>
               </div>
               {error && retryCount > 0 && (

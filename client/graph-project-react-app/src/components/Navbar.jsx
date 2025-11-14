@@ -7,7 +7,6 @@ import './Navbar.css';
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const location = useLocation();
-
   const isActive = (path) => location.pathname === path;
 
   return (
