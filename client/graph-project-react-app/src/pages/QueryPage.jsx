@@ -3,6 +3,8 @@
 // HW9 GRAPH-60: Enhanced Query Input & API Integration
 
 import { useState, useRef, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import Icon from '../components/Icon';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import QueryFilterPanel from '../components/QueryFilterPanel';
@@ -162,18 +164,37 @@ export default function QueryPage() {
 
   // Enhanced error handling with retry logic (GRAPH-60 enhancement)
   // Now supports multiple queries separated by commas or semicolons
-  const handleSubmit = async (e, retry = false) => {
-    e.preventDefault();
-
-    // Validate query and parse multiple queries
-    const validation = validateQuery(query);
-    if (!validation.valid) {
-      setError(validation.error);
-      queryInputRef.current?.focus();
-      return;
+  const handleSubmit = async (e, retry = false, initialQueries = null) => {
+    // preventDefault if an event-like object was passed
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
     }
 
-    const queries = validation.queries || [query.trim()];
+    // Determine which queries to run: optional override (string or array) or current state
+    let queries = null;
+    if (initialQueries) {
+      if (typeof initialQueries === 'string') {
+        const validation = validateQuery(initialQueries);
+        if (!validation.valid) {
+          setError(validation.error);
+          queryInputRef.current?.focus();
+          return;
+        }
+        queries = validation.queries || [initialQueries.trim()];
+      } else if (Array.isArray(initialQueries)) {
+        queries = initialQueries;
+      }
+    } else {
+      // Validate query and parse multiple queries from input state
+      const validation = validateQuery(query);
+      if (!validation.valid) {
+        setError(validation.error);
+        queryInputRef.current?.focus();
+        return;
+      }
+
+      queries = validation.queries || [query.trim()];
+    }
 
     if (!retry) {
       setRetryCount(0);
@@ -619,6 +640,13 @@ export default function QueryPage() {
 
   return (
     <div className="query-page">
+      {/* Header */}
+      <header className="query-header">
+        <div className="query-header-content">
+          <h1 className="query-title">Research Graph</h1>
+        </div>
+      </header>
+
       {/* Main Content */}
       <main className="query-main">
         <div className="query-container">
@@ -659,20 +687,21 @@ export default function QueryPage() {
                   disabled={loading || !query.trim() || authLoading}
                   title={queryType === 'keyword' ? 'Search by keywords' : 'Search by topic'}
                 >
-                  {loading ? '⏳' : '🔍'}
+                  {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="search" ariaLabel="Search" />}
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="button"
                   className="search-button"
                   disabled={false}
                   onClick={(e) => {
-                    setQuery("machine learning");
-                    // wait until React updates query, then submit
-                    setTimeout(() => handleSubmit(e), 0);
+                    // Submit a preset query immediately without waiting for state update
+                    handleSubmit(e, false, 'machine learning');
+                    // also update the input so the user sees the selected query
+                    setQuery('machine learning');
                   }}
-                  title={'Im feeling lucky'}
+                  title={"I'm feeling lucky"}
                 >
-                  {loading ? '⏳' : '🎲'}
+                  {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="dice" ariaLabel="I'm feeling lucky" />}
                 </button>
               </div>
               {error && retryCount > 0 && (
@@ -690,13 +719,15 @@ export default function QueryPage() {
                 className={`view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
                 onClick={() => setViewMode('list')}
               >
-                📋 List View
+                <Icon name="clipboard" ariaLabel="List view" />
+                <span style={{ marginLeft: 8 }}>List View</span>
               </button>
               <button
                 className={`view-mode-btn ${viewMode === 'graph' ? 'active' : ''}`}
                 onClick={() => setViewMode('graph')}
               >
-                🕸️ Graph View
+                <Icon name="graph" ariaLabel="Graph view" />
+                <span style={{ marginLeft: 8 }}>Graph View</span>
               </button>
             </div>
           )}
@@ -712,7 +743,7 @@ export default function QueryPage() {
           {/* Error State - GRAPH-60: Enhanced with retry */}
           {error && (
             <div className="error-state">
-              <div className="error-icon">⚠️</div>
+              <div className="error-icon"><Icon name="warning" ariaLabel="Error" /></div>
               <p>{error}</p>
               <div className="error-actions">
                 <button onClick={handleRetry} className="retry-button" disabled={loading}>
@@ -754,7 +785,8 @@ export default function QueryPage() {
                         className="save-button"
                         title="Save paper"
                       >
-                        💾 Save
+                        <Icon name="save" ariaLabel="Save" />
+                        <span style={{ marginLeft: 8 }}>Save</span>
                       </button>
                     </div>
                     
@@ -840,7 +872,7 @@ export default function QueryPage() {
                       <span className="layer-limit-text">Limits: 10 / 40 / 80</span>
                     </div>
                     {expandingLayer && (
-                      <span className="expanding-indicator">⏳ Expanding...</span>
+                      <span className="expanding-indicator"><Icon name="hourglass" ariaLabel="Expanding" /> <span style={{ marginLeft: 6 }}>Expanding...</span></span>
                     )}
                   </div>
                   <button onClick={clearResults} className="clear-button">
@@ -894,7 +926,8 @@ export default function QueryPage() {
                     className="save-button"
                     title="Save paper"
                   >
-                    💾 Save Paper
+                    <Icon name="save" ariaLabel="Save paper" />
+                    <span style={{ marginLeft: 8 }}>Save Paper</span>
                   </button>
                 </div>
               )}
@@ -904,11 +937,11 @@ export default function QueryPage() {
           {/* Empty State */}
           {!loading && !error && results.length === 0 && queryGraphs.length === 0 && (
             <div className="empty-state">
-              <div className="empty-icon">🔍</div>
+              <div className="empty-icon"><Icon name="search" ariaLabel="Start searching" /></div>
               <h3>Start Your Research Journey</h3>
               <p>Enter a research question or keywords to discover relevant academic papers.</p>
               <div className="example-queries">
-                <p>Try searching for:</p>
+                <p className="empty-try">Try searching for:</p>
                 <div className="example-list">
                   <button 
                     className="example-query"

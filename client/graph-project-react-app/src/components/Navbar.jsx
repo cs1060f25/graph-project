@@ -1,6 +1,7 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import Icon from './Icon';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -14,7 +15,6 @@ const Navbar = () => {
         <Link to="/" className="navbar-brand">
           Graphene
         </Link>
-        <p className="query-subtitle">Discover and explore academic papers</p>
         <div className="navbar-links">
           {user ? (
             <>
@@ -31,7 +31,8 @@ const Navbar = () => {
                 Personal Dashboard
               </Link>
               <button onClick={signOut} className="navbar-signout">
-                Sign Out
+                <Icon name="lock" size={16} />
+                <span style={{ marginLeft: 8 }}>Sign Out</span>
               </button>
             </>
           ) : (
