@@ -27,7 +27,6 @@ export default function QueryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'graph'
   const [selectedNode, setSelectedNode] = useState(null);
   const queryInputRef = useRef(null);
 
@@ -60,9 +59,8 @@ export default function QueryPage() {
   } = useQueryHistory(isAuthenticated);
 
   // Transform results to graph format with multi-query support
+  // GRAPH-61: Graph is now the default and only view mode
   const graphData = useMemo(() => {
-    if (viewMode !== 'graph') return null;
-    
     // If we have query graphs, merge them with layer support
     if (queryGraphs.length > 0) {
       return mergeQueryGraphs(queryGraphs, transformPapersToGraph, createLayerLinks);
@@ -118,7 +116,7 @@ export default function QueryPage() {
       nodes: transformed.nodes,
       links: uniqueLinks
     };
-  }, [queryGraphs, results, layerPapers, currentDepth, viewMode]);
+  }, [queryGraphs, results, layerPapers, currentDepth]);
 
   /**
    * Parses multiple queries from input (comma or semicolon separated)
@@ -703,26 +701,6 @@ export default function QueryPage() {
             </form>
           </div>
 
-          {/* View Mode Toggle */}
-          {results.length > 0 && (
-            <div className="view-mode-toggle">
-              <button
-                className={`view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => setViewMode('list')}
-              >
-                <Icon name="clipboard" ariaLabel="List view" />
-                <span style={{ marginLeft: 8 }}>List View</span>
-              </button>
-              <button
-                className={`view-mode-btn ${viewMode === 'graph' ? 'active' : ''}`}
-                onClick={() => setViewMode('graph')}
-              >
-                <Icon name="graph" ariaLabel="Graph view" />
-                <span style={{ marginLeft: 8 }}>Graph View</span>
-              </button>
-            </div>
-          )}
-
           {/* Loading State */}
           {loading && (
             <div className="loading-state">
@@ -747,78 +725,9 @@ export default function QueryPage() {
             </div>
           )}
 
-          {/* Results Section - List View */}
-          {!loading && !error && results.length > 0 && viewMode === 'list' && (
-            <div className="results-section">
-              <div className="results-header">
-                <h2>Search Results ({results.length})</h2>
-                <button onClick={clearResults} className="clear-button">
-                  Clear Results
-                </button>
-              </div>
-              
-              <div className="results-list">
-                {results.map((paper, index) => (
-                  <div key={paper.id || index} className="result-card">
-                    <div className="result-header">
-                      <h3 className="result-title">
-                        <a 
-                          href={paper.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="result-link"
-                        >
-                          {paper.title}
-                        </a>
-                      </h3>
-                      <button
-                        onClick={() => handleSavePaper(paper)}
-                        className="save-button"
-                        title="Save paper"
-                      >
-                        <Icon name="save" ariaLabel="Save" />
-                        <span style={{ marginLeft: 8 }}>Save</span>
-                      </button>
-                    </div>
-                    
-                    {paper.authors && paper.authors.length > 0 && (
-                      <div className="result-authors">
-                        {Array.isArray(paper.authors) 
-                          ? paper.authors.join(', ')
-                          : paper.authors}
-                      </div>
-                    )}
-                    
-                    {paper.summary && (
-                      <p className="result-summary">
-                        {paper.summary.length > 300 
-                          ? paper.summary.slice(0, 300) + '...'
-                          : paper.summary
-                        }
-                      </p>
-                    )}
-                    
-                    <div className="result-footer">
-                      <span className="result-date">
-                        {paper.published ? new Date(paper.published).getFullYear() : 'Unknown year'}
-                      </span>
-                      <a 
-                        href={paper.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="view-paper-link"
-                      >
-                        View Paper →
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Results Section - Graph View */}
-          {!loading && !error && (results.length > 0 || queryGraphs.length > 0) && viewMode === 'graph' && graphData && (
+          {/* GRAPH-61: Graph visualization replaces row/list display */}
+          {!loading && !error && (results.length > 0 || queryGraphs.length > 0) && graphData && (
             <div className="graph-results-section">
               {/* Query Filter Panel */}
               {queryGraphs.length > 0 && (

@@ -1,5 +1,6 @@
 // HW9 GRAPH-63: Enhanced Graph Node Interactions
-import React, { useMemo, useState, useCallback } from 'react';
+// GRAPH-61: Graph visualization with zoom and pan controls
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import './GraphVisualization.css';
 
@@ -7,6 +8,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   const { nodes, links } = graphData || { nodes: [], links: [] };
   const [hoveredNode, setHoveredNode] = useState(null);
   const [highlightedNodes, setHighlightedNodes] = useState(new Set());
+  const fgRef = useRef();
 
   // Memoize the graph data to prevent unnecessary re-renders
   const memoizedData = useMemo(() => ({
@@ -189,6 +191,25 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return (link.value || 1) * 1.5; // Default width
   }, [selectedNode, hoveredNode]);
 
+  // GRAPH-61: Zoom and pan controls
+  const handleZoomIn = useCallback(() => {
+    if (fgRef.current) {
+      fgRef.current.zoom(1.5);
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (fgRef.current) {
+      fgRef.current.zoom(0.75);
+    }
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    if (fgRef.current) {
+      fgRef.current.zoomToFit(400, 20);
+    }
+  }, []);
+
   if (!memoizedData.nodes || memoizedData.nodes.length === 0) {
     return (
       <div className="graph-placeholder">
@@ -199,7 +220,35 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
 
   return (
     <div className="graph-container">
+      {/* GRAPH-61: Zoom controls */}
+      <div className="graph-controls-overlay">
+        <button 
+          className="zoom-control-btn" 
+          onClick={handleZoomIn}
+          title="Zoom in (or use mouse wheel)"
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <button 
+          className="zoom-control-btn" 
+          onClick={handleZoomOut}
+          title="Zoom out (or use mouse wheel)"
+          aria-label="Zoom out"
+        >
+          −
+        </button>
+        <button 
+          className="zoom-control-btn" 
+          onClick={handleResetZoom}
+          title="Reset zoom and center"
+          aria-label="Reset zoom"
+        >
+          ⌂
+        </button>
+      </div>
       <ForceGraph2D
+        ref={fgRef}
         graphData={memoizedData}
         backgroundColor="#151517"
         nodeLabel={(node) => `
@@ -275,6 +324,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         height={height}
         width={Math.min(window.innerWidth - 100, 1200)}
         cooldownTicks={100}
+        // GRAPH-61: Enable zoom and pan (built-in functionality)
+        // Zoom: mouse wheel, Pan: click and drag background
         onEngineStop={() => {
           // Graph layout is stable
         }}
