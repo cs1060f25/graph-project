@@ -3,6 +3,7 @@
 // HW9 GRAPH-60: Enhanced Query Input & API Integration
 
 import { useState, useRef, useMemo } from 'react';
+import Icon from '../components/Icon';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import QueryFilterPanel from '../components/QueryFilterPanel';
