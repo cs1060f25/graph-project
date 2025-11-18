@@ -106,23 +106,70 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
-  // GRAPH-84 Fix: Consistent node radius (px) and spacing
-  const BASE_RADIUS = 3;
-  const NODE_GAP = 15; // Increased gap to prevent overlap
+  // GRAPH-84 Fix: Adaptive node radius scaling to fit within available space
+  const NODE_GAP = 6; // Gap between nodes to prevent overlap
+  
+  /**
+   * Compute adaptive node radius scaling to keep graph within available space.
+   * Ensures total node area <= φ * viewport area (packing density)
+   */
+  const computeNodeRadiusScaler = useCallback((nodes, width, height, opts = {}) => {
+    const {
+      minR = 3,            // smallest radius (px)
+      maxR = 40,           // cap large nodes
+      phi = 0.35,          // target packing density (0.3–0.5 works well)
+      scaleMode = 'log'    // or 'sqrt'
+    } = opts;
 
+    if (!nodes?.length) return (n) => minR;
+
+    // derive weights from citation counts
+    const weights = nodes.map((n) => {
+      const c = Math.max(n.citations ?? n.value ?? n.citationCount ?? 1, 1);
+      return scaleMode === 'log' ? Math.log1p(c) : Math.sqrt(c);
+    });
+
+    const totalWeightSq = weights.reduce((s, w) => s + w * w, 0);
+    const areaBudget = phi * width * height;
+
+    // k ensures total circle area <= budget
+    const k = Math.sqrt(areaBudget / (Math.PI * totalWeightSq));
+
+    // build radius function
+    return (node) => {
+      const c = Math.max(node.citations ?? node.value ?? node.citationCount ?? 1, 1);
+      const w = scaleMode === 'log' ? Math.log1p(c) : Math.sqrt(c);
+      const r = Math.min(maxR, Math.max(minR, k * w));
+      return r;
+    };
+  }, []);
+
+  // Compute adaptive radius scaler based on viewport size
+  const graphWidth = Math.min(window.innerWidth - 100, 1200);
+  const baseRadiusScaler = useMemo(
+    () => computeNodeRadiusScaler(memoizedData.nodes, graphWidth, height, { phi: 0.4 }),
+    [memoizedData.nodes, graphWidth, height, computeNodeRadiusScaler]
+  );
+
+  // Get node radius with layer scaling and selection/hover effects
   const getNodeRadius = useCallback((node, { forSim = false } = {}) => {
-    const citations = node.citations || node.value || node.citationCount || 1;
     const layer = node.layer || 1;
     const layerScale = layer === 1 ? 1 : layer === 2 ? 0.8 : 0.6;
-    // Make nodes 1/10 the size: reduce scaling factor from 4 to 0.4
-    let radius = Math.sqrt(citations) * 0.4 + BASE_RADIUS * 0.1; // radius in px (much smaller)
+    
+    // Get base radius from adaptive scaler
+    let radius = baseRadiusScaler(node);
+    
+    // Apply layer scaling
     radius *= layerScale;
+    
+    // Apply selection/hover scaling (only for rendering, not simulation)
     if (!forSim) {
       if (selectedNode?.id === node.id) radius *= 1.3;
       else if (hoveredNode?.id === node.id) radius *= 1.2;
     }
+    
     return radius;
-  }, [selectedNode, hoveredNode]);
+  }, [baseRadiusScaler, selectedNode, hoveredNode]);
 
   // Legacy getNodeSize for backward compatibility (returns radius, but nodeVal will use radius³)
   const getNodeSize = useCallback((node) => {
@@ -314,7 +361,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
           ctx.fill();
         }}
         height={height}
-        width={Math.min(window.innerWidth - 100, 1200)}
+        width={graphWidth}
         cooldownTicks={200}
         // GRAPH-84 Fix: Proper force simulation with correct nodeVal (volume) and collision detection
         // Very compact forces to keep graph small and prevent overlap
