@@ -333,19 +333,19 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         cooldownTicks={400}
         // GRAPH-84: Configure force simulation for variable node sizes with collision detection
         d3Force={(simulation) => {
-          // Strong repulsion between nodes (charge force)
+          // Very strong repulsion between nodes (charge force) to push nodes far apart
           // Calculate based on average node size and number of nodes
           const nodeCount = memoizedData.nodes.length;
           const avgNodeSize = nodeCount > 0
             ? memoizedData.nodes.reduce((sum, node) => sum + getNodeSize(node), 0) / nodeCount
             : 10;
-          // Strong charge that scales with node count
-          const chargeStrength = -800 - (nodeCount * 15);
+          // Very strong charge that scales with node count to create lots of space
+          const chargeStrength = -2000 - (nodeCount * 30);
           simulation.force('charge').strength(chargeStrength);
-          simulation.force('charge').distanceMax(2000);
+          simulation.force('charge').distanceMax(2500);
           
-          // MUCH longer link distances to spread nodes out in a graph-like layout
-          // Formula: distance = sum of radii + VERY large gap for proper graph spacing
+          // EXTREMELY long link distances to minimize rubber band effect
+          // Links should be very long so nodes can spread out naturally
           simulation.force('link').distance((link) => {
             const sourceNode = typeof link.source === 'object' ? link.source : memoizedData.nodes.find(n => n.id === link.source);
             const targetNode = typeof link.target === 'object' ? link.target : memoizedData.nodes.find(n => n.id === link.target);
@@ -353,36 +353,36 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             const targetSize = targetNode ? getNodeSize(targetNode) : 10;
             const sourceRadius = sourceSize / 2;
             const targetRadius = targetSize / 2;
-            // Much longer edges: sum of radii + large gap (at least 300px for graph-like appearance)
-            return sourceRadius + targetRadius + Math.max(300, (sourceSize + targetSize) * 2);
+            // Very long edges: sum of radii + HUGE gap (at least 500px to prevent clumping)
+            return sourceRadius + targetRadius + Math.max(500, (sourceSize + targetSize) * 4);
           });
-          simulation.force('link').strength(0.3); // Moderate link strength to maintain graph structure
+          simulation.force('link').strength(0.05); // Very weak link strength - almost no rubber band effect
           
-          // Collision radius with good padding
+          // Large collision radius with significant padding to ensure nodes stay far apart
           if (!simulation.force('collision')) {
             simulation.force('collision', d3Force.forceCollide()
               .radius((node) => {
                 const nodeSize = getNodeSize(node);
                 const nodeRadius = nodeSize / 2;
-                // Collision radius = node radius + padding (at least 50px, scales with node size)
-                return nodeRadius + Math.max(50, nodeSize * 0.5);
+                // Collision radius = node radius + large padding (at least 100px to prevent overlap)
+                return nodeRadius + Math.max(100, nodeSize * 1.0);
               })
               .strength(1.0) // Maximum collision avoidance strength
-              .iterations(5) // Good number of iterations for collision resolution
+              .iterations(6) // More iterations for better collision resolution
             );
           } else {
             // Update existing collision force
             simulation.force('collision').radius((node) => {
               const nodeSize = getNodeSize(node);
               const nodeRadius = nodeSize / 2;
-              return nodeRadius + Math.max(50, nodeSize * 0.5);
+              return nodeRadius + Math.max(100, nodeSize * 1.0);
             });
-            simulation.force('collision').iterations(5);
+            simulation.force('collision').iterations(6);
           }
           
           // Weak center force to keep graph roughly centered
           if (!simulation.force('center')) {
-            simulation.force('center', d3Force.forceCenter(0, 0).strength(0.1));
+            simulation.force('center', d3Force.forceCenter(0, 0).strength(0.05));
           }
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
