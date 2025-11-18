@@ -369,7 +369,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         d3Force={(simulation) => {
           const nodeById = new Map(memoizedData.nodes.map((n) => [n.id, n]));
           
-          // Link force with distance based on node radii
+          // Link force with longer distances and weaker strength (less elastic)
           simulation.force(
             'link',
             d3Force.forceLink(memoizedData.links)
@@ -377,9 +377,10 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               .distance(l => {
                 const s = typeof l.source === 'object' ? l.source : nodeById.get(l.source);
                 const t = typeof l.target === 'object' ? l.target : nodeById.get(l.target);
-                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 20;
+                // Longer edges: sum of radii + larger gap (50px for longer edges)
+                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 50;
               })
-              .strength(0.2)
+              .strength(0.05) // Much weaker strength for less elastic/rubber band effect
           );
 
           // Charge force - balanced for adaptive sizing
