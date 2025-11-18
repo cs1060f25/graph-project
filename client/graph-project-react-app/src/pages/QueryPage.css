@@ -6,6 +6,38 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
+.search-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* History Button */
+.history-button {
+  background: #151517;
+  color: #c9c9ce;
+  border: 1px solid #2a2a2e;
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-button:hover {
+  background: #1a1a1c;
+  border-color: #3a3a3e;
+  color: #eaeaea;
+}
+
+.history-button.active {
+  background: #3a82ff; /* Blue background when active */
+  color: white;
+  border-color: #3a82ff;
+}
+
 /* Header */
 .query-header {
   background: #0f0f10;

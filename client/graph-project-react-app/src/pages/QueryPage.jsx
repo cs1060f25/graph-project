@@ -22,6 +22,7 @@ import './QueryPage.css';
 import { userApi } from '../services/userApi';
 
 export default function QueryPage() {
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [queryType, setQueryType] = useState('keyword'); // 'keyword' or 'topic'
   const [results, setResults] = useState([]);
@@ -635,6 +636,10 @@ export default function QueryPage() {
     setSelectedNode(node);
   };
 
+  const toggleHistory = () => {
+    setIsHistoryOpen(!isHistoryOpen);
+  };
+
   return (
     <div className="query-page">
       {/* Main Content */}
@@ -671,28 +676,39 @@ export default function QueryPage() {
                   <option value="keyword">Keywords</option>
                   <option value="topic">Topic</option>
                 </select>
-                <button 
-                  type="submit" 
-                  className="search-button"
-                  disabled={loading || !query.trim() || authLoading}
-                  title={queryType === 'keyword' ? 'Search by keywords' : 'Search by topic'}
-                >
-                  {loading ? '⏳' : '🔍'}
-                </button>
-                <button
-                  type="button"
-                  className="search-button"
-                  disabled={false}
-                  onClick={(e) => {
-                    // Submit a preset query immediately without waiting for state update
-                    handleSubmit(e, false, 'machine learning');
-                    // also update the input so the user sees the selected query
-                    setQuery('machine learning');
-                  }}
-                  title={"I'm feeling lucky"}
-                >
-                  {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="dice" ariaLabel="I'm feeling lucky" />}
-                </button>
+                  <div className="search-actions">
+                                    <button 
+                    type="submit" 
+                    className="search-button"
+                    disabled={loading || !query.trim() || authLoading}
+                    title={queryType === 'keyword' ? 'Search by keywords' : 'Search by topic'}
+                  >
+                    {loading ? '⏳' : '🔍'}
+                  </button>
+                  <button
+                    type="button"
+                    className="search-button"
+                    disabled={false}
+                    onClick={(e) => {
+                      // Submit a preset query immediately without waiting for state update
+                      handleSubmit(e, false, 'machine learning');
+                      // also update the input so the user sees the selected query
+                      setQuery('machine learning');
+                    }}
+                    title={"I'm feeling lucky"}
+                  >
+                    {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="dice" ariaLabel="I'm feeling lucky" />}
+                  </button>
+                  <button
+                    type="button"
+                    className={`history-button ${isHistoryOpen ? 'active' : ''}`}
+                    onClick={toggleHistory}
+                    title="View search history"
+                  >
+                    <Icon name="book" ariaLabel="History" />
+                  </button>
+                </div>
+
               </div>
               {error && retryCount > 0 && (
                 <div className="retry-info">
@@ -701,6 +717,19 @@ export default function QueryPage() {
               )}
             </form>
           </div>
+
+          {/* History panel as modal */}
+          <QueryHistoryPanel
+            history={dbHistory}
+            loading={historyLoading}
+            error={historyError}
+            isAuthenticated={isAuthenticated}
+            onQueryClick={handleHistoryQueryClick}
+            onClearHistory={clearHistory}
+            formatTimestamp={formatTimestamp}
+            isOpen={isHistoryOpen}
+            onToggle={toggleHistory}
+          />
 
           {/* Loading State */}
           {loading && (
