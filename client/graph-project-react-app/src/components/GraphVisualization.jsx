@@ -316,10 +316,11 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         width={Math.min(window.innerWidth - 100, 1200)}
         cooldownTicks={200}
         // GRAPH-84 Fix: Proper force simulation with correct nodeVal (volume) and collision detection
+        // Adjusted forces to keep graph within available space
         d3Force={(simulation) => {
           const nodeById = new Map(memoizedData.nodes.map((n) => [n.id, n]));
           
-          // Link force with distance based on node radii
+          // Link force with reasonable distance based on node radii
           simulation.force(
             'link',
             d3Force.forceLink(memoizedData.links)
@@ -327,17 +328,17 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               .distance(l => {
                 const s = typeof l.source === 'object' ? l.source : nodeById.get(l.source);
                 const t = typeof l.target === 'object' ? l.target : nodeById.get(l.target);
-                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 30;
+                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 20;
               })
-              .strength(0.15)
+              .strength(0.2)
           );
 
-          // Charge force scaled by node radius
+          // Charge force - reduced to keep graph compact
           simulation.force(
             'charge',
             d3Force.forceManyBody()
-              .strength(n => -8 * getNodeRadius(n, { forSim: true }))
-              .distanceMax(2000)
+              .strength(n => -30 * getNodeRadius(n, { forSim: true }))
+              .distanceMax(800)
           );
 
           // Collision detection with proper radius + gap
