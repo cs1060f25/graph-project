@@ -363,12 +363,11 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         height={height}
         width={graphWidth}
         cooldownTicks={200}
-        // GRAPH-84 Fix: Proper force simulation with correct nodeVal (volume) and collision detection
-        // Very compact forces to keep graph small and prevent overlap
+        // GRAPH-84 Fix: Proper force simulation with adaptive node sizing
         d3Force={(simulation) => {
           const nodeById = new Map(memoizedData.nodes.map((n) => [n.id, n]));
           
-          // Link force with shorter distances to keep graph compact
+          // Link force with distance based on node radii
           simulation.force(
             'link',
             d3Force.forceLink(memoizedData.links)
@@ -376,25 +375,25 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               .distance(l => {
                 const s = typeof l.source === 'object' ? l.source : nodeById.get(l.source);
                 const t = typeof l.target === 'object' ? l.target : nodeById.get(l.target);
-                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 15;
+                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 20;
               })
-              .strength(0.3)
+              .strength(0.2)
           );
 
-          // Much weaker charge force to keep graph very compact
+          // Charge force - balanced for adaptive sizing
           simulation.force(
             'charge',
             d3Force.forceManyBody()
-              .strength(n => -15 * getNodeRadius(n, { forSim: true }))
-              .distanceMax(400)
+              .strength(-80)
+              .distanceMax(1000)
           );
 
-          // Strong collision detection with larger gap to prevent overlap
+          // Collision detection with gap to prevent overlap
           simulation.force(
             'collision',
             d3Force.forceCollide()
               .radius(n => getNodeRadius(n, { forSim: true }) + NODE_GAP)
-              .iterations(6)
+              .iterations(4)
           );
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
