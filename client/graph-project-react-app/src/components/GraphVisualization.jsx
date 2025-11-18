@@ -78,7 +78,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return layerOpacityMap[layer] || 1.0;
   }, []);
 
-  // Refactored node color: Red nodes with opacity based on layer depth
+  // Refactored node color: Query color with opacity based on layer depth
   const getNodeColor = useCallback((node) => {
     const nodeId = node.id;
     const isSelected = selectedNode && selectedNode.id === nodeId;
@@ -88,13 +88,20 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     const layer = node.layer || 1;
 
     // Selected, hovered, connected, or highlighted nodes - always fully opaque for accessibility
-    if (isSelected) return '#ff6b6b'; // Bright red for selected
-    if (isHovered) return '#ff8787'; // Light red for hover
-    if (isConnected) return '#ff5252'; // Medium red for connected
-    if (isHighlighted && hoveredNode) return '#ff7979'; // Medium-light red for highlighted
+    if (isSelected) return '#ffd700'; // Gold for selected
+    if (isHovered) return '#60a5fa'; // Light blue for hover
+    if (isConnected) return '#3a82ff'; // Bright blue for connected
+    if (isHighlighted && hoveredNode) return '#4a90ff'; // Medium blue for highlighted
     
-    // All nodes are red with layer-based opacity
-    const defaultColor = '#ff4444'; // Red
+    // Multi-query support: Use query color with layer-based opacity
+    if (node.queryColors && node.queryColors.length > 0) {
+      const baseColor = node.primaryColor || node.queryColors[0];
+      const opacity = getLayerOpacity(layer);
+      return hexToRgba(baseColor, opacity);
+    }
+    
+    // Legacy fallback: If no query color, use default with layer opacity
+    const defaultColor = '#3a82ff'; // Blue
     const opacity = getLayerOpacity(layer);
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
@@ -323,46 +330,36 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         }}
         height={height}
         width={Math.min(window.innerWidth - 100, 1200)}
-        cooldownTicks={500}
-        // GRAPH-84: EXTREME settings - longest edges, zero link strength, maximum spacing
+        cooldownTicks={100}
+        // GRAPH-84: Remove link force entirely to prevent caterpillar, use only charge and collision
         d3Force={(simulation) => {
-          // EXTREME charge force to push nodes as far apart as possible
-          simulation.force('charge').strength(-2000);
-          simulation.force('charge').distanceMax(3000);
+          // Remove link force completely - this prevents caterpillar/chain formation
+          simulation.force('link', null);
           
-          // EXTREME edge lengths - longest possible, no elastic effect
-          simulation.force('link').distance((link) => {
-            const sourceNode = typeof link.source === 'object' ? link.source : memoizedData.nodes.find(n => n.id === link.source);
-            const targetNode = typeof link.target === 'object' ? link.target : memoizedData.nodes.find(n => n.id === link.target);
-            const sourceSize = sourceNode ? getNodeSize(sourceNode) : 10;
-            const targetSize = targetNode ? getNodeSize(targetNode) : 10;
-            const sourceRadius = sourceSize / 2;
-            const targetRadius = targetSize / 2;
-            // EXTREME edge length: sum of radii + MASSIVE gap (minimum 500px, scales up to 1000px+)
-            return sourceRadius + targetRadius + Math.max(500, (sourceSize + targetSize) * 5);
-          });
-          simulation.force('link').strength(0); // ZERO link strength - completely remove elastic effect
+          // Strong charge force to spread nodes out in all directions (not just along links)
+          simulation.force('charge').strength(-400);
+          simulation.force('charge').distanceMax(2000);
           
-          // EXTREME collision detection - maximum padding to prevent ANY overlap
+          // Strong collision detection to prevent overlap
           if (!simulation.force('collision')) {
             simulation.force('collision', d3Force.forceCollide()
               .radius((node) => {
                 const nodeSize = getNodeSize(node);
                 const nodeRadius = nodeSize / 2;
-                // EXTREME padding: minimum 150px gap, scales with node size up to 300px+
-                return nodeRadius + Math.max(150, nodeSize * 2.5);
+                // Large padding: minimum 60px gap to ensure no overlap
+                return nodeRadius + Math.max(60, nodeSize * 1.0);
               })
               .strength(1.0) // Maximum collision avoidance strength
-              .iterations(15) // Maximum iterations for perfect collision resolution
+              .iterations(8) // Good number of iterations for collision resolution
             );
           } else {
-            // Update existing collision force with extreme values
+            // Update existing collision force
             simulation.force('collision').radius((node) => {
               const nodeSize = getNodeSize(node);
               const nodeRadius = nodeSize / 2;
-              return nodeRadius + Math.max(150, nodeSize * 2.5);
+              return nodeRadius + Math.max(60, nodeSize * 1.0);
             });
-            simulation.force('collision').iterations(15);
+            simulation.force('collision').iterations(8);
           }
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
