@@ -107,7 +107,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
   // GRAPH-84 Fix: Adaptive node radius scaling to fit within available space
-  const NODE_GAP = 6; // Gap between nodes to prevent overlap
+  const NODE_GAP = 25; // Larger gap between nodes to ensure visible edges and no touching
   
   /**
    * Compute adaptive node radius scaling to keep graph within available space.
@@ -391,12 +391,12 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               .distanceMax(1000)
           );
 
-          // Collision detection with gap to prevent overlap
+          // Collision detection with larger gap to ensure visible edges and no touching
           simulation.force(
             'collision',
             d3Force.forceCollide()
               .radius(n => getNodeRadius(n, { forSim: true }) + NODE_GAP)
-              .iterations(4)
+              .iterations(6) // More iterations for better separation
           );
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
