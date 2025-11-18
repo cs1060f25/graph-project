@@ -330,20 +330,23 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         }}
         height={height}
         width={Math.min(window.innerWidth - 100, 1200)}
-        cooldownTicks={300}
+        cooldownTicks={400}
         // GRAPH-84: Configure force simulation for variable node sizes with collision detection
         d3Force={(simulation) => {
-          // Much stronger repulsion between nodes (charge force)
-          // Calculate based on average node size to ensure proper spacing
-          const avgNodeSize = memoizedData.nodes.length > 0
-            ? memoizedData.nodes.reduce((sum, node) => sum + getNodeSize(node), 0) / memoizedData.nodes.length
+          // EXTREMELY strong repulsion between nodes (charge force)
+          // Calculate based on average node size and number of nodes
+          const nodeCount = memoizedData.nodes.length;
+          const avgNodeSize = nodeCount > 0
+            ? memoizedData.nodes.reduce((sum, node) => sum + getNodeSize(node), 0) / nodeCount
             : 10;
-          const chargeStrength = -1200 - (avgNodeSize * 10); // Scale charge with node sizes
+          // MUCH stronger charge that scales with both node size and count
+          // For large graphs, we need massive repulsion
+          const chargeStrength = -5000 - (avgNodeSize * 100) - (nodeCount * 20);
           simulation.force('charge').strength(chargeStrength);
-          simulation.force('charge').distanceMax(1500);
+          simulation.force('charge').distanceMax(3000);
           
-          // Increase link distance based on node sizes to prevent overlap
-          // Formula: distance = sum of radii + minimum gap
+          // MUCH larger link distances to force nodes far apart
+          // Formula: distance = sum of radii + VERY large gap
           simulation.force('link').distance((link) => {
             const sourceNode = typeof link.source === 'object' ? link.source : memoizedData.nodes.find(n => n.id === link.source);
             const targetNode = typeof link.target === 'object' ? link.target : memoizedData.nodes.find(n => n.id === link.target);
@@ -351,32 +354,45 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             const targetSize = targetNode ? getNodeSize(targetNode) : 10;
             const sourceRadius = sourceSize / 2;
             const targetRadius = targetSize / 2;
-            // Minimum distance = sum of radii + gap (at least 50px gap)
-            return sourceRadius + targetRadius + Math.max(50, (sourceSize + targetSize) * 0.3);
+            // Minimum distance = sum of radii + VERY LARGE gap (at least 200px, scales with sizes)
+            return sourceRadius + targetRadius + Math.max(200, (sourceSize + targetSize) * 1.2);
           });
-          simulation.force('link').strength(0.1); // Much weaker link strength for more flexibility
+          simulation.force('link').strength(0.02); // EXTREMELY weak link strength - repulsion should dominate
           
-          // Add collision detection to prevent nodes from overlapping
-          // Collision radius must be at least the node radius + significant padding
+          // MUCH larger collision radius with very significant padding
           if (!simulation.force('collision')) {
             simulation.force('collision', d3Force.forceCollide()
               .radius((node) => {
                 const nodeSize = getNodeSize(node);
                 const nodeRadius = nodeSize / 2;
-                // Collision radius = node radius + padding (at least 30px, scales with node size)
-                return nodeRadius + Math.max(30, nodeSize * 0.4);
+                // Collision radius = node radius + VERY LARGE padding (at least 100px, scales with node size)
+                return nodeRadius + Math.max(100, nodeSize * 1.2);
               })
               .strength(1.0) // Maximum collision avoidance strength
-              .iterations(3) // More iterations for better collision resolution
+              .iterations(8) // Many more iterations for better collision resolution
             );
           } else {
             // Update existing collision force
             simulation.force('collision').radius((node) => {
               const nodeSize = getNodeSize(node);
               const nodeRadius = nodeSize / 2;
-              return nodeRadius + Math.max(30, nodeSize * 0.4);
+              return nodeRadius + Math.max(100, nodeSize * 1.2);
             });
-            simulation.force('collision').iterations(3);
+            simulation.force('collision').iterations(8);
+          }
+          
+          // Add a weak center force to keep graph centered but not too strong
+          if (!simulation.force('center')) {
+            simulation.force('center', d3Force.forceCenter(0, 0).strength(0.03));
+          }
+          
+          // Add a radial force to push nodes outward from center (helps with clustering)
+          if (!simulation.force('radial')) {
+            simulation.force('radial', d3Force.forceRadial((node) => {
+              // Push nodes outward based on their distance from center
+              const nodeSize = getNodeSize(node);
+              return Math.max(200, nodeSize * 15); // Minimum radius of 200px
+            }, 0, 0).strength(0.1));
           }
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
