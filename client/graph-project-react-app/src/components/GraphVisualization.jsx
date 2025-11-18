@@ -78,7 +78,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return layerOpacityMap[layer] || 1.0;
   }, []);
 
-  // Refactored node color: Query color with opacity based on layer depth
+  // Refactored node color: Red nodes with opacity based on layer depth
   const getNodeColor = useCallback((node) => {
     const nodeId = node.id;
     const isSelected = selectedNode && selectedNode.id === nodeId;
@@ -88,20 +88,13 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     const layer = node.layer || 1;
 
     // Selected, hovered, connected, or highlighted nodes - always fully opaque for accessibility
-    if (isSelected) return '#ffd700'; // Gold for selected
-    if (isHovered) return '#60a5fa'; // Light blue for hover
-    if (isConnected) return '#3a82ff'; // Bright blue for connected
-    if (isHighlighted && hoveredNode) return '#4a90ff'; // Medium blue for highlighted
+    if (isSelected) return '#ff6b6b'; // Bright red for selected
+    if (isHovered) return '#ff8787'; // Light red for hover
+    if (isConnected) return '#ff5252'; // Medium red for connected
+    if (isHighlighted && hoveredNode) return '#ff7979'; // Medium-light red for highlighted
     
-    // Multi-query support: Use query color with layer-based opacity
-    if (node.queryColors && node.queryColors.length > 0) {
-      const baseColor = node.primaryColor || node.queryColors[0];
-      const opacity = getLayerOpacity(layer);
-      return hexToRgba(baseColor, opacity);
-    }
-    
-    // Legacy fallback: If no query color, use default with layer opacity
-    const defaultColor = '#6366f1'; // Default indigo
+    // All nodes are red with layer-based opacity
+    const defaultColor = '#ff4444'; // Red
     const opacity = getLayerOpacity(layer);
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
