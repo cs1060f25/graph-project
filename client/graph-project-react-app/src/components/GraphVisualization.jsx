@@ -319,8 +319,10 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         nodeVal={(node) => Math.pow(getNodeRadius(node, { forSim: true }), 3)}
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
-        linkDirectionalArrowLength={6}
+        linkDirectionalArrowLength={8}
         linkDirectionalArrowRelPos={1}
+        linkDirectionalArrowColor={(link) => getLinkColor(link)}
+        linkDirectionalParticles={0}
         onNodeClick={onNodeClick}
         onNodeHover={handleNodeHover}
         nodeCanvasObjectMode={() => 'replace'}
