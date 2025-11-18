@@ -330,14 +330,14 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         }}
         height={height}
         width={Math.min(window.innerWidth - 100, 1200)}
-        cooldownTicks={300}
-        // GRAPH-84: Prevent overlap with VERY strong collision detection and MUCH longer edges
+        cooldownTicks={500}
+        // GRAPH-84: EXTREME settings - longest edges, zero link strength, maximum spacing
         d3Force={(simulation) => {
-          // Much stronger charge force to push nodes far apart
-          simulation.force('charge').strength(-800);
-          simulation.force('charge').distanceMax(1500);
+          // EXTREME charge force to push nodes as far apart as possible
+          simulation.force('charge').strength(-2000);
+          simulation.force('charge').distanceMax(3000);
           
-          // Make edges MUCH longer to spread nodes out (no caterpillar effect)
+          // EXTREME edge lengths - longest possible, no elastic effect
           simulation.force('link').distance((link) => {
             const sourceNode = typeof link.source === 'object' ? link.source : memoizedData.nodes.find(n => n.id === link.source);
             const targetNode = typeof link.target === 'object' ? link.target : memoizedData.nodes.find(n => n.id === link.target);
@@ -345,32 +345,31 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             const targetSize = targetNode ? getNodeSize(targetNode) : 10;
             const sourceRadius = sourceSize / 2;
             const targetRadius = targetSize / 2;
-            // VERY long edges: sum of radii + HUGE gap (at least 200px for clear separation)
-            return sourceRadius + targetRadius + Math.max(200, (sourceSize + targetSize) * 2.5);
+            // EXTREME edge length: sum of radii + MASSIVE gap (minimum 500px, scales up to 1000px+)
+            return sourceRadius + targetRadius + Math.max(500, (sourceSize + targetSize) * 5);
           });
-          simulation.force('link').strength(0.2); // Weaker link strength to allow more spreading
+          simulation.force('link').strength(0); // ZERO link strength - completely remove elastic effect
           
-          // VERY strong collision detection to prevent ANY overlap
-          // Collision radius = node radius + VERY large padding to ensure visible gap
+          // EXTREME collision detection - maximum padding to prevent ANY overlap
           if (!simulation.force('collision')) {
             simulation.force('collision', d3Force.forceCollide()
               .radius((node) => {
                 const nodeSize = getNodeSize(node);
                 const nodeRadius = nodeSize / 2;
-                // VERY large padding: at least 80px gap, scales with node size
-                return nodeRadius + Math.max(80, nodeSize * 1.5);
+                // EXTREME padding: minimum 150px gap, scales with node size up to 300px+
+                return nodeRadius + Math.max(150, nodeSize * 2.5);
               })
               .strength(1.0) // Maximum collision avoidance strength
-              .iterations(10) // Many more iterations for better collision resolution
+              .iterations(15) // Maximum iterations for perfect collision resolution
             );
           } else {
-            // Update existing collision force
+            // Update existing collision force with extreme values
             simulation.force('collision').radius((node) => {
               const nodeSize = getNodeSize(node);
               const nodeRadius = nodeSize / 2;
-              return nodeRadius + Math.max(80, nodeSize * 1.5);
+              return nodeRadius + Math.max(150, nodeSize * 2.5);
             });
-            simulation.force('collision').iterations(10);
+            simulation.force('collision').iterations(15);
           }
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
