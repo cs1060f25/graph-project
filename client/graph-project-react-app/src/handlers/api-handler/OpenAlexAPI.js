@@ -97,6 +97,8 @@ export default class OpenAlexAPI {
           entry.doi ||
           entry.id ||
           null,
+        // GRAPH-85: Extract citation count for node sizing and display
+        citationCount: entry.cited_by_count || 0,
       }));
     } catch (err) {
       console.error("OpenAlex fetch failed:", err);
