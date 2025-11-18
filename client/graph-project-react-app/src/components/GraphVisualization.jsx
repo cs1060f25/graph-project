@@ -1,7 +1,9 @@
 // HW9 GRAPH-63: Enhanced Graph Node Interactions
 // GRAPH-61: Graph visualization with zoom and pan controls
+// GRAPH-84: Variable node sizing with collision detection
 import React, { useMemo, useState, useCallback, useRef } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import * as d3Force from 'd3-force';
 import './GraphVisualization.css';
 
 const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600 }) => {
@@ -105,9 +107,13 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
   // GRAPH-63: Enhanced node size with selection/hover states and layer-based sizing
+  // GRAPH-84: Use citation-based sizing with proper collision detection
   const getNodeSize = useCallback((node) => {
-    // Use a fixed base size for all nodes (no citation-based sizing)
-    const baseSize = 6;
+    // Get citation count or value, with minimum of 1 to ensure visibility
+    const citations = node.value || node.citations || 1;
+    // Use a more pronounced scaling: sqrt for smooth scaling, then multiply by larger factor
+    // This makes even small differences in citation counts visible
+    const baseSize = Math.sqrt(Math.max(citations, 1)) * 6 + 4; // Minimum size of 4, scales up
     const nodeId = node.id;
     const isSelected = selectedNode && selectedNode.id === nodeId;
     const isHovered = hoveredNode && hoveredNode.id === nodeId;
@@ -118,8 +124,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     if (isHovered) return baseSize * 1.2;
     
     // Layer-based size scaling: More pronounced differences
-    // Layer 1 = full size, Layer 2 = 75%, Layer 3 = 50%
-    const layerScale = layer === 1 ? 1 : layer === 2 ? 0.75 : 0.5;
+    // Layer 1 = full size, Layer 2 = 80%, Layer 3 = 60%
+    const layerScale = layer === 1 ? 1 : layer === 2 ? 0.8 : 0.6;
     return baseSize * layerScale;
   }, [selectedNode, hoveredNode]);
 
@@ -324,7 +330,34 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         }}
         height={height}
         width={Math.min(window.innerWidth - 100, 1200)}
-        cooldownTicks={100}
+        cooldownTicks={200}
+        // GRAPH-84: Configure force simulation for variable node sizes with collision detection
+        d3Force={(simulation) => {
+          // Strong repulsion between nodes (charge force)
+          simulation.force('charge').strength(-600);
+          simulation.force('charge').distanceMax(1000);
+          
+          // Increase link distance based on node sizes to prevent overlap
+          simulation.force('link').distance((link) => {
+            const sourceNode = typeof link.source === 'object' ? link.source : memoizedData.nodes.find(n => n.id === link.source);
+            const targetNode = typeof link.target === 'object' ? link.target : memoizedData.nodes.find(n => n.id === link.target);
+            const sourceSize = sourceNode ? getNodeSize(sourceNode) : 10;
+            const targetSize = targetNode ? getNodeSize(targetNode) : 10;
+            return sourceSize + targetSize + 100; // Minimum spacing between node edges
+          });
+          simulation.force('link').strength(0.15); // Weaker link strength for more flexibility
+          
+          // Add collision detection to prevent nodes from overlapping
+          if (!simulation.force('collision')) {
+            simulation.force('collision', d3Force.forceCollide()
+              .radius((node) => {
+                const nodeSize = getNodeSize(node);
+                return nodeSize / 2 + 20; // Collision radius = node radius + padding
+              })
+              .strength(1.0) // Maximum collision avoidance strength
+            );
+          }
+        }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
         onEngineStop={() => {
