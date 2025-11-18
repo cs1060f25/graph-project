@@ -330,34 +330,46 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         }}
         height={height}
         width={Math.min(window.innerWidth - 100, 1200)}
-        cooldownTicks={100}
-        // GRAPH-84: Add collision detection to prevent node overlap while keeping main's graph layout
+        cooldownTicks={200}
+        // GRAPH-84: Prevent overlap with strong collision detection and longer edges
         d3Force={(simulation) => {
-          // Use default force settings (like main) but add collision detection
-          // This keeps the natural graph layout while preventing overlap
+          // Increase charge force to push nodes further apart
+          simulation.force('charge').strength(-300);
+          simulation.force('charge').distanceMax(1000);
           
-          // Add collision detection to prevent nodes from overlapping
-          // Collision radius = node radius + padding to ensure visible gap
+          // Make edges much longer to spread nodes out
+          simulation.force('link').distance((link) => {
+            const sourceNode = typeof link.source === 'object' ? link.source : memoizedData.nodes.find(n => n.id === link.source);
+            const targetNode = typeof link.target === 'object' ? link.target : memoizedData.nodes.find(n => n.id === link.target);
+            const sourceSize = sourceNode ? getNodeSize(sourceNode) : 10;
+            const targetSize = targetNode ? getNodeSize(targetNode) : 10;
+            const sourceRadius = sourceSize / 2;
+            const targetRadius = targetSize / 2;
+            // Long edges: sum of radii + large gap (at least 100px for visible separation)
+            return sourceRadius + targetRadius + Math.max(100, (sourceSize + targetSize) * 1.5);
+          });
+          
+          // Strong collision detection to prevent ANY overlap
+          // Collision radius = node radius + large padding to ensure visible gap
           if (!simulation.force('collision')) {
             simulation.force('collision', d3Force.forceCollide()
               .radius((node) => {
                 const nodeSize = getNodeSize(node);
                 const nodeRadius = nodeSize / 2;
-                // Collision radius = node radius + padding (ensures nodes never touch)
-                // Padding scales with node size to maintain proportional spacing
-                return nodeRadius + Math.max(15, nodeSize * 0.3);
+                // Large padding: at least 40px gap, scales with node size
+                return nodeRadius + Math.max(40, nodeSize * 0.8);
               })
               .strength(1.0) // Maximum collision avoidance strength
-              .iterations(4) // Good number of iterations for collision resolution
+              .iterations(8) // More iterations for better collision resolution
             );
           } else {
             // Update existing collision force
             simulation.force('collision').radius((node) => {
               const nodeSize = getNodeSize(node);
               const nodeRadius = nodeSize / 2;
-              return nodeRadius + Math.max(15, nodeSize * 0.3);
+              return nodeRadius + Math.max(40, nodeSize * 0.8);
             });
-            simulation.force('collision').iterations(4);
+            simulation.force('collision').iterations(8);
           }
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
