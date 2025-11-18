@@ -197,28 +197,28 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       }
     }
     
-    // Dim links not connected to highlighted nodes
+    // Dim links not connected to highlighted nodes (but not too dim)
     if (highlightedNodes.size > 0) {
       if (!highlightedNodes.has(sourceId) && !highlightedNodes.has(targetId)) {
-        return '#2a2a2e'; // Very dim for non-highlighted
+        return '#4a4a5e'; // Dim but still visible for non-highlighted
       }
     }
     
     // Multi-query support: Use query color with layer-based opacity
     if (link.color) {
-      const opacity = getLayerOpacity(linkLayer);
+      const opacity = Math.max(0.6, getLayerOpacity(linkLayer)); // Minimum 0.6 opacity for visibility
       return hexToRgba(link.color, opacity);
     }
     
     if (link.queryColors && link.queryColors.length > 0) {
       const baseColor = link.queryColors[0];
-      const opacity = getLayerOpacity(linkLayer);
+      const opacity = Math.max(0.6, getLayerOpacity(linkLayer)); // Minimum 0.6 opacity for visibility
       return hexToRgba(baseColor, opacity);
     }
     
-    // Legacy fallback: Default gray with layer opacity
-    const defaultColor = '#4a4a4e';
-    const opacity = getLayerOpacity(linkLayer);
+    // Legacy fallback: Brighter default color with minimum opacity for visibility
+    const defaultColor = '#6a6a7e'; // Brighter gray
+    const opacity = Math.max(0.7, getLayerOpacity(linkLayer)); // Minimum 0.7 opacity
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
 
