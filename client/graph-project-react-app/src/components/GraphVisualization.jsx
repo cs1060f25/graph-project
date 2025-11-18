@@ -114,7 +114,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     const citations = node.citations || node.value || node.citationCount || 1;
     const layer = node.layer || 1;
     const layerScale = layer === 1 ? 1 : layer === 2 ? 0.8 : 0.6;
-    let radius = Math.sqrt(citations) * 4 + BASE_RADIUS; // radius in px
+    // Make nodes 1/10 the size: reduce scaling factor from 4 to 0.4
+    let radius = Math.sqrt(citations) * 0.4 + BASE_RADIUS * 0.1; // radius in px (much smaller)
     radius *= layerScale;
     if (!forSim) {
       if (selectedNode?.id === node.id) radius *= 1.3;
