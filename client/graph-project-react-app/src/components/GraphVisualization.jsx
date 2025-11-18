@@ -106,28 +106,27 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
-  // GRAPH-63: Enhanced node size with selection/hover states and layer-based sizing
-  // GRAPH-84: Use citation-based sizing with proper collision detection
-  const getNodeSize = useCallback((node) => {
-    // Get citation count or value, with minimum of 1 to ensure visibility
-    const citations = node.value || node.citations || 1;
-    // Use a more pronounced scaling: sqrt for smooth scaling, then multiply by larger factor
-    // This makes even small differences in citation counts visible
-    const baseSize = Math.sqrt(Math.max(citations, 1)) * 6 + 4; // Minimum size of 4, scales up
-    const nodeId = node.id;
-    const isSelected = selectedNode && selectedNode.id === nodeId;
-    const isHovered = hoveredNode && hoveredNode.id === nodeId;
+  // GRAPH-84 Fix: Consistent node radius (px) and spacing
+  const BASE_RADIUS = 3;
+  const NODE_GAP = 6;
+
+  const getNodeRadius = useCallback((node, { forSim = false } = {}) => {
+    const citations = node.citations || node.value || node.citationCount || 1;
     const layer = node.layer || 1;
-    
-    // Make selected/hovered nodes slightly larger (always)
-    if (isSelected) return baseSize * 1.3;
-    if (isHovered) return baseSize * 1.2;
-    
-    // Layer-based size scaling: More pronounced differences
-    // Layer 1 = full size, Layer 2 = 80%, Layer 3 = 60%
     const layerScale = layer === 1 ? 1 : layer === 2 ? 0.8 : 0.6;
-    return baseSize * layerScale;
+    let radius = Math.sqrt(citations) * 4 + BASE_RADIUS; // radius in px
+    radius *= layerScale;
+    if (!forSim) {
+      if (selectedNode?.id === node.id) radius *= 1.3;
+      else if (hoveredNode?.id === node.id) radius *= 1.2;
+    }
+    return radius;
   }, [selectedNode, hoveredNode]);
+
+  // Legacy getNodeSize for backward compatibility (returns radius, but nodeVal will use radius³)
+  const getNodeSize = useCallback((node) => {
+    return getNodeRadius(node);
+  }, [getNodeRadius]);
 
   // Refactored link color: Query color with opacity based on layer depth
   const getLinkColor = useCallback((link) => {
@@ -268,99 +267,86 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
           </div>
         `}
         nodeColor={getNodeColor}
-        nodeVal={getNodeSize}
+        nodeRelSize={1}
+        nodeVal={(node) => Math.pow(getNodeRadius(node, { forSim: true }), 3)}
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
         linkDirectionalArrowLength={6}
         linkDirectionalArrowRelPos={1}
         onNodeClick={onNodeClick}
         onNodeHover={handleNodeHover}
-        nodeCanvasObjectMode={() => 'after'}
+        nodeCanvasObjectMode={() => 'replace'}
         nodeCanvasObject={(node, ctx, globalScale) => {
-          const layer = node.layer || 1;
-          const nodeSize = getNodeSize(node) / globalScale;
-          
-          // GRAPH-63: Add visual indicator for selected node
-          if (selectedNode && selectedNode.id === node.id) {
+          const r = getNodeRadius(node) / globalScale;
+          const color = getNodeColor(node);
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          // Selected node border
+          if (selectedNode?.id === node.id) {
             ctx.strokeStyle = '#ffd700';
             ctx.lineWidth = 3 / globalScale;
             ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeSize + 5, 0, 2 * Math.PI);
+            ctx.arc(node.x, node.y, r + 2 / globalScale, 0, 2 * Math.PI);
             ctx.stroke();
           }
-          
-          // Multi-query support: Add border for nodes belonging to multiple queries
-          // Draw multi-color segmented border to show all query affiliations
+
+          // Multi-query segmented border
           if (node.queryColors && node.queryColors.length > 1) {
-            const colors = node.queryColors;
-            const segmentAngle = (2 * Math.PI) / colors.length;
-            
-            colors.forEach((color, index) => {
-              // Use full opacity for borders to ensure visibility
-              ctx.strokeStyle = color;
-              ctx.lineWidth = 2 / globalScale;
+            const segAngle = (2 * Math.PI) / node.queryColors.length;
+            node.queryColors.forEach((c, i) => {
+              ctx.strokeStyle = c;
+              ctx.lineWidth = 1.5 / globalScale;
               ctx.beginPath();
-              ctx.arc(
-                node.x, 
-                node.y, 
-                nodeSize + 3, 
-                index * segmentAngle, 
-                (index + 1) * segmentAngle
-              );
+              ctx.arc(node.x, node.y, r + 2.5 / globalScale, i * segAngle, (i + 1) * segAngle);
               ctx.stroke();
             });
           }
-          
-          // Layer depth indicator: Add subtle border for deeper layers
-          // Layer 2 and 3 get a dashed border to indicate depth
-          if (layer === 2 || layer === 3) {
-            const baseColor = node.queryColors && node.queryColors.length > 0 
-              ? node.queryColors[0] 
-              : '#6366f1';
-            ctx.strokeStyle = baseColor;
-            ctx.globalAlpha = 0.5; // Subtle border
-            ctx.lineWidth = 1 / globalScale;
-            ctx.setLineDash([3 / globalScale, 3 / globalScale]);
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeSize + 2, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.globalAlpha = 1.0; // Reset alpha
-          }
+        }}
+        nodePointerAreaPaint={(node, color, ctx, globalScale) => {
+          const r = getNodeRadius(node) / globalScale;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r + 3 / globalScale, 0, 2 * Math.PI);
+          ctx.fill();
         }}
         height={height}
         width={Math.min(window.innerWidth - 100, 1200)}
-        cooldownTicks={100}
-        // GRAPH-84: Remove link force entirely to prevent caterpillar, use only charge and collision
+        cooldownTicks={200}
+        // GRAPH-84 Fix: Proper force simulation with correct nodeVal (volume) and collision detection
         d3Force={(simulation) => {
-          // Remove link force completely - this prevents caterpillar/chain formation
-          simulation.force('link', null);
+          const nodeById = new Map(memoizedData.nodes.map((n) => [n.id, n]));
           
-          // Strong charge force to spread nodes out in all directions (not just along links)
-          simulation.force('charge').strength(-400);
-          simulation.force('charge').distanceMax(2000);
-          
-          // Strong collision detection to prevent overlap
-          if (!simulation.force('collision')) {
-            simulation.force('collision', d3Force.forceCollide()
-              .radius((node) => {
-                const nodeSize = getNodeSize(node);
-                const nodeRadius = nodeSize / 2;
-                // Large padding: minimum 60px gap to ensure no overlap
-                return nodeRadius + Math.max(60, nodeSize * 1.0);
+          // Link force with distance based on node radii
+          simulation.force(
+            'link',
+            d3Force.forceLink(memoizedData.links)
+              .id(d => d.id)
+              .distance(l => {
+                const s = typeof l.source === 'object' ? l.source : nodeById.get(l.source);
+                const t = typeof l.target === 'object' ? l.target : nodeById.get(l.target);
+                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 30;
               })
-              .strength(1.0) // Maximum collision avoidance strength
-              .iterations(8) // Good number of iterations for collision resolution
-            );
-          } else {
-            // Update existing collision force
-            simulation.force('collision').radius((node) => {
-              const nodeSize = getNodeSize(node);
-              const nodeRadius = nodeSize / 2;
-              return nodeRadius + Math.max(60, nodeSize * 1.0);
-            });
-            simulation.force('collision').iterations(8);
-          }
+              .strength(0.15)
+          );
+
+          // Charge force scaled by node radius
+          simulation.force(
+            'charge',
+            d3Force.forceManyBody()
+              .strength(n => -8 * getNodeRadius(n, { forSim: true }))
+              .distanceMax(2000)
+          );
+
+          // Collision detection with proper radius + gap
+          simulation.force(
+            'collision',
+            d3Force.forceCollide()
+              .radius(n => getNodeRadius(n, { forSim: true }) + NODE_GAP)
+              .iterations(4)
+          );
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
