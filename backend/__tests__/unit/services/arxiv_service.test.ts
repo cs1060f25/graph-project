@@ -1,24 +1,27 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { searchArxiv, formatQuery, searchArxivByTopic, searchArxivByKeyword } from '../../../services/arxiv_service.js';
 import { Paper } from '../../../models/paper.js';
 
-const mockParseString = jest.fn<(xml: string, callback: (err: Error | null, result: any) => void) => void>();
+const { mockParseString } = vi.hoisted(() => {
+  const mockParseString = vi.fn();
+  return { mockParseString };
+});
 
-jest.mock('axios');
+vi.mock('axios');
 
 // Import axios after mock is set up
 import axios from 'axios';
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios = axios as any;
 
 // Manually set up the get method mock
-(mockedAxios.get as any) = jest.fn();
+mockedAxios.get = vi.fn();
 
-jest.mock('xml2js', () => ({
+vi.mock('xml2js', () => ({
   parseString: mockParseString
 }));
 
-jest.mock('util', () => ({
-  promisify: jest.fn((fn: any) => {
+vi.mock('util', () => ({
+  promisify: vi.fn((fn: any) => {
     return async (xml: string) => {
       return new Promise((resolve, reject) => {
         mockParseString(xml, (err: Error | null, result: any) => {
@@ -32,8 +35,8 @@ jest.mock('util', () => ({
 
 describe('arxiv_service', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (mockedAxios.get as jest.Mock<any>).mockClear();
+    vi.clearAllMocks();
+    (mockedAxios.get as any).mockClear();
     mockParseString.mockClear();
   });
 
@@ -71,7 +74,7 @@ describe('arxiv_service', () => {
     };
 
     it('should successfully search arxiv and return papers', async () => {
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: mockXmlResponse });
+      (mockedAxios.get as any).mockResolvedValue({ data: mockXmlResponse });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(null, mockParsedXml);
       });
@@ -93,7 +96,7 @@ describe('arxiv_service', () => {
     });
 
     it('should handle topic mode', async () => {
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: mockXmlResponse });
+      (mockedAxios.get as any).mockResolvedValue({ data: mockXmlResponse });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(null, { feed: { entry: [] } });
       });
@@ -107,7 +110,7 @@ describe('arxiv_service', () => {
     });
 
     it('should handle keyword mode', async () => {
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: mockXmlResponse });
+      (mockedAxios.get as any).mockResolvedValue({ data: mockXmlResponse });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(null, { feed: { entry: [] } });
       });
@@ -122,7 +125,7 @@ describe('arxiv_service', () => {
 
     it('should handle empty results', async () => {
       const emptyXmlResponse = `<?xml version="1.0"?><feed></feed>`;
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: emptyXmlResponse });
+      (mockedAxios.get as any).mockResolvedValue({ data: emptyXmlResponse });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(null, { feed: { entry: [] } });
       });
@@ -134,7 +137,7 @@ describe('arxiv_service', () => {
 
     it('should handle missing fields gracefully', async () => {
       const emptyXmlResponse = `<?xml version="1.0"?><feed></feed>`;
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: emptyXmlResponse });
+      (mockedAxios.get as any).mockResolvedValue({ data: emptyXmlResponse });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(null, {
           feed: {
@@ -164,7 +167,7 @@ describe('arxiv_service', () => {
         message: 'Internal Server Error',
         code: 'ERR_BAD_RESPONSE'
       };
-      (mockedAxios.get as jest.Mock<any>).mockRejectedValue(axiosError);
+      (mockedAxios.get as any).mockRejectedValue(axiosError);
 
       await expect(searchArxiv('test', 10, 0, '')).rejects.toThrow('Failed to fetch papers from Arxiv');
     });
@@ -174,13 +177,13 @@ describe('arxiv_service', () => {
         code: 'ETIMEDOUT',
         message: 'Request timeout'
       };
-      (mockedAxios.get as jest.Mock<any>).mockRejectedValue(timeoutError);
+      (mockedAxios.get as any).mockRejectedValue(timeoutError);
 
       await expect(searchArxiv('test', 10, 0, '')).rejects.toThrow('Failed to fetch papers from Arxiv');
     });
 
     it('should handle parse errors', async () => {
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: mockXmlResponse });
+      (mockedAxios.get as any).mockResolvedValue({ data: mockXmlResponse });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(new Error('Parse error'), null);
       });
@@ -191,7 +194,7 @@ describe('arxiv_service', () => {
 
   describe('searchArxivByTopic', () => {
     it('should call searchArxiv with topic mode', async () => {
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: '<?xml version="1.0"?><feed></feed>' });
+      (mockedAxios.get as any).mockResolvedValue({ data: '<?xml version="1.0"?><feed></feed>' });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(null, { feed: { entry: [] } });
       });
@@ -207,7 +210,7 @@ describe('arxiv_service', () => {
 
   describe('searchArxivByKeyword', () => {
     it('should call searchArxiv with keyword mode', async () => {
-      (mockedAxios.get as jest.Mock<any>).mockResolvedValue({ data: '<?xml version="1.0"?><feed></feed>' });
+      (mockedAxios.get as any).mockResolvedValue({ data: '<?xml version="1.0"?><feed></feed>' });
       mockParseString.mockImplementation((xml: string, callback: (err: Error | null, result: any) => void) => {
         callback(null, { feed: { entry: [] } });
       });
@@ -221,4 +224,3 @@ describe('arxiv_service', () => {
     });
   });
 });
-

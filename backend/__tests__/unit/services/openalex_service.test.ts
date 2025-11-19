@@ -1,17 +1,17 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import { searchOpenalex, formatQuery } from '../../../services/openalex_service.js';
 import { Paper } from '../../../models/paper.js';
 
-jest.mock('axios');
+vi.mock('axios');
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockGet = jest.fn<(...args: any[]) => Promise<any>>();
-(mockedAxios.get as any) = mockGet;
+const mockedAxios = axios as any;
+const mockGet = vi.fn();
+mockedAxios.get = mockGet;
 
 describe('openalex_service', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGet.mockClear();
   });
 
@@ -193,4 +193,3 @@ describe('openalex_service', () => {
     });
   });
 });
-

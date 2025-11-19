@@ -1,9 +1,9 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GoogleGenAI } from '@google/genai';
 import { Paper } from '../../../models/paper.js';
 
 // Mock config FIRST before anything else imports it
-jest.mock('../../../config.js', () => ({
+vi.mock('../../../config.js', () => ({
   default: {
     GEMINI_API_KEY: 'test-api-key',
     GOOGLE_CLOUD_PROJECT: 'test-project',
@@ -11,17 +11,10 @@ jest.mock('../../../config.js', () => ({
   }
 }));
 
-jest.mock('@google/genai');
-jest.mock('../../../services/arxiv_service.js');
-jest.mock('../../../services/openalex_service.js');
-jest.mock('../../../services/core_service.js');
-
-// The config mock above should be enough, but the module-level instantiation
-// happens when the module is imported. We need to prevent that.
-// Since jest.mock is hoisted, the config mock should be applied first.
-// But the issue is that when we import agent_service, it executes the module code.
-// Solution: Don't mock agent_service, but ensure config is mocked first.
-// The config mock should prevent the error when AgentService constructor runs.
+vi.mock('@google/genai');
+vi.mock('../../../services/arxiv_service.js');
+vi.mock('../../../services/openalex_service.js');
+vi.mock('../../../services/core_service.js');
 
 // Import after mocks are set up
 import { AgentService } from '../../../services/agent_service.js';
@@ -30,25 +23,25 @@ import * as openalexService from '../../../services/openalex_service.js';
 import * as coreService from '../../../services/core_service.js';
 import config from '../../../config.js';
 
-const mockedArxivService = arxivService as jest.Mocked<typeof arxivService>;
-const mockedOpenalexService = openalexService as jest.Mocked<typeof openalexService>;
-const mockedCoreService = coreService as jest.Mocked<typeof coreService>;
+const mockedArxivService = arxivService as any;
+const mockedOpenalexService = openalexService as any;
+const mockedCoreService = coreService as any;
 
 describe('AgentService', () => {
   let agentService: AgentService;
-  let mockGenAI: jest.Mocked<GoogleGenAI>;
+  let mockGenAI: any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     mockGenAI = {
       models: {
-        generateContent: jest.fn(),
-        embedContent: jest.fn()
+        generateContent: vi.fn(),
+        embedContent: vi.fn()
       }
-    } as any;
+    };
 
-    (GoogleGenAI as jest.MockedClass<typeof GoogleGenAI>).mockImplementation(() => mockGenAI);
+    (GoogleGenAI as any).mockImplementation(() => mockGenAI);
     
     agentService = new AgentService();
   });
@@ -83,7 +76,7 @@ describe('AgentService', () => {
         })
       };
 
-      mockGenAI.models.generateContent.mockResolvedValue(mockResponse as any);
+      mockGenAI.models.generateContent.mockResolvedValue(mockResponse);
 
       const result = await agentService.generateContentFromVertexAI('test query');
 
@@ -97,7 +90,7 @@ describe('AgentService', () => {
     });
 
     it('should handle empty response', async () => {
-      mockGenAI.models.generateContent.mockResolvedValue({ text: null } as any);
+      mockGenAI.models.generateContent.mockResolvedValue({ text: null });
 
       const result = await agentService.generateContentFromVertexAI('test');
 
@@ -108,7 +101,7 @@ describe('AgentService', () => {
   describe('getEmbedding', () => {
     it('should return embedding values', async () => {
       const mockEmbedding = { embeddings: [{ values: [0.1, 0.2, 0.3] }] };
-      mockGenAI.models.embedContent.mockResolvedValue(mockEmbedding as any);
+      mockGenAI.models.embedContent.mockResolvedValue(mockEmbedding);
 
       const embedding = await (agentService as any).getEmbedding('test text');
 
@@ -120,7 +113,7 @@ describe('AgentService', () => {
     });
 
     it('should return empty array when no embeddings', async () => {
-      mockGenAI.models.embedContent.mockResolvedValue({ embeddings: [] } as any);
+      mockGenAI.models.embedContent.mockResolvedValue({ embeddings: [] });
 
       const embedding = await (agentService as any).getEmbedding('test');
 
@@ -138,14 +131,14 @@ describe('AgentService', () => {
     beforeEach(() => {
       mockGenAI.models.embedContent.mockResolvedValue({
         embeddings: [{ values: [1, 0, 0] }]
-      } as any);
+      });
     });
 
     it('should calculate cosine similarity correctly', async () => {
       // Mock embeddings: [1,0,0] and [1,0,0] -> cosine similarity = 1
       mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] } as any)
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] } as any);
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] })
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] });
 
       const similarity = await agentService.calculateSemanticSimilarity('text a', 'text b');
 
@@ -155,8 +148,8 @@ describe('AgentService', () => {
 
     it('should return 0 for empty embeddings', async () => {
       mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [] }] } as any)
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] } as any);
+        .mockResolvedValueOnce({ embeddings: [{ values: [] }] })
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] });
 
       const similarity = await agentService.calculateSemanticSimilarity('text a', 'text b');
 
@@ -165,8 +158,8 @@ describe('AgentService', () => {
 
     it('should throw error for mismatched dimensions', async () => {
       mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0] }] } as any)
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] } as any);
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0] }] })
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] });
 
       await expect(agentService.calculateSemanticSimilarity('text a', 'text b'))
         .rejects.toThrow('Embedding dimensions do not match');
@@ -174,8 +167,8 @@ describe('AgentService', () => {
 
     it('should handle zero magnitude vectors', async () => {
       mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [0, 0, 0] }] } as any)
-        .mockResolvedValueOnce({ embeddings: [{ values: [0, 0, 0] }] } as any);
+        .mockResolvedValueOnce({ embeddings: [{ values: [0, 0, 0] }] })
+        .mockResolvedValueOnce({ embeddings: [{ values: [0, 0, 0] }] });
 
       const similarity = await agentService.calculateSemanticSimilarity('text a', 'text b');
 
@@ -197,10 +190,16 @@ describe('AgentService', () => {
         new Paper('2', 'Title B', 'Summary B', '2024-01-01', [], '', 'arxiv')
       ];
 
+      // calculateSemanticSimilarity calls getEmbedding twice per paper (query + paper text)
+      // So for 2 papers, we need 4 mock responses
+      // Using orthogonal vectors to ensure different cosine similarities:
+      // Paper 1: query=[1,0,0] vs paper=[0,1,0] -> cosine=0 -> normalized=0.5
+      // Paper 2: query=[1,0,0] vs paper=[1,0,0] -> cosine=1 -> normalized=1.0
       mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] } as any) // query embedding
-        .mockResolvedValueOnce({ embeddings: [{ values: [0.5, 0, 0] }] } as any) // paper 1
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] } as any) // paper 2
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] }) // query embedding for paper 1
+        .mockResolvedValueOnce({ embeddings: [{ values: [0, 1, 0] }] }) // paper 1 text embedding (orthogonal to query)
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] }) // query embedding for paper 2
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] }); // paper 2 text embedding (same as query)
 
       const reranked = await agentService.rerankResults('test query', papers);
 
@@ -225,7 +224,7 @@ describe('AgentService', () => {
           openalex_queries: [{ query: 'test openalex' }],
           core_queries: [{ query: 'test core', mode: 'keyword' }]
         })
-      } as any);
+      });
 
       const mockPaper = new Paper('1', 'Test', 'Summary', '2024-01-01', [], '', 'arxiv');
       mockedArxivService.searchArxiv.mockResolvedValue([mockPaper]);
@@ -234,7 +233,7 @@ describe('AgentService', () => {
 
       mockGenAI.models.embedContent.mockResolvedValue({
         embeddings: [{ values: [1, 0, 0] }]
-      } as any);
+      });
     });
 
     it('should execute full query pipeline successfully', async () => {
@@ -254,7 +253,7 @@ describe('AgentService', () => {
           openalex_queries: [],
           core_queries: []
         })
-      } as any);
+      });
 
       const results = await agentService.query('test query');
 
@@ -265,7 +264,7 @@ describe('AgentService', () => {
     it('should handle missing query arrays in response', async () => {
       mockGenAI.models.generateContent.mockResolvedValue({
         text: JSON.stringify({})
-      } as any);
+      });
 
       const results = await agentService.query('test query');
 
@@ -275,7 +274,7 @@ describe('AgentService', () => {
     it('should handle invalid JSON response', async () => {
       mockGenAI.models.generateContent.mockResolvedValue({
         text: 'invalid json'
-      } as any);
+      });
 
       await expect(agentService.query('test query')).rejects.toThrow();
     });
@@ -294,8 +293,8 @@ describe('AgentService', () => {
 
     it('should handle non-string LLM response', async () => {
       mockGenAI.models.generateContent.mockResolvedValue({
-        text: { arxiv_queries: [] }
-      } as any);
+        text: { arxiv_queries: [] } as any
+      });
 
       const results = await agentService.query('test query');
 
@@ -303,4 +302,3 @@ describe('AgentService', () => {
     });
   });
 });
-

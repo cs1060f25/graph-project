@@ -1,19 +1,19 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import { searchCore, formatQuery } from '../../../services/core_service.js';
 import { Paper } from '../../../models/paper.js';
 
-jest.mock('axios');
+vi.mock('axios');
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockGet = jest.fn<(...args: any[]) => Promise<any>>();
-(mockedAxios.get as any) = mockGet;
+const mockedAxios = axios as any;
+const mockGet = vi.fn();
+mockedAxios.get = mockGet;
 
 describe('core_service', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGet.mockClear();
     process.env = { ...originalEnv };
   });
@@ -175,4 +175,3 @@ describe('core_service', () => {
     });
   });
 });
-

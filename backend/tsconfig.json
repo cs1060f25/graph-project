@@ -16,7 +16,7 @@
     "sourceMap": true,
     "allowSyntheticDefaultImports": true,
     "noEmit": false,
-    "types": ["node", "jest"]
+    "types": ["node", "jest", "vitest/globals"]
   },
   "include": [
     "**/*.ts"

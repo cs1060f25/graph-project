@@ -1,10 +1,10 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { Express } from 'express';
 import { Paper } from '../../../models/paper.js';
 
 // Mock config FIRST before anything imports agent_service
-jest.mock('../../../config.js', () => ({
+vi.mock('../../../config.js', () => ({
   default: {
     GEMINI_API_KEY: 'test-api-key',
     GOOGLE_CLOUD_PROJECT: 'test-project',
@@ -12,18 +12,20 @@ jest.mock('../../../config.js', () => ({
   }
 }));
 
-// Create mock function that will be shared
-let mockQuery: jest.MockedFunction<() => Promise<any>>;
+// Create mock function that will be shared using vi.hoisted
+const { mockQuery } = vi.hoisted(() => {
+  const mockQuery = vi.fn();
+  return { mockQuery };
+});
 
 // Mock agent_service completely to prevent module-level instantiation
-jest.mock('../../../services/agent_service.js', () => {
-  mockQuery = jest.fn<() => Promise<any>>();
+vi.mock('../../../services/agent_service.js', () => {
   return {
     AgentService: class MockAgentService {
-      query = mockQuery!;
+      query = mockQuery;
     },
     agentService: {
-      query: mockQuery!
+      query: mockQuery
     }
   };
 });
@@ -35,7 +37,7 @@ describe('query endpoint', () => {
   let app: Express;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockQuery.mockClear();
     app = express();
     app.use(express.json());
@@ -110,17 +112,14 @@ describe('query endpoint', () => {
       expect(response.body.error).toBe('Internal server error');
     });
 
-    it('should handle empty query string', async () => {
-      const mockPapers: Paper[] = [];
-      mockQuery.mockResolvedValue(mockPapers);
-
+    it('should return 400 for empty query string', async () => {
       const response = await request(app)
         .post('/query')
         .send({ query: '' })
-        .expect(200);
+        .expect(400);
 
-      expect(response.body).toHaveLength(0);
-      expect(mockQuery).toHaveBeenCalledWith('');
+      expect(response.body.error).toBe('Query is required and must be a string');
+      expect(mockQuery).not.toHaveBeenCalled();
     });
 
     it('should handle multiple papers in response', async () => {
@@ -139,4 +138,3 @@ describe('query endpoint', () => {
     });
   });
 });
-
