@@ -106,7 +106,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
 
   // GRAPH-63: Enhanced node size with selection/hover states and layer-based sizing
   const getNodeSize = useCallback((node) => {
-    const baseSize = Math.sqrt(node.value || node.citations || 1) * 4;
+    // Use a fixed base size for all nodes (no citation-based sizing)
+    const baseSize = 6;
     const nodeId = node.id;
     const isSelected = selectedNode && selectedNode.id === nodeId;
     const isHovered = hoveredNode && hoveredNode.id === nodeId;
