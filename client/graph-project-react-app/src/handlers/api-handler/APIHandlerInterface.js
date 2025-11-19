@@ -81,7 +81,9 @@ export default class APIHandlerInterface {
         if (type === "topic" && typeof api.queryByTopic === "function") {
           results = await api.queryByTopic(query, this.maxResults);
         } else if (type === "keyword" && typeof api.queryByKeyword === "function") {
+          console.log("trying...");
           results = await api.queryByKeyword(query, this.maxResults);
+          console.log("results", results);
         }
         return results;
       } catch (err) {
