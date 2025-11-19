@@ -217,7 +217,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     }
     
     // Legacy fallback: Brighter default color with minimum opacity for visibility
-    const defaultColor = '#6a6a7e'; // Brighter gray
+    const defaultColor = '#8b8b93'; // Lighter gray for better visibility on dark background
     const opacity = Math.max(0.7, getLayerOpacity(linkLayer)); // Minimum 0.7 opacity
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
@@ -320,6 +320,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         nodeVal={(node) => Math.pow(getNodeRadius(node, { forSim: true }), 3)}
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
+        linkOpacity={0.6}
         linkDirectionalArrowLength={8}
         linkDirectionalArrowRelPos={1}
         linkDirectionalArrowColor={(link) => getLinkColor(link)}
@@ -367,38 +368,37 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         width={graphWidth}
         cooldownTicks={200}
         // GRAPH-84 Fix: Proper force simulation with adaptive node sizing
-        d3Force={(simulation) => {
-          const nodeById = new Map(memoizedData.nodes.map((n) => [n.id, n]));
-          
-          // Link force with longer distances and weaker strength (less elastic)
-          simulation.force(
-            'link',
-            d3Force.forceLink(memoizedData.links)
-              .id(d => d.id)
-              .distance(l => {
-                const s = typeof l.source === 'object' ? l.source : nodeById.get(l.source);
-                const t = typeof l.target === 'object' ? l.target : nodeById.get(l.target);
-                // Longer edges: sum of radii + larger gap (50px for longer edges)
-                return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 50;
-              })
-              .strength(0.05) // Much weaker strength for less elastic/rubber band effect
+        d3Force={(sim) => {
+          const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
+
+          // ✅ bring back link force so connected nodes stay close
+          sim.force('link', d3Force.forceLink(memoizedData.links)
+            .id(d => d.id)
+            .distance(l => {
+              const s = typeof l.source === 'object' ? l.source : nodesById.get(l.source);
+              const t = typeof l.target === 'object' ? l.target : nodesById.get(l.target);
+              const rS = getNodeRadius(s, { forSim: true });
+              const rT = getNodeRadius(t, { forSim: true });
+              return rS + rT + 40; // small gap between node surfaces
+            })
+            .strength(0.1)
           );
 
-          // Charge force - balanced for adaptive sizing
-          simulation.force(
-            'charge',
-            d3Force.forceManyBody()
-              .strength(-80)
-              .distanceMax(1000)
+          // moderate repulsion (avoid pushing everything into a line)
+          sim.force('charge', d3Force.forceManyBody().strength(-80).distanceMax(1500));
+
+          // gentle center pull to keep the network in view
+          sim.force('center', d3Force.forceCenter());
+
+          // collision: smaller padding, just enough to prevent overlap
+          sim.force('collision', d3Force.forceCollide()
+            .radius(n => getNodeRadius(n, { forSim: true }) + 4)
+            .iterations(3)
           );
 
-          // Collision detection with larger gap to ensure visible edges and no touching
-          simulation.force(
-            'collision',
-            d3Force.forceCollide()
-              .radius(n => getNodeRadius(n, { forSim: true }) + NODE_GAP)
-              .iterations(6) // More iterations for better separation
-          );
+          // optional stabilizers
+          sim.force('x', d3Force.forceX().strength(0.02));
+          sim.force('y', d3Force.forceY().strength(0.02));
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
