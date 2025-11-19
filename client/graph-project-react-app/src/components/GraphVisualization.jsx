@@ -222,7 +222,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
 
-  // GRAPH-63: Enhanced link width
+  // GRAPH-63: Enhanced link width - make edges more visible
   const getLinkWidth = useCallback((link) => {
     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
@@ -231,18 +231,19 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     if (selectedNode) {
       const selectedId = selectedNode.id;
       if (sourceId === selectedId || targetId === selectedId) {
-        return 3;
+        return 4;
       }
     }
     
     if (hoveredNode) {
       const hoveredId = hoveredNode.id;
       if (sourceId === hoveredId || targetId === hoveredId) {
-        return 2.5;
+        return 3;
       }
     }
     
-    return (link.value || 1) * 1.5; // Default width
+    // Default width - thicker for better visibility
+    return 2.5;
   }, [selectedNode, hoveredNode]);
 
   // GRAPH-61: Zoom and pan controls
