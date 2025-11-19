@@ -206,19 +206,19 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     
     // Multi-query support: Use query color with layer-based opacity
     if (link.color) {
-      const opacity = Math.max(0.6, getLayerOpacity(linkLayer)); // Minimum 0.6 opacity for visibility
+      const opacity = Math.max(0.8, getLayerOpacity(linkLayer)); // Higher opacity for visibility
       return hexToRgba(link.color, opacity);
     }
     
     if (link.queryColors && link.queryColors.length > 0) {
       const baseColor = link.queryColors[0];
-      const opacity = Math.max(0.6, getLayerOpacity(linkLayer)); // Minimum 0.6 opacity for visibility
+      const opacity = Math.max(0.8, getLayerOpacity(linkLayer)); // Higher opacity for visibility
       return hexToRgba(baseColor, opacity);
     }
     
-    // Legacy fallback: Brighter default color with minimum opacity for visibility
-    const defaultColor = '#8b8b93'; // Lighter gray for better visibility on dark background
-    const opacity = Math.max(0.7, getLayerOpacity(linkLayer)); // Minimum 0.7 opacity
+    // Legacy fallback: Much brighter default color for maximum visibility
+    const defaultColor = '#a0a0b0'; // Much brighter gray for dark background
+    const opacity = Math.max(0.9, getLayerOpacity(linkLayer)); // High opacity for visibility
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
 
@@ -242,8 +242,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       }
     }
     
-    // Default width - thicker for better visibility
-    return 2.5;
+    // Default width - much thicker for maximum visibility
+    return 3.5;
   }, [selectedNode, hoveredNode]);
 
   // GRAPH-61: Zoom and pan controls
@@ -320,7 +320,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         nodeVal={(node) => Math.pow(getNodeRadius(node, { forSim: true }), 3)}
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
-        linkOpacity={0.6}
+        linkOpacity={0.9}
         linkDirectionalArrowLength={8}
         linkDirectionalArrowRelPos={1}
         linkDirectionalArrowColor={(link) => getLinkColor(link)}
@@ -371,7 +371,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         d3Force={(sim) => {
           const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
 
-          // ✅ bring back link force so connected nodes stay close
+          // Strong link force to create clusters (not caterpillar)
           sim.force('link', d3Force.forceLink(memoizedData.links)
             .id(d => d.id)
             .distance(l => {
@@ -379,26 +379,24 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               const t = typeof l.target === 'object' ? l.target : nodesById.get(l.target);
               const rS = getNodeRadius(s, { forSim: true });
               const rT = getNodeRadius(t, { forSim: true });
-              return rS + rT + 40; // small gap between node surfaces
+              return rS + rT + 50; // visible gap between node surfaces
             })
-            .strength(0.1)
+            .strength(0.3) // Stronger link force to create clusters
           );
 
-          // moderate repulsion (avoid pushing everything into a line)
-          sim.force('charge', d3Force.forceManyBody().strength(-80).distanceMax(1500));
+          // Moderate repulsion to spread nodes but not too much
+          sim.force('charge', d3Force.forceManyBody().strength(-120).distanceMax(2000));
 
-          // gentle center pull to keep the network in view
+          // Center force to keep graph in view
           sim.force('center', d3Force.forceCenter());
 
-          // collision: smaller padding, just enough to prevent overlap
+          // Collision to prevent overlap with visible gaps
           sim.force('collision', d3Force.forceCollide()
-            .radius(n => getNodeRadius(n, { forSim: true }) + 4)
-            .iterations(3)
+            .radius(n => getNodeRadius(n, { forSim: true }) + 8) // 8px gap for visible edges
+            .iterations(4)
           );
 
-          // optional stabilizers
-          sim.force('x', d3Force.forceX().strength(0.02));
-          sim.force('y', d3Force.forceY().strength(0.02));
+          // NO X/Y forces - they cause caterpillar shape
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
