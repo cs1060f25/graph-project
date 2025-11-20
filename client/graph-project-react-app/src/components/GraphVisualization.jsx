@@ -124,12 +124,6 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
 
     if (!nodes?.length) return (n) => minR;
 
-    // Find min and max citation counts for normalization
-    const citations = nodes.map((n) => Math.max(n.citations ?? n.value ?? n.citationCount ?? 1, 1));
-    const minCitations = Math.min(...citations);
-    const maxCitations = Math.max(...citations);
-    const citationRange = maxCitations - minCitations || 1; // avoid division by zero
-
     // derive weights from citation counts with more aggressive scaling
     const weights = nodes.map((n) => {
       const c = Math.max(n.citations ?? n.value ?? n.citationCount ?? 1, 1);
