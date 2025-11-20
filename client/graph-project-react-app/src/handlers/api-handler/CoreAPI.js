@@ -93,6 +93,8 @@ export default class CoreAPI {
           ? entry.authors.map((a) => a.name || a)
           : [],
         link: entry.downloadUrl || entry.fullTextUrl || entry.uri || null,
+        // GRAPH-85: Extract citation count if available, otherwise default to 0
+        citationCount: entry.citationsCount || entry.citationCount || 0,
       }));
     } catch (err) {
       console.error("CORE fetch failed:", err);

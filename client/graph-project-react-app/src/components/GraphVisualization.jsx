@@ -1,7 +1,9 @@
 // HW9 GRAPH-63: Enhanced Graph Node Interactions
 // GRAPH-61: Graph visualization with zoom and pan controls
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+// GRAPH-84: Variable node sizing with collision detection
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import * as d3Force from 'd3-force';
 import './GraphVisualization.css';
 
 const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600 }) => {
@@ -15,6 +17,36 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     nodes: nodes || [],
     links: links || [],
   }), [nodes, links]);
+
+  // Debug: Detect high-citation nodes with zero edges (data issue detection)
+  useEffect(() => {
+    if (!memoizedData.nodes || !memoizedData.links) return;
+    
+    const degree = new Map(memoizedData.nodes.map(n => [n.id, 0]));
+    memoizedData.links.forEach(l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      degree.set(sourceId, (degree.get(sourceId) ?? 0) + 1);
+      degree.set(targetId, (degree.get(targetId) ?? 0) + 1);
+    });
+    
+    const orphans = memoizedData.nodes.filter(n => {
+      const citations = n.citations ?? n.citationCount ?? 0;
+      const nodeDegree = degree.get(n.id) ?? 0;
+      return citations > 500 && nodeDegree === 0;
+    });
+    
+    if (orphans.length > 0) {
+      console.warn('[GraphVisualization] High-citation nodes with zero edges (data issue):', 
+        orphans.map(n => ({
+          id: n.id,
+          title: n.title?.substring(0, 60),
+          citations: n.citations ?? n.citationCount ?? 0,
+          degree: degree.get(n.id) ?? 0
+        }))
+      );
+    }
+  }, [memoizedData.nodes, memoizedData.links]);
 
   // GRAPH-63: Calculate connected nodes for highlighting
   const connectedNodeIds = useMemo(() => {
@@ -99,29 +131,59 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     }
     
     // Legacy fallback: If no query color, use default with layer opacity
-    const defaultColor = '#6366f1'; // Default indigo
+    const defaultColor = '#3a82ff'; // Blue
     const opacity = getLayerOpacity(layer);
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
-  // GRAPH-63: Enhanced node size with selection/hover states and layer-based sizing
-  const getNodeSize = useCallback((node) => {
-    // Use a fixed base size for all nodes (no citation-based sizing)
-    const baseSize = 6;
-    const nodeId = node.id;
-    const isSelected = selectedNode && selectedNode.id === nodeId;
-    const isHovered = hoveredNode && hoveredNode.id === nodeId;
+  // Compute graph width for viewport sizing
+  const graphWidth = Math.min(window.innerWidth - 100, 1200);
+
+  // GRAPH-84 Fix: Linear normalization of citations → radius scale in [1, 2] range
+  // This creates consistent, proportional node sizes without over-expanding
+  const getNormalizedNodeRadius = useCallback((node, nodes) => {
+    if (!nodes || nodes.length === 0) return 6;
+    
+    // GRAPH-85: Use citations field first, then citationCount, then value, with proper handling of 0
+    const citations = node.citations !== undefined && node.citations !== null
+      ? node.citations
+      : (node.citationCount !== undefined && node.citationCount !== null
+          ? node.citationCount
+          : (node.value !== undefined && node.value !== null ? node.value : 1));
+    const allCitations = nodes.map(n => Math.log1p(n.citations ?? n.value ?? n.citationCount ?? 1));
+    const minC = Math.min(...allCitations);
+    const maxC = Math.max(...allCitations);
+    const logC = Math.log1p(citations);
+    const t = (logC - minC) / Math.max(1e-6, maxC - minC); // normalize 0–1
+    const ratio = 1 + t; // [1,2] range
+    const BASE_R = 6;
+    return BASE_R * ratio;
+  }, []);
+
+  // Get node radius with layer scaling and selection/hover effects
+  const getNodeRadius = useCallback((node, { forSim = false } = {}) => {
     const layer = node.layer || 1;
+    const layerScale = layer === 1 ? 1 : layer === 2 ? 0.8 : 0.6;
     
-    // Make selected/hovered nodes slightly larger (always)
-    if (isSelected) return baseSize * 1.3;
-    if (isHovered) return baseSize * 1.2;
+    // Get base radius from normalized scaler
+    let radius = getNormalizedNodeRadius(node, memoizedData.nodes);
     
-    // Layer-based size scaling: More pronounced differences
-    // Layer 1 = full size, Layer 2 = 75%, Layer 3 = 50%
-    const layerScale = layer === 1 ? 1 : layer === 2 ? 0.75 : 0.5;
-    return baseSize * layerScale;
-  }, [selectedNode, hoveredNode]);
+    // Apply layer scaling
+    radius *= layerScale;
+    
+    // Apply selection/hover scaling (only for rendering, not simulation)
+    if (!forSim) {
+      if (selectedNode?.id === node.id) radius *= 1.3;
+      else if (hoveredNode?.id === node.id) radius *= 1.2;
+    }
+    
+    return radius;
+  }, [memoizedData.nodes, selectedNode, hoveredNode, getNormalizedNodeRadius]);
+
+  // Legacy getNodeSize for backward compatibility (returns radius, but nodeVal will use radius³)
+  const getNodeSize = useCallback((node) => {
+    return getNodeRadius(node);
+  }, [getNodeRadius]);
 
   // Refactored link color: Query color with opacity based on layer depth
   const getLinkColor = useCallback((link) => {
@@ -144,32 +206,32 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       }
     }
     
-    // Dim links not connected to highlighted nodes
+    // Dim links not connected to highlighted nodes (but not too dim)
     if (highlightedNodes.size > 0) {
       if (!highlightedNodes.has(sourceId) && !highlightedNodes.has(targetId)) {
-        return '#2a2a2e'; // Very dim for non-highlighted
+        return '#4a4a5e'; // Dim but still visible for non-highlighted
       }
     }
     
     // Multi-query support: Use query color with layer-based opacity
     if (link.color) {
-      const opacity = getLayerOpacity(linkLayer);
+      const opacity = Math.max(0.8, getLayerOpacity(linkLayer)); // Higher opacity for visibility
       return hexToRgba(link.color, opacity);
     }
     
     if (link.queryColors && link.queryColors.length > 0) {
       const baseColor = link.queryColors[0];
-      const opacity = getLayerOpacity(linkLayer);
+      const opacity = Math.max(0.8, getLayerOpacity(linkLayer)); // Higher opacity for visibility
       return hexToRgba(baseColor, opacity);
     }
     
-    // Legacy fallback: Default gray with layer opacity
-    const defaultColor = '#4a4a4e';
-    const opacity = getLayerOpacity(linkLayer);
+    // Legacy fallback: Visible default color for dark background
+    const defaultColor = '#8b8b93'; // Bright gray for dark background
+    const opacity = Math.max(0.7, getLayerOpacity(linkLayer)); // Minimum 0.7 opacity
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
 
-  // GRAPH-63: Enhanced link width
+  // GRAPH-63: Enhanced link width - make edges more visible
   const getLinkWidth = useCallback((link) => {
     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
@@ -178,18 +240,19 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     if (selectedNode) {
       const selectedId = selectedNode.id;
       if (sourceId === selectedId || targetId === selectedId) {
-        return 3;
+        return 4;
       }
     }
     
     if (hoveredNode) {
       const hoveredId = hoveredNode.id;
       if (sourceId === hoveredId || targetId === hoveredId) {
-        return 2.5;
+        return 3;
       }
     }
     
-    return (link.value || 1) * 1.5; // Default width
+    // Default width - thick enough to be visible but not overwhelming
+    return 2.5;
   }, [selectedNode, hoveredNode]);
 
   // GRAPH-61: Zoom and pan controls
@@ -210,6 +273,34 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       fgRef.current.zoomToFit(400, 20);
     }
   }, []);
+
+  // GRAPH-84: Auto-fit graph to viewport once when data first loads to show edges
+  const dataKeyRef = useRef('');
+  const hasAutoFittedRef = useRef(false);
+  
+  useEffect(() => {
+    // Check if this is new data (different node IDs)
+    const currentDataKey = memoizedData.nodes.length > 0 
+      ? JSON.stringify(memoizedData.nodes.map(n => n.id).sort())
+      : '';
+    const isNewData = currentDataKey !== dataKeyRef.current && currentDataKey !== '';
+    
+    if (isNewData && fgRef.current && memoizedData.nodes && memoizedData.nodes.length > 0) {
+      // Reset auto-fit flag for new data
+      hasAutoFittedRef.current = false;
+      dataKeyRef.current = currentDataKey;
+      
+      // Wait for simulation to stabilize, then zoom to fit ONCE
+      const timer = setTimeout(() => {
+        if (fgRef.current && !hasAutoFittedRef.current) {
+          fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
+          hasAutoFittedRef.current = true;
+        }
+      }, 1000); // Wait 1s for initial simulation to stabilize
+      
+      return () => clearTimeout(timer);
+    }
+  }, [memoizedData.nodes, memoizedData.links]);
 
   if (!memoizedData.nodes || memoizedData.nodes.length === 0) {
     return (
@@ -257,78 +348,110 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             <div style="font-weight: 600; color: #eaeaea; font-size: 0.9375rem; margin-bottom: 8px; line-height: 1.4;">${node.title || 'Untitled'}</div>
             <div style="font-size: 0.875rem; color: #c9c9ce; margin-bottom: 4px; font-style: italic;">${node.authors ? node.authors.join(', ') : 'Unknown authors'}</div>
             ${node.year ? `<div style="font-size: 0.75rem; color: #a0a0a5; margin-bottom: 4px;">Year: ${node.year}</div>` : ''}
-            ${node.citations ? `<div style="font-size: 0.75rem; color: #3a82ff; font-weight: 500;">${node.citations} citations</div>` : ''}
+            ${(node.citations !== undefined && node.citations !== null) || (node.citationCount !== undefined && node.citationCount !== null) 
+              ? `<div style="font-size: 0.75rem; color: #3a82ff; font-weight: 500;">${node.citations ?? node.citationCount ?? 0} citations</div>` 
+              : ''}
             <div style="font-size: 0.7rem; color: #6b7280; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2a2e;">Click to view details</div>
           </div>
         `}
         nodeColor={getNodeColor}
-        nodeVal={getNodeSize}
+        nodeRelSize={1}
+        nodeVal={(node) => Math.pow(getNodeRadius(node, { forSim: true }), 3)}
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
-        linkDirectionalArrowLength={6}
+        linkOpacity={0.6}
+        linkCurvature={0}
+        linkDirectionalArrowLength={4}
         linkDirectionalArrowRelPos={1}
+        linkDirectionalArrowColor={(link) => getLinkColor(link)}
+        linkDirectionalParticles={0}
         onNodeClick={onNodeClick}
         onNodeHover={handleNodeHover}
-        nodeCanvasObjectMode={() => 'after'}
+        nodeCanvasObjectMode={() => 'replace'}
         nodeCanvasObject={(node, ctx, globalScale) => {
-          const layer = node.layer || 1;
-          const nodeSize = getNodeSize(node) / globalScale;
-          
-          // GRAPH-63: Add visual indicator for selected node
-          if (selectedNode && selectedNode.id === node.id) {
+          const r = getNodeRadius(node) / globalScale;
+          const color = getNodeColor(node);
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          // Selected node border
+          if (selectedNode?.id === node.id) {
             ctx.strokeStyle = '#ffd700';
             ctx.lineWidth = 3 / globalScale;
             ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeSize + 5, 0, 2 * Math.PI);
+            ctx.arc(node.x, node.y, r + 2 / globalScale, 0, 2 * Math.PI);
             ctx.stroke();
           }
-          
-          // Multi-query support: Add border for nodes belonging to multiple queries
-          // Draw multi-color segmented border to show all query affiliations
+
+          // Multi-query segmented border
           if (node.queryColors && node.queryColors.length > 1) {
-            const colors = node.queryColors;
-            const segmentAngle = (2 * Math.PI) / colors.length;
-            
-            colors.forEach((color, index) => {
-              // Use full opacity for borders to ensure visibility
-              ctx.strokeStyle = color;
-              ctx.lineWidth = 2 / globalScale;
+            const segAngle = (2 * Math.PI) / node.queryColors.length;
+            node.queryColors.forEach((c, i) => {
+              ctx.strokeStyle = c;
+              ctx.lineWidth = 1.5 / globalScale;
               ctx.beginPath();
-              ctx.arc(
-                node.x, 
-                node.y, 
-                nodeSize + 3, 
-                index * segmentAngle, 
-                (index + 1) * segmentAngle
-              );
+              ctx.arc(node.x, node.y, r + 2.5 / globalScale, i * segAngle, (i + 1) * segAngle);
               ctx.stroke();
             });
           }
-          
-          // Layer depth indicator: Add subtle border for deeper layers
-          // Layer 2 and 3 get a dashed border to indicate depth
-          if (layer === 2 || layer === 3) {
-            const baseColor = node.queryColors && node.queryColors.length > 0 
-              ? node.queryColors[0] 
-              : '#6366f1';
-            ctx.strokeStyle = baseColor;
-            ctx.globalAlpha = 0.5; // Subtle border
-            ctx.lineWidth = 1 / globalScale;
-            ctx.setLineDash([3 / globalScale, 3 / globalScale]);
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, nodeSize + 2, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.globalAlpha = 1.0; // Reset alpha
-          }
+        }}
+        nodePointerAreaPaint={(node, color, ctx, globalScale) => {
+          const r = getNodeRadius(node) / globalScale;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r + 3 / globalScale, 0, 2 * Math.PI);
+          ctx.fill();
         }}
         height={height}
-        width={Math.min(window.innerWidth - 100, 1200)}
-        cooldownTicks={100}
+        width={graphWidth}
+        cooldownTicks={400}
+        // GRAPH-84 Fix: Balanced force simulation for proper graph clustering
+        d3Force={(sim) => {
+          const byId = new Map(memoizedData.nodes.map(n => [n.id, n]));
+          
+          // Link force to keep clusters tight
+          sim.force('link', d3Force.forceLink(memoizedData.links)
+            .id(d => d.id)
+            .distance(l => {
+              const s = typeof l.source === 'object' ? l.source : byId.get(l.source);
+              const t = typeof l.target === 'object' ? l.target : byId.get(l.target);
+              return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 30;
+            })
+            .strength(0.15) // Keep clusters tight
+          );
+
+          // Moderate repulsion to spread nodes without flinging apart
+          sim.force('charge', d3Force.forceManyBody().strength(-60).distanceMax(1200));
+          
+          // Small collision padding so edges stay visible
+          sim.force('collision', d3Force.forceCollide()
+            .radius(n => getNodeRadius(n, { forSim: true }) + 3)
+            .iterations(3)
+          );
+          
+          // Center force to keep graph in view
+          sim.force('center', d3Force.forceCenter());
+          
+          // Gentle X/Y forces for better distribution
+          sim.force('x', d3Force.forceX().strength(0.05));
+          sim.force('y', d3Force.forceY().strength(0.05));
+        }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
         onEngineStop={() => {
-          // Graph layout is stable
+          // Graph layout is stable - auto-fit ONCE on initial load only
+          // Don't interfere if user has already zoomed or we've already auto-fitted
+          if (fgRef.current && !hasAutoFittedRef.current) {
+            // Use a delay to ensure simulation is fully stable
+            setTimeout(() => {
+              if (fgRef.current && !hasAutoFittedRef.current) {
+                fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
+                hasAutoFittedRef.current = true;
+              }
+            }, 200);
+          }
         }}
       />
     </div>

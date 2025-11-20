@@ -63,9 +63,10 @@ export default class OpenAlexAPI {
    */
   async #fetchResults(searchQuery, maxResults) {
     const limit = maxResults ?? this.defaultMaxResults;
+    // Include referenced_works and cited_by_api_url in response to get citation relationships
     const queryUrl = `${this.baseUrl}/works?filter=title.search:${encodeURIComponent(
       searchQuery
-    )}&per-page=${limit}`;
+    )}&per-page=${limit}&select=id,display_name,abstract_inverted_index,publication_year,authorships,open_access,doi,cited_by_count,referenced_works,cited_by_api_url`;
 
     try {
       const response = await this.#fetchWithTimeout(queryUrl, 15000);
@@ -82,22 +83,178 @@ export default class OpenAlexAPI {
       const data = await response.json();
       const entries = data.results || [];
 
-      return entries.map((entry) => ({
-        id: entry.id,
-        title: entry.display_name?.trim(),
-        summary: this.#reconstructAbstract(entry.abstract_inverted_index),
-        published: entry.publication_year
-          ? `${entry.publication_year}-01-01T00:00:00Z`
-          : "Unknown",
-        authors: Array.isArray(entry.authorships)
-          ? entry.authorships.map((a) => a.author?.display_name)
-          : [],
-        link:
-          entry.open_access?.oa_url ||
-          entry.doi ||
-          entry.id ||
-          null,
-      }));
+      // First pass: extract basic data and referenced_works
+      const papers = entries.map((entry) => {
+        // Extract referenced works (papers this paper cites)
+        // OpenAlex provides referenced_works as an array of work IDs
+        const references = Array.isArray(entry.referenced_works)
+          ? entry.referenced_works.map(ref => {
+              // Extract work ID from OpenAlex format (e.g., "https://openalex.org/W123456" -> "W123456")
+              if (typeof ref === 'string') {
+                return ref;
+              } else if (ref && ref.id) {
+                return ref.id;
+              }
+              return null;
+            }).filter(Boolean)
+          : [];
+
+        return {
+          id: entry.id,
+          title: entry.display_name?.trim(),
+          summary: this.#reconstructAbstract(entry.abstract_inverted_index),
+          published: entry.publication_year
+            ? `${entry.publication_year}-01-01T00:00:00Z`
+            : "Unknown",
+          authors: Array.isArray(entry.authorships)
+            ? entry.authorships.map((a) => a.author?.display_name)
+            : [],
+          link:
+            entry.open_access?.oa_url ||
+            entry.doi ||
+            entry.id ||
+            null,
+          // GRAPH-85: Extract citation count for node sizing and display
+          citationCount: entry.cited_by_count || 0,
+          // Extract citation relationships for edge creation
+          references: references, // Papers this paper cites (referenced_works)
+          // Store cited_by_api_url for fetching papers that cite this paper
+          citedByApiUrl: entry.cited_by_api_url || null,
+        };
+      });
+
+      // Second pass: fetch citing papers (papers that cite each paper) and referenced papers (papers each paper cites)
+      const papersWithCitedBy = await Promise.all(
+        papers.map(async (paper) => {
+          const citingPapers = [];
+          const referencedPapers = [];
+          
+          // Fetch citing papers (papers that cite this paper) - fetch ALL with pagination
+          if (paper.citedByApiUrl && paper.citationCount > 0) {
+            try {
+              // OpenAlex API supports up to 200 results per page, then pagination
+              const perPage = 200;
+              let page = 1;
+              let hasMore = true;
+              
+              while (hasMore && citingPapers.length < paper.citationCount) {
+                const citedByUrl = `${paper.citedByApiUrl}&per-page=${perPage}&page=${page}`;
+                const citedByResponse = await this.#fetchWithTimeout(citedByUrl, 20000);
+                
+                if (citedByResponse.ok) {
+                  const citedByData = await citedByResponse.json();
+                  const citedByWorks = citedByData.results || [];
+                  
+                  if (citedByWorks.length === 0) {
+                    hasMore = false;
+                    break;
+                  }
+                  
+                  // Create paper objects for citing papers
+                  citingPapers.push(...citedByWorks.map(work => ({
+                    id: work.id,
+                    title: work.display_name?.trim() || 'Untitled',
+                    summary: this.#reconstructAbstract(work.abstract_inverted_index),
+                    published: work.publication_year
+                      ? `${work.publication_year}-01-01T00:00:00Z`
+                      : "Unknown",
+                    authors: Array.isArray(work.authorships)
+                      ? work.authorships.map((a) => a.author?.display_name)
+                      : [],
+                    link: work.open_access?.oa_url || work.doi || work.id || null,
+                    citationCount: work.cited_by_count || 0,
+                    references: Array.isArray(work.referenced_works)
+                      ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
+                      : [],
+                    isCitingPaper: true,
+                    citedPaperId: paper.id,
+                  })));
+                  
+                  // Check if there are more pages (OpenAlex returns meta with next_cursor or we check if we got a full page)
+                  hasMore = citedByWorks.length === perPage && citingPapers.length < paper.citationCount;
+                  page++;
+                } else {
+                  hasMore = false;
+                }
+              }
+              
+              console.log(`Fetched ${citingPapers.length} citing papers for ${paper.id} (citationCount: ${paper.citationCount})`);
+            } catch (err) {
+              console.warn(`Failed to fetch cited_by for ${paper.id}:`, err);
+            }
+          }
+          
+          // Fetch referenced papers (papers this paper cites) - fetch ALL
+          if (paper.references && paper.references.length > 0) {
+            try {
+              // Fetch details for ALL referenced papers (no limit)
+              const refFetchPromises = paper.references.map(async (refId) => {
+                try {
+                  // OpenAlex work ID format: https://openalex.org/W123456 or just W123456
+                  const workId = refId.startsWith('http') ? refId : `https://openalex.org/${refId}`;
+                  const workUrl = `${this.baseUrl}/works/${workId}`;
+                  const workResponse = await this.#fetchWithTimeout(workUrl, 10000);
+                  
+                  if (workResponse.ok) {
+                    const work = await workResponse.json();
+                    return {
+                      id: work.id,
+                      title: work.display_name?.trim() || 'Untitled',
+                      summary: this.#reconstructAbstract(work.abstract_inverted_index),
+                      published: work.publication_year
+                        ? `${work.publication_year}-01-01T00:00:00Z`
+                        : "Unknown",
+                      authors: Array.isArray(work.authorships)
+                        ? work.authorships.map((a) => a.author?.display_name)
+                        : [],
+                      link: work.open_access?.oa_url || work.doi || work.id || null,
+                      citationCount: work.cited_by_count || 0,
+                      references: Array.isArray(work.referenced_works)
+                        ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
+                        : [],
+                      isReferencedPaper: true,
+                      referencedByPaperId: paper.id,
+                    };
+                  }
+                } catch (err) {
+                  console.warn(`Failed to fetch referenced paper ${refId}:`, err);
+                  return null;
+                }
+                return null;
+              });
+              
+              const fetchedRefs = await Promise.all(refFetchPromises);
+              referencedPapers.push(...fetchedRefs.filter(Boolean));
+            } catch (err) {
+              console.warn(`Failed to fetch referenced papers for ${paper.id}:`, err);
+            }
+          }
+          
+          const citedBy = citingPapers.map(p => p.id).filter(Boolean);
+          
+          return { ...paper, citedBy, citingPapers, referencedPapers };
+        })
+      );
+
+      // Flatten all additional papers and add them to the results
+      const allCitingPapers = papersWithCitedBy.flatMap(p => p.citingPapers || []);
+      const allReferencedPapers = papersWithCitedBy.flatMap(p => p.referencedPapers || []);
+      const papersWithoutExtras = papersWithCitedBy.map(({ citingPapers, referencedPapers, ...paper }) => paper);
+      
+      // Combine original papers with citing papers and referenced papers
+      // Deduplicate by ID to avoid adding the same paper multiple times
+      const allPapers = [...papersWithoutExtras, ...allCitingPapers, ...allReferencedPapers];
+      const seenIds = new Set();
+      const uniquePapers = [];
+      
+      for (const paper of allPapers) {
+        if (!seenIds.has(paper.id)) {
+          seenIds.add(paper.id);
+          uniquePapers.push(paper);
+        }
+      }
+      
+      return uniquePapers;
     } catch (err) {
       console.error("OpenAlex fetch failed:", err);
       return []; // Return empty array instead of throwing
