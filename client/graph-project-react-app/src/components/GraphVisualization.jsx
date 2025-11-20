@@ -299,18 +299,24 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   }, []);
 
   // GRAPH-84: Auto-fit graph to viewport when data changes to show edges on first load
+  const [hasAutoFitted, setHasAutoFitted] = useState(false);
+  
   useEffect(() => {
     if (fgRef.current && memoizedData.nodes && memoizedData.nodes.length > 0) {
+      // Reset auto-fit flag when data changes
+      setHasAutoFitted(false);
+      
       // Wait for simulation to stabilize, then zoom to fit
       const timer = setTimeout(() => {
-        if (fgRef.current) {
+        if (fgRef.current && !hasAutoFitted) {
           fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
+          setHasAutoFitted(true);
         }
-      }, 500); // Wait 500ms for initial simulation
+      }, 800); // Wait 800ms for initial simulation to stabilize
       
       return () => clearTimeout(timer);
     }
-  }, [memoizedData.nodes, memoizedData.links]);
+  }, [memoizedData.nodes, memoizedData.links, hasAutoFitted]);
 
   if (!memoizedData.nodes || memoizedData.nodes.length === 0) {
     return (
@@ -453,7 +459,15 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
         onEngineStop={() => {
-          // Graph layout is stable
+          // Graph layout is stable - auto-fit to show full graph with edges
+          if (fgRef.current && !hasAutoFitted) {
+            setTimeout(() => {
+              if (fgRef.current) {
+                fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
+                setHasAutoFitted(true);
+              }
+            }, 100);
+          }
         }}
       />
     </div>
