@@ -10,8 +10,9 @@ import { createMockGraphData } from '../utils/graphDataTransformer';
 
 // Mock react-force-graph-2d since it's a canvas-based component
 jest.mock('react-force-graph-2d', () => {
+  const mockReact = require('react');
   return function MockForceGraph2D({ graphData, onNodeClick, onNodeHover, nodeColor, nodeVal, linkColor, linkWidth, selectedNode }) {
-    const [hoveredNode, setHoveredNode] = React.useState(null);
+    const [hoveredNode, setHoveredNode] = mockReact.useState(null);
     
     return (
       <div data-testid="force-graph-mock">
