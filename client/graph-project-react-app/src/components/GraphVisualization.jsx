@@ -18,6 +18,36 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     links: links || [],
   }), [nodes, links]);
 
+  // Debug: Detect high-citation nodes with zero edges (data issue detection)
+  useEffect(() => {
+    if (!memoizedData.nodes || !memoizedData.links) return;
+    
+    const degree = new Map(memoizedData.nodes.map(n => [n.id, 0]));
+    memoizedData.links.forEach(l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      degree.set(sourceId, (degree.get(sourceId) ?? 0) + 1);
+      degree.set(targetId, (degree.get(targetId) ?? 0) + 1);
+    });
+    
+    const orphans = memoizedData.nodes.filter(n => {
+      const citations = n.citations ?? n.citationCount ?? 0;
+      const nodeDegree = degree.get(n.id) ?? 0;
+      return citations > 500 && nodeDegree === 0;
+    });
+    
+    if (orphans.length > 0) {
+      console.warn('[GraphVisualization] High-citation nodes with zero edges (data issue):', 
+        orphans.map(n => ({
+          id: n.id,
+          title: n.title?.substring(0, 60),
+          citations: n.citations ?? n.citationCount ?? 0,
+          degree: degree.get(n.id) ?? 0
+        }))
+      );
+    }
+  }, [memoizedData.nodes, memoizedData.links]);
+
   // GRAPH-63: Calculate connected nodes for highlighting
   const connectedNodeIds = useMemo(() => {
     if (!selectedNode || !memoizedData.links) return new Set();
