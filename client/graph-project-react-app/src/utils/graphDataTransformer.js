@@ -1,4 +1,31 @@
 /**
+ * Normalizes paper IDs to ensure consistent matching between nodes and links
+ * OpenAlex uses full URLs like "https://openalex.org/W123456"
+ * We keep the full URL format for consistency
+ */
+function normalizePaperId(paperOrId) {
+  if (!paperOrId) return null;
+  
+  // If it's already a string ID, return it
+  if (typeof paperOrId === 'string') {
+    return paperOrId.trim();
+  }
+  
+  // If it's a paper object, extract the ID
+  if (typeof paperOrId === 'object') {
+    if (paperOrId.paperId) return String(paperOrId.paperId);
+    if (paperOrId.id) return String(paperOrId.id);
+    if (paperOrId.doi) {
+      // Normalize DOI format
+      const doi = paperOrId.doi.trim().toLowerCase();
+      return doi.replace(/^https?:\/\/(dx\.)?doi\.org\//, '');
+    }
+  }
+  
+  return String(paperOrId);
+}
+
+/**
  * Transforms API response data into graph format (nodes and edges)
  * for visualization libraries like react-force-graph
  * 
@@ -11,7 +38,7 @@ export const transformPapersToGraph = (papers, layer = 1) => {
     return { nodes: [], links: [] };
   }
 
-  // Create nodes from papers
+  // Create nodes from papers with normalized IDs
   const nodes = papers.map((paper, index) => {
     // Handle both API response format and direct format
     const year = paper.year || (paper.published ? new Date(paper.published).getFullYear() : null);
@@ -21,8 +48,11 @@ export const transformPapersToGraph = (papers, layer = 1) => {
       ? paper.citationCount 
       : 0;
     
+    // Normalize ID to ensure consistency
+    const normalizedId = normalizePaperId(paper) || `paper-${index}`;
+    
     return {
-      id: paper.id || `paper-${index}`,
+      id: normalizedId,
       title: paper.title || 'Untitled',
       authors: paper.authors || [],
       year: year,
@@ -55,15 +85,16 @@ export const transformPapersToGraph = (papers, layer = 1) => {
   }
 
   papers.forEach((paper, index) => {
-    const sourceId = paper.id || `paper-${index}`;
+    // Normalize source ID to match node IDs
+    const sourceId = normalizePaperId(paper) || `paper-${index}`;
     
     // If paper has references/citations, create links
     // References are papers this paper cites (outgoing edges)
     if (paper.references && Array.isArray(paper.references)) {
       paper.references.forEach(refId => {
-        // Normalize refId to match node IDs (handle OpenAlex format)
-        const normalizedRefId = refId;
-        if (paperIdMap.has(normalizedRefId)) {
+        // Normalize refId to match node IDs
+        const normalizedRefId = normalizePaperId(refId);
+        if (normalizedRefId && paperIdMap.has(normalizedRefId)) {
           links.push({
             source: sourceId,
             target: normalizedRefId,
@@ -79,8 +110,9 @@ export const transformPapersToGraph = (papers, layer = 1) => {
     if (paper.citedBy && Array.isArray(paper.citedBy)) {
       let edgesCreated = 0;
       paper.citedBy.forEach(citingId => {
-        const normalizedCitingId = citingId;
-        if (paperIdMap.has(normalizedCitingId)) {
+        // Normalize citing ID to match node IDs
+        const normalizedCitingId = normalizePaperId(citingId);
+        if (normalizedCitingId && paperIdMap.has(normalizedCitingId)) {
           links.push({
             source: normalizedCitingId,
             target: sourceId,
@@ -93,12 +125,42 @@ export const transformPapersToGraph = (papers, layer = 1) => {
       
       // Debug: log if paper has many citations but few edges
       if (paper.citationCount > 100 && edgesCreated < paper.citedBy.length * 0.1) {
-        console.warn(`[GraphTransformer] Paper ${paper.id} has ${paper.citationCount} citations, ` +
+        console.warn(`[GraphTransformer] Paper ${sourceId} has ${paper.citationCount} citations, ` +
           `${paper.citedBy.length} in citedBy array, but only ${edgesCreated} edges created. ` +
           `Node in map: ${paperIdMap.has(sourceId)}`);
+        // Log sample IDs to debug ID mismatch
+        if (paper.citedBy.length > 0) {
+          const sampleIds = paper.citedBy.slice(0, 3).map(id => ({
+            original: id,
+            normalized: normalizePaperId(id),
+            inMap: paperIdMap.has(normalizePaperId(id))
+          }));
+          console.warn(`[GraphTransformer] Sample citedBy IDs:`, sampleIds);
+        }
       }
     }
   });
+  
+  // Debug: Find isolated nodes (nodes with no edges)
+  const nodeDegreeMap = new Map(nodes.map(n => [n.id, 0]));
+  links.forEach(link => {
+    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    nodeDegreeMap.set(sourceId, (nodeDegreeMap.get(sourceId) || 0) + 1);
+    nodeDegreeMap.set(targetId, (nodeDegreeMap.get(targetId) || 0) + 1);
+  });
+  
+  const isolatedNodes = nodes.filter(n => (nodeDegreeMap.get(n.id) || 0) === 0);
+  if (isolatedNodes.length > 0) {
+    console.warn(`[GraphTransformer] Found ${isolatedNodes.length} isolated nodes (no edges):`, 
+      isolatedNodes.map(n => ({
+        id: n.id,
+        title: n.title?.substring(0, 50),
+        citations: n.citations,
+        citationCount: n.citationCount
+      }))
+    );
+  }
 
   // If no links exist, create a simple connected graph
   if (links.length === 0 && nodes.length > 1) {
