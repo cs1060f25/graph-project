@@ -45,26 +45,33 @@ export const transformPapersToGraph = (papers, layer = 1) => {
     const sourceId = paper.id || `paper-${index}`;
     
     // If paper has references/citations, create links
+    // References are papers this paper cites (outgoing edges)
     if (paper.references && Array.isArray(paper.references)) {
       paper.references.forEach(refId => {
-        if (paperIdMap.has(refId)) {
+        // Normalize refId to match node IDs (handle OpenAlex format)
+        const normalizedRefId = refId;
+        if (paperIdMap.has(normalizedRefId)) {
           links.push({
             source: sourceId,
-            target: refId,
+            target: normalizedRefId,
             value: 1, // Link strength
+            layer: paper.layer || layer,
           });
         }
       });
     }
     
     // If paper has citedBy information, create reverse links
+    // CitedBy are papers that cite this paper (incoming edges)
     if (paper.citedBy && Array.isArray(paper.citedBy)) {
       paper.citedBy.forEach(citingId => {
-        if (paperIdMap.has(citingId)) {
+        const normalizedCitingId = citingId;
+        if (paperIdMap.has(normalizedCitingId)) {
           links.push({
-            source: citingId,
+            source: normalizedCitingId,
             target: sourceId,
             value: 1,
+            layer: paper.layer || layer,
           });
         }
       });

@@ -63,9 +63,10 @@ export default class OpenAlexAPI {
    */
   async #fetchResults(searchQuery, maxResults) {
     const limit = maxResults ?? this.defaultMaxResults;
+    // Include referenced_works in response to get citation relationships
     const queryUrl = `${this.baseUrl}/works?filter=title.search:${encodeURIComponent(
       searchQuery
-    )}&per-page=${limit}`;
+    )}&per-page=${limit}&select=id,display_name,abstract_inverted_index,publication_year,authorships,open_access,doi,cited_by_count,referenced_works`;
 
     try {
       const response = await this.#fetchWithTimeout(queryUrl, 15000);
@@ -82,24 +83,43 @@ export default class OpenAlexAPI {
       const data = await response.json();
       const entries = data.results || [];
 
-      return entries.map((entry) => ({
-        id: entry.id,
-        title: entry.display_name?.trim(),
-        summary: this.#reconstructAbstract(entry.abstract_inverted_index),
-        published: entry.publication_year
-          ? `${entry.publication_year}-01-01T00:00:00Z`
-          : "Unknown",
-        authors: Array.isArray(entry.authorships)
-          ? entry.authorships.map((a) => a.author?.display_name)
-          : [],
-        link:
-          entry.open_access?.oa_url ||
-          entry.doi ||
-          entry.id ||
-          null,
-        // GRAPH-85: Extract citation count for node sizing and display
-        citationCount: entry.cited_by_count || 0,
-      }));
+      return entries.map((entry) => {
+        // Extract referenced works (papers this paper cites)
+        // OpenAlex provides referenced_works as an array of work IDs
+        const references = Array.isArray(entry.referenced_works)
+          ? entry.referenced_works.map(ref => {
+              // Extract work ID from OpenAlex format (e.g., "https://openalex.org/W123456" -> "W123456")
+              if (typeof ref === 'string') {
+                return ref;
+              } else if (ref && ref.id) {
+                return ref.id;
+              }
+              return null;
+            }).filter(Boolean)
+          : [];
+
+        return {
+          id: entry.id,
+          title: entry.display_name?.trim(),
+          summary: this.#reconstructAbstract(entry.abstract_inverted_index),
+          published: entry.publication_year
+            ? `${entry.publication_year}-01-01T00:00:00Z`
+            : "Unknown",
+          authors: Array.isArray(entry.authorships)
+            ? entry.authorships.map((a) => a.author?.display_name)
+            : [],
+          link:
+            entry.open_access?.oa_url ||
+            entry.doi ||
+            entry.id ||
+            null,
+          // GRAPH-85: Extract citation count for node sizing and display
+          citationCount: entry.cited_by_count || 0,
+          // Extract citation relationships for edge creation
+          references: references, // Papers this paper cites (referenced_works)
+          // Note: citedBy would require fetching from cited_by_api_url, which we'll do optionally
+        };
+      });
     } catch (err) {
       console.error("OpenAlex fetch failed:", err);
       return []; // Return empty array instead of throwing
