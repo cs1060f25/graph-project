@@ -123,64 +123,121 @@ export default class OpenAlexAPI {
         };
       });
 
-      // Second pass: fetch citing papers (papers that cite each paper) if API URL is available
-      // Limit to avoid too many API calls - only fetch for papers with citations
+      // Second pass: fetch citing papers (papers that cite each paper) and referenced papers (papers each paper cites)
       const papersWithCitedBy = await Promise.all(
         papers.map(async (paper) => {
-          if (!paper.citedByApiUrl || paper.citationCount === 0) {
-            return { ...paper, citedBy: [], citingPapers: [] };
-          }
-
-          try {
-            // Fetch a limited number of citing papers (max 5 to avoid too many API calls and nodes)
-            const citedByUrl = `${paper.citedByApiUrl}&per-page=5`;
-            const citedByResponse = await this.#fetchWithTimeout(citedByUrl, 10000);
-            
-            if (citedByResponse.ok) {
-              const citedByData = await citedByResponse.json();
-              const citedByWorks = citedByData.results || [];
+          const citingPapers = [];
+          const referencedPapers = [];
+          
+          // Fetch citing papers (papers that cite this paper)
+          if (paper.citedByApiUrl && paper.citationCount > 0) {
+            try {
+              // Fetch all citing papers (up to citation count, but cap at 50 to avoid too many API calls)
+              const maxCitingPapers = Math.min(paper.citationCount || 0, 50);
+              const citedByUrl = `${paper.citedByApiUrl}&per-page=${maxCitingPapers}`;
+              const citedByResponse = await this.#fetchWithTimeout(citedByUrl, 15000);
               
-              // Extract IDs of papers that cite this paper
-              const citedBy = citedByWorks.map(work => work.id).filter(Boolean);
-              
-              // Also create paper objects for citing papers so they can be added to the graph
-              const citingPapers = citedByWorks.map(work => ({
-                id: work.id,
-                title: work.display_name?.trim() || 'Untitled',
-                summary: this.#reconstructAbstract(work.abstract_inverted_index),
-                published: work.publication_year
-                  ? `${work.publication_year}-01-01T00:00:00Z`
-                  : "Unknown",
-                authors: Array.isArray(work.authorships)
-                  ? work.authorships.map((a) => a.author?.display_name)
-                  : [],
-                link: work.open_access?.oa_url || work.doi || work.id || null,
-                citationCount: work.cited_by_count || 0,
-                references: Array.isArray(work.referenced_works)
-                  ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
-                  : [],
-                // Mark as citing paper so we know it was added for citation relationships
-                isCitingPaper: true,
-                citedPaperId: paper.id, // Track which paper it cites
-              }));
-              
-              return { ...paper, citedBy, citingPapers };
+              if (citedByResponse.ok) {
+                const citedByData = await citedByResponse.json();
+                const citedByWorks = citedByData.results || [];
+                
+                // Create paper objects for citing papers
+                citingPapers.push(...citedByWorks.map(work => ({
+                  id: work.id,
+                  title: work.display_name?.trim() || 'Untitled',
+                  summary: this.#reconstructAbstract(work.abstract_inverted_index),
+                  published: work.publication_year
+                    ? `${work.publication_year}-01-01T00:00:00Z`
+                    : "Unknown",
+                  authors: Array.isArray(work.authorships)
+                    ? work.authorships.map((a) => a.author?.display_name)
+                    : [],
+                  link: work.open_access?.oa_url || work.doi || work.id || null,
+                  citationCount: work.cited_by_count || 0,
+                  references: Array.isArray(work.referenced_works)
+                    ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
+                    : [],
+                  isCitingPaper: true,
+                  citedPaperId: paper.id,
+                })));
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch cited_by for ${paper.id}:`, err);
             }
-          } catch (err) {
-            // If fetching cited_by fails, just continue without it
-            console.warn(`Failed to fetch cited_by for ${paper.id}:`, err);
           }
           
-          return { ...paper, citedBy: [], citingPapers: [] };
+          // Fetch referenced papers (papers this paper cites)
+          if (paper.references && paper.references.length > 0) {
+            try {
+              // Fetch details for referenced papers (limit to 20 to avoid too many API calls)
+              const refsToFetch = paper.references.slice(0, 20);
+              const refFetchPromises = refsToFetch.map(async (refId) => {
+                try {
+                  // OpenAlex work ID format: https://openalex.org/W123456 or just W123456
+                  const workId = refId.startsWith('http') ? refId : `https://openalex.org/${refId}`;
+                  const workUrl = `${this.baseUrl}/works/${workId}`;
+                  const workResponse = await this.#fetchWithTimeout(workUrl, 10000);
+                  
+                  if (workResponse.ok) {
+                    const work = await workResponse.json();
+                    return {
+                      id: work.id,
+                      title: work.display_name?.trim() || 'Untitled',
+                      summary: this.#reconstructAbstract(work.abstract_inverted_index),
+                      published: work.publication_year
+                        ? `${work.publication_year}-01-01T00:00:00Z`
+                        : "Unknown",
+                      authors: Array.isArray(work.authorships)
+                        ? work.authorships.map((a) => a.author?.display_name)
+                        : [],
+                      link: work.open_access?.oa_url || work.doi || work.id || null,
+                      citationCount: work.cited_by_count || 0,
+                      references: Array.isArray(work.referenced_works)
+                        ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
+                        : [],
+                      isReferencedPaper: true,
+                      referencedByPaperId: paper.id,
+                    };
+                  }
+                } catch (err) {
+                  console.warn(`Failed to fetch referenced paper ${refId}:`, err);
+                  return null;
+                }
+                return null;
+              });
+              
+              const fetchedRefs = await Promise.all(refFetchPromises);
+              referencedPapers.push(...fetchedRefs.filter(Boolean));
+            } catch (err) {
+              console.warn(`Failed to fetch referenced papers for ${paper.id}:`, err);
+            }
+          }
+          
+          const citedBy = citingPapers.map(p => p.id).filter(Boolean);
+          
+          return { ...paper, citedBy, citingPapers, referencedPapers };
         })
       );
 
-      // Flatten citing papers and add them to the results
+      // Flatten all additional papers and add them to the results
       const allCitingPapers = papersWithCitedBy.flatMap(p => p.citingPapers || []);
-      const papersWithoutCitedBy = papersWithCitedBy.map(({ citingPapers, ...paper }) => paper);
+      const allReferencedPapers = papersWithCitedBy.flatMap(p => p.referencedPapers || []);
+      const papersWithoutExtras = papersWithCitedBy.map(({ citingPapers, referencedPapers, ...paper }) => paper);
       
-      // Combine original papers with citing papers
-      return [...papersWithoutCitedBy, ...allCitingPapers];
+      // Combine original papers with citing papers and referenced papers
+      // Deduplicate by ID to avoid adding the same paper multiple times
+      const allPapers = [...papersWithoutExtras, ...allCitingPapers, ...allReferencedPapers];
+      const seenIds = new Set();
+      const uniquePapers = [];
+      
+      for (const paper of allPapers) {
+        if (!seenIds.has(paper.id)) {
+          seenIds.add(paper.id);
+          uniquePapers.push(paper);
+        }
+      }
+      
+      return uniquePapers;
     } catch (err) {
       console.error("OpenAlex fetch failed:", err);
       return []; // Return empty array instead of throwing
