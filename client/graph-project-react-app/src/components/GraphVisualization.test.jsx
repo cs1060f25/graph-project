@@ -10,9 +10,9 @@ import { createMockGraphData } from '../utils/graphDataTransformer';
 
 // Mock react-force-graph-2d since it's a canvas-based component
 jest.mock('react-force-graph-2d', () => {
-  const mockReact = require('react');
   return function MockForceGraph2D({ graphData, onNodeClick, onNodeHover, nodeColor, nodeVal, linkColor, linkWidth, selectedNode }) {
-    const [hoveredNode, setHoveredNode] = mockReact.useState(null);
+    // Use a simple state simulation without React hooks in mock
+    let hoveredNode = null;
     
     return (
       <div data-testid="force-graph-mock">
@@ -35,11 +35,11 @@ jest.mock('react-force-graph-2d', () => {
               data-size={size}
               onClick={() => onNodeClick && onNodeClick(node)}
               onMouseEnter={() => {
-                setHoveredNode(node);
+                hoveredNode = node;
                 onNodeHover && onNodeHover(node);
               }}
               onMouseLeave={() => {
-                setHoveredNode(null);
+                hoveredNode = null;
                 onNodeHover && onNodeHover(null);
               }}
             >
