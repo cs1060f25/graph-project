@@ -129,49 +129,66 @@ export default class OpenAlexAPI {
           const citingPapers = [];
           const referencedPapers = [];
           
-          // Fetch citing papers (papers that cite this paper)
+          // Fetch citing papers (papers that cite this paper) - fetch ALL with pagination
           if (paper.citedByApiUrl && paper.citationCount > 0) {
             try {
-              // Fetch all citing papers (up to citation count, but cap at 50 to avoid too many API calls)
-              const maxCitingPapers = Math.min(paper.citationCount || 0, 50);
-              const citedByUrl = `${paper.citedByApiUrl}&per-page=${maxCitingPapers}`;
-              const citedByResponse = await this.#fetchWithTimeout(citedByUrl, 15000);
+              // OpenAlex API supports up to 200 results per page, then pagination
+              const perPage = 200;
+              let page = 1;
+              let hasMore = true;
               
-              if (citedByResponse.ok) {
-                const citedByData = await citedByResponse.json();
-                const citedByWorks = citedByData.results || [];
+              while (hasMore && citingPapers.length < paper.citationCount) {
+                const citedByUrl = `${paper.citedByApiUrl}&per-page=${perPage}&page=${page}`;
+                const citedByResponse = await this.#fetchWithTimeout(citedByUrl, 20000);
                 
-                // Create paper objects for citing papers
-                citingPapers.push(...citedByWorks.map(work => ({
-                  id: work.id,
-                  title: work.display_name?.trim() || 'Untitled',
-                  summary: this.#reconstructAbstract(work.abstract_inverted_index),
-                  published: work.publication_year
-                    ? `${work.publication_year}-01-01T00:00:00Z`
-                    : "Unknown",
-                  authors: Array.isArray(work.authorships)
-                    ? work.authorships.map((a) => a.author?.display_name)
-                    : [],
-                  link: work.open_access?.oa_url || work.doi || work.id || null,
-                  citationCount: work.cited_by_count || 0,
-                  references: Array.isArray(work.referenced_works)
-                    ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
-                    : [],
-                  isCitingPaper: true,
-                  citedPaperId: paper.id,
-                })));
+                if (citedByResponse.ok) {
+                  const citedByData = await citedByResponse.json();
+                  const citedByWorks = citedByData.results || [];
+                  
+                  if (citedByWorks.length === 0) {
+                    hasMore = false;
+                    break;
+                  }
+                  
+                  // Create paper objects for citing papers
+                  citingPapers.push(...citedByWorks.map(work => ({
+                    id: work.id,
+                    title: work.display_name?.trim() || 'Untitled',
+                    summary: this.#reconstructAbstract(work.abstract_inverted_index),
+                    published: work.publication_year
+                      ? `${work.publication_year}-01-01T00:00:00Z`
+                      : "Unknown",
+                    authors: Array.isArray(work.authorships)
+                      ? work.authorships.map((a) => a.author?.display_name)
+                      : [],
+                    link: work.open_access?.oa_url || work.doi || work.id || null,
+                    citationCount: work.cited_by_count || 0,
+                    references: Array.isArray(work.referenced_works)
+                      ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
+                      : [],
+                    isCitingPaper: true,
+                    citedPaperId: paper.id,
+                  })));
+                  
+                  // Check if there are more pages (OpenAlex returns meta with next_cursor or we check if we got a full page)
+                  hasMore = citedByWorks.length === perPage && citingPapers.length < paper.citationCount;
+                  page++;
+                } else {
+                  hasMore = false;
+                }
               }
+              
+              console.log(`Fetched ${citingPapers.length} citing papers for ${paper.id} (citationCount: ${paper.citationCount})`);
             } catch (err) {
               console.warn(`Failed to fetch cited_by for ${paper.id}:`, err);
             }
           }
           
-          // Fetch referenced papers (papers this paper cites)
+          // Fetch referenced papers (papers this paper cites) - fetch ALL
           if (paper.references && paper.references.length > 0) {
             try {
-              // Fetch details for referenced papers (limit to 20 to avoid too many API calls)
-              const refsToFetch = paper.references.slice(0, 20);
-              const refFetchPromises = refsToFetch.map(async (refId) => {
+              // Fetch details for ALL referenced papers (no limit)
+              const refFetchPromises = paper.references.map(async (refId) => {
                 try {
                   // OpenAlex work ID format: https://openalex.org/W123456 or just W123456
                   const workId = refId.startsWith('http') ? refId : `https://openalex.org/${refId}`;

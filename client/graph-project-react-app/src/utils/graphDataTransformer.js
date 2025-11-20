@@ -41,6 +41,19 @@ export const transformPapersToGraph = (papers, layer = 1) => {
   const links = [];
   const paperIdMap = new Map(nodes.map((node, i) => [node.id, i]));
 
+  // Debug: log paper with most citations
+  const paperWithMostCitations = papers.reduce((max, p) => 
+    (p.citationCount || 0) > (max.citationCount || 0) ? p : max, papers[0] || {});
+  if (paperWithMostCitations.citationCount > 100) {
+    console.log(`[GraphTransformer] Paper with ${paperWithMostCitations.citationCount} citations:`, {
+      id: paperWithMostCitations.id,
+      title: paperWithMostCitations.title?.substring(0, 50),
+      citedByCount: paperWithMostCitations.citedBy?.length || 0,
+      citedBySample: paperWithMostCitations.citedBy?.slice(0, 3),
+      nodeInMap: paperIdMap.has(paperWithMostCitations.id),
+    });
+  }
+
   papers.forEach((paper, index) => {
     const sourceId = paper.id || `paper-${index}`;
     
@@ -64,6 +77,7 @@ export const transformPapersToGraph = (papers, layer = 1) => {
     // If paper has citedBy information, create reverse links
     // CitedBy are papers that cite this paper (incoming edges)
     if (paper.citedBy && Array.isArray(paper.citedBy)) {
+      let edgesCreated = 0;
       paper.citedBy.forEach(citingId => {
         const normalizedCitingId = citingId;
         if (paperIdMap.has(normalizedCitingId)) {
@@ -73,8 +87,16 @@ export const transformPapersToGraph = (papers, layer = 1) => {
             value: 1,
             layer: paper.layer || layer,
           });
+          edgesCreated++;
         }
       });
+      
+      // Debug: log if paper has many citations but few edges
+      if (paper.citationCount > 100 && edgesCreated < paper.citedBy.length * 0.1) {
+        console.warn(`[GraphTransformer] Paper ${paper.id} has ${paper.citationCount} citations, ` +
+          `${paper.citedBy.length} in citedBy array, but only ${edgesCreated} edges created. ` +
+          `Node in map: ${paperIdMap.has(sourceId)}`);
+      }
     }
   });
 
