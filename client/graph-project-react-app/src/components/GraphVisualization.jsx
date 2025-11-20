@@ -106,6 +106,9 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
+  // Compute graph width for viewport sizing
+  const graphWidth = Math.min(window.innerWidth - 100, 1200);
+
   // GRAPH-84 Fix: Linear normalization of citations → radius scale in [1, 2] range
   // This creates consistent, proportional node sizes without over-expanding
   const getNormalizedNodeRadius = useCallback((node, nodes) => {
