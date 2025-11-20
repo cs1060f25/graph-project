@@ -403,7 +403,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         d3Force={(sim) => {
           const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
 
-          // Link force with much larger distances to prevent clumping
+          // Link force with very long distances to break caterpillar shape
           sim.force('link', d3Force.forceLink(memoizedData.links)
             .id(d => d.id)
             .distance(l => {
@@ -411,13 +411,13 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               const t = typeof l.target === 'object' ? l.target : nodesById.get(l.target);
               const rS = getNodeRadius(s, { forSim: true });
               const rT = getNodeRadius(t, { forSim: true });
-              return rS + rT + 80; // Much larger gap to prevent clumping
+              return rS + rT + 150; // Very long links to break caterpillar shape
             })
-            .strength(0.15) // Weaker link force to allow more spreading
+            .strength(0.05) // Very weak link force to allow long stretching
           );
 
-          // Stronger repulsion to spread nodes out and prevent clumping
-          sim.force('charge', d3Force.forceManyBody().strength(-200).distanceMax(2500));
+          // Much stronger repulsion to spread nodes out and break caterpillar
+          sim.force('charge', d3Force.forceManyBody().strength(-300).distanceMax(3000));
 
           // Center force to keep graph in view
           sim.force('center', d3Force.forceCenter());
