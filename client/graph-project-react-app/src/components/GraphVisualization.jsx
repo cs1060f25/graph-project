@@ -112,21 +112,35 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   /**
    * Compute adaptive node radius scaling to keep graph within available space.
    * Ensures total node area <= φ * viewport area (packing density)
+   * Uses more aggressive scaling to make size differences more visible
    */
   const computeNodeRadiusScaler = useCallback((nodes, width, height, opts = {}) => {
     const {
-      minR = 3,            // smallest radius (px)
-      maxR = 40,           // cap large nodes
-      phi = 0.35,          // target packing density (0.3–0.5 works well)
-      scaleMode = 'log'    // or 'sqrt'
+      minR = 4,            // smallest radius (px) - increased for visibility
+      maxR = 70,           // cap large nodes - increased significantly for more contrast
+      phi = 0.3,           // target packing density - reduced to allow larger nodes
+      scaleMode = 'power'  // 'power' for more visible differences
     } = opts;
 
     if (!nodes?.length) return (n) => minR;
 
-    // derive weights from citation counts
+    // Find min and max citation counts for normalization
+    const citations = nodes.map((n) => Math.max(n.citations ?? n.value ?? n.citationCount ?? 1, 1));
+    const minCitations = Math.min(...citations);
+    const maxCitations = Math.max(...citations);
+    const citationRange = maxCitations - minCitations || 1; // avoid division by zero
+
+    // derive weights from citation counts with more aggressive scaling
     const weights = nodes.map((n) => {
       const c = Math.max(n.citations ?? n.value ?? n.citationCount ?? 1, 1);
-      return scaleMode === 'log' ? Math.log1p(c) : Math.sqrt(c);
+      if (scaleMode === 'power') {
+        // Use power function (c^0.6) for more visible differences than log
+        return Math.pow(c, 0.6);
+      } else if (scaleMode === 'log') {
+        return Math.log1p(c);
+      } else {
+        return Math.sqrt(c);
+      }
     });
 
     const totalWeightSq = weights.reduce((s, w) => s + w * w, 0);
@@ -135,19 +149,43 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     // k ensures total circle area <= budget
     const k = Math.sqrt(areaBudget / (Math.PI * totalWeightSq));
 
-    // build radius function
+    // build radius function with more aggressive scaling
     return (node) => {
       const c = Math.max(node.citations ?? node.value ?? node.citationCount ?? 1, 1);
-      const w = scaleMode === 'log' ? Math.log1p(c) : Math.sqrt(c);
-      const r = Math.min(maxR, Math.max(minR, k * w));
+      let w;
+      if (scaleMode === 'power') {
+        // Power function for more visible size differences
+        w = Math.pow(c, 0.6);
+      } else if (scaleMode === 'log') {
+        w = Math.log1p(c);
+      } else {
+        w = Math.sqrt(c);
+      }
+      
+      // Calculate base radius
+      let r = k * w;
+      
+      // Normalize to minR-maxR range for maximum visibility
+      // This ensures we use the full range even if k is small
+      const normalizedWeight = (w - Math.min(...weights)) / (Math.max(...weights) - Math.min(...weights) || 1);
+      const targetR = minR + normalizedWeight * (maxR - minR);
+      
+      // Use the larger of the two to ensure we use the full range
+      r = Math.max(r, targetR * 0.8); // Blend both approaches
+      r = Math.min(maxR, Math.max(minR, r));
+      
       return r;
     };
   }, []);
 
   // Compute adaptive radius scaler based on viewport size
+  // Use more aggressive scaling to make size differences more visible
   const graphWidth = Math.min(window.innerWidth - 100, 1200);
   const baseRadiusScaler = useMemo(
-    () => computeNodeRadiusScaler(memoizedData.nodes, graphWidth, height, { phi: 0.4 }),
+    () => computeNodeRadiusScaler(memoizedData.nodes, graphWidth, height, { 
+      phi: 0.3,        // Reduced packing density to allow larger nodes
+      scaleMode: 'power' // Use power scaling for more visible differences
+    }),
     [memoizedData.nodes, graphWidth, height, computeNodeRadiusScaler]
   );
 
