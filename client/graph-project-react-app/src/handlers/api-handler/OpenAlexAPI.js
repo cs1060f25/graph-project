@@ -63,10 +63,10 @@ export default class OpenAlexAPI {
    */
   async #fetchResults(searchQuery, maxResults) {
     const limit = maxResults ?? this.defaultMaxResults;
-    // Include referenced_works in response to get citation relationships
+    // Include referenced_works and cited_by_api_url in response to get citation relationships
     const queryUrl = `${this.baseUrl}/works?filter=title.search:${encodeURIComponent(
       searchQuery
-    )}&per-page=${limit}&select=id,display_name,abstract_inverted_index,publication_year,authorships,open_access,doi,cited_by_count,referenced_works`;
+    )}&per-page=${limit}&select=id,display_name,abstract_inverted_index,publication_year,authorships,open_access,doi,cited_by_count,referenced_works,cited_by_api_url`;
 
     try {
       const response = await this.#fetchWithTimeout(queryUrl, 15000);
@@ -83,7 +83,8 @@ export default class OpenAlexAPI {
       const data = await response.json();
       const entries = data.results || [];
 
-      return entries.map((entry) => {
+      // First pass: extract basic data and referenced_works
+      const papers = entries.map((entry) => {
         // Extract referenced works (papers this paper cites)
         // OpenAlex provides referenced_works as an array of work IDs
         const references = Array.isArray(entry.referenced_works)
@@ -117,9 +118,43 @@ export default class OpenAlexAPI {
           citationCount: entry.cited_by_count || 0,
           // Extract citation relationships for edge creation
           references: references, // Papers this paper cites (referenced_works)
-          // Note: citedBy would require fetching from cited_by_api_url, which we'll do optionally
+          // Store cited_by_api_url for fetching papers that cite this paper
+          citedByApiUrl: entry.cited_by_api_url || null,
         };
       });
+
+      // Second pass: fetch citing papers (papers that cite each paper) if API URL is available
+      // Limit to avoid too many API calls - only fetch for papers with citations
+      const papersWithCitedBy = await Promise.all(
+        papers.map(async (paper) => {
+          if (!paper.citedByApiUrl || paper.citationCount === 0) {
+            return { ...paper, citedBy: [] };
+          }
+
+          try {
+            // Fetch a limited number of citing papers (max 10 to avoid too many API calls)
+            const citedByUrl = `${paper.citedByApiUrl}&per-page=10`;
+            const citedByResponse = await this.#fetchWithTimeout(citedByUrl, 10000);
+            
+            if (citedByResponse.ok) {
+              const citedByData = await citedByResponse.json();
+              const citedByWorks = citedByData.results || [];
+              
+              // Extract IDs of papers that cite this paper
+              const citedBy = citedByWorks.map(work => work.id).filter(Boolean);
+              
+              return { ...paper, citedBy };
+            }
+          } catch (err) {
+            // If fetching cited_by fails, just continue without it
+            console.warn(`Failed to fetch cited_by for ${paper.id}:`, err);
+          }
+          
+          return { ...paper, citedBy: [] };
+        })
+      );
+
+      return papersWithCitedBy;
     } catch (err) {
       console.error("OpenAlex fetch failed:", err);
       return []; // Return empty array instead of throwing
