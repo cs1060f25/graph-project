@@ -116,9 +116,9 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
    */
   const computeNodeRadiusScaler = useCallback((nodes, width, height, opts = {}) => {
     const {
-      minR = 4,            // smallest radius (px) - increased for visibility
-      maxR = 70,           // cap large nodes - increased significantly for more contrast
-      phi = 0.3,           // target packing density - reduced to allow larger nodes
+      minR = 5,            // smallest radius (px) - increased for visibility
+      maxR = 120,          // cap large nodes - much larger for drastic size differences
+      phi = 0.25,          // target packing density - reduced to allow larger nodes
       scaleMode = 'power'  // 'power' for more visible differences
     } = opts;
 
@@ -128,8 +128,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     const weights = nodes.map((n) => {
       const c = Math.max(n.citations ?? n.value ?? n.citationCount ?? 1, 1);
       if (scaleMode === 'power') {
-        // Use power function (c^0.6) for more visible differences than log
-        return Math.pow(c, 0.6);
+        // Use power function (c^0.75) for more drastic size differences
+        return Math.pow(c, 0.75);
       } else if (scaleMode === 'log') {
         return Math.log1p(c);
       } else {
@@ -148,8 +148,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       const c = Math.max(node.citations ?? node.value ?? node.citationCount ?? 1, 1);
       let w;
       if (scaleMode === 'power') {
-        // Power function for more visible size differences
-        w = Math.pow(c, 0.6);
+        // Power function for more drastic size differences
+        w = Math.pow(c, 0.75);
       } else if (scaleMode === 'log') {
         w = Math.log1p(c);
       } else {
@@ -177,8 +177,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   const graphWidth = Math.min(window.innerWidth - 100, 1200);
   const baseRadiusScaler = useMemo(
     () => computeNodeRadiusScaler(memoizedData.nodes, graphWidth, height, { 
-      phi: 0.3,        // Reduced packing density to allow larger nodes
-      scaleMode: 'power' // Use power scaling for more visible differences
+      phi: 0.25,       // Reduced packing density to allow larger nodes
+      scaleMode: 'power' // Use power scaling for more drastic differences
     }),
     [memoizedData.nodes, graphWidth, height, computeNodeRadiusScaler]
   );
@@ -353,6 +353,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
         linkOpacity={0.9}
+        linkCurvature={0}
         linkDirectionalArrowLength={0}
         linkDirectionalArrowRelPos={1}
         linkDirectionalArrowColor={(link) => getLinkColor(link)}
