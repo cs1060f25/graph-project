@@ -1,7 +1,7 @@
 // HW9 GRAPH-63: Enhanced Graph Node Interactions
 // GRAPH-61: Graph visualization with zoom and pan controls
 // GRAPH-84: Variable node sizing with collision detection
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3Force from 'd3-force';
 import './GraphVisualization.css';
@@ -249,8 +249,9 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     }
     
     // Legacy fallback: Much brighter default color for maximum visibility
-    const defaultColor = '#a0a0b0'; // Much brighter gray for dark background
-    const opacity = Math.max(0.9, getLayerOpacity(linkLayer)); // High opacity for visibility
+    // Always use high opacity for default links to ensure they're visible on first load
+    const defaultColor = '#b0b0c0'; // Even brighter gray for dark background
+    const opacity = 1.0; // Full opacity for default links to ensure visibility
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
 
@@ -296,6 +297,20 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       fgRef.current.zoomToFit(400, 20);
     }
   }, []);
+
+  // GRAPH-84: Auto-fit graph to viewport when data changes to show edges on first load
+  useEffect(() => {
+    if (fgRef.current && memoizedData.nodes && memoizedData.nodes.length > 0) {
+      // Wait for simulation to stabilize, then zoom to fit
+      const timer = setTimeout(() => {
+        if (fgRef.current) {
+          fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
+        }
+      }, 500); // Wait 500ms for initial simulation
+      
+      return () => clearTimeout(timer);
+    }
+  }, [memoizedData.nodes, memoizedData.links]);
 
   if (!memoizedData.nodes || memoizedData.nodes.length === 0) {
     return (
