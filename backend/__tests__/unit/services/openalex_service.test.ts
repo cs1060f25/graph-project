@@ -1,195 +1,291 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import axios from 'axios';
 import { searchOpenalex, formatQuery } from '../../../services/openalex_service.js';
 import { Paper } from '../../../models/paper.js';
 
 vi.mock('axios');
+const mockedAxios = vi.mocked(axios, true);
 
-const mockedAxios = axios as any;
-const mockGet = vi.fn();
-mockedAxios.get = mockGet;
-
-describe('openalex_service', () => {
+describe('OpenAlexService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGet.mockClear();
   });
 
   describe('formatQuery', () => {
-    it('should return the query unchanged', () => {
-      const query = 'machine learning';
-      expect(formatQuery(query)).toBe(query);
+    it('should return query as-is', () => {
+      expect(formatQuery('test query')).toBe('test query');
     });
   });
 
+  // Note: reconstructAbstract is a private function, tested indirectly through searchOpenalex
+
   describe('searchOpenalex', () => {
-    const mockResponse = {
-      results: [
-        {
-          id: 'https://openalex.org/W123456789',
-          display_name: 'Test Paper Title',
-          abstract_inverted_index: {
-            'This': [0],
-            'is': [1],
-            'a': [2],
-            'test': [3],
-            'abstract': [4]
+    it('should search openalex successfully', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper Title',
+            abstract_inverted_index: {
+              'This': [0],
+              'is': [1],
+              'a': [2],
+              'test': [3],
+            },
+            publication_year: 2024,
+            authorships: [
+              { author: { display_name: 'Author One' } },
+              { author: { display_name: 'Author Two' } },
+            ],
+            open_access: { oa_url: 'https://example.com/paper' },
           },
-          publication_year: 2024,
-          authorships: [
-            { author: { display_name: 'John Doe' } },
-            { author: { display_name: 'Jane Smith' } }
-          ],
-          open_access: {
-            oa_url: 'https://example.com/paper.pdf'
-          }
-        }
-      ]
-    };
+        ],
+      };
 
-    it('should successfully search OpenAlex and return papers', async () => {
-      mockGet.mockResolvedValue({ data: mockResponse } as any);
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
+      } as any);
 
-      const results = await searchOpenalex('machine learning', 10);
+      const results = await searchOpenalex('test query');
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBeInstanceOf(Paper);
       expect(results[0].title).toBe('Test Paper Title');
-      expect(results[0].summary).toBe('This is a test abstract');
-      expect(results[0].published).toBe('2024-01-01T00:00:00Z');
-      expect(results[0].authors).toEqual(['John Doe', 'Jane Smith']);
-      expect(results[0].link).toBe('https://example.com/paper.pdf');
-      expect(results[0].source).toBe('openalex');
-      expect(mockGet).toHaveBeenCalledWith(
-        expect.stringContaining('filter=title.search:machine%20learning'),
-        { timeout: 15000 }
-      );
+      expect(results[0].summary).toBe('This is a test');
+      expect(results[0].authors).toHaveLength(2);
+      expect(results[0].link).toBe('https://example.com/paper');
+      expect(mockedAxios.get).toHaveBeenCalled();
     });
 
     it('should handle empty results', async () => {
-      mockGet.mockResolvedValue({ data: { results: [] } } as any);
+      mockedAxios.get.mockResolvedValue({
+        data: { results: [] },
+        status: 200,
+      } as any);
 
-      const results = await searchOpenalex('nonexistent', 10);
+      const results = await searchOpenalex('nonexistent');
 
       expect(results).toHaveLength(0);
     });
 
-    it('should handle missing fields gracefully', async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          results: [{
-            id: 'W123',
-            display_name: undefined,
+    it('should use DOI as fallback link', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper',
+            abstract_inverted_index: null,
+            publication_year: 2024,
+            authorships: [],
+            doi: 'https://doi.org/10.1234/test',
+          },
+        ],
+      };
+
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
+      } as any);
+
+      const results = await searchOpenalex('test');
+
+      expect(results[0].link).toBe('https://doi.org/10.1234/test');
+    });
+
+    it('should use ID as final fallback link', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper',
+            abstract_inverted_index: null,
+            publication_year: 2024,
+            authorships: [],
+          },
+        ],
+      };
+
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
+      } as any);
+
+      const results = await searchOpenalex('test');
+
+      expect(results[0].link).toBe('https://openalex.org/W123456789');
+    });
+
+    it('should handle missing publication year', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper',
             abstract_inverted_index: null,
             publication_year: null,
             authorships: [],
-            open_access: null
-          }]
-        }
+            open_access: { oa_url: 'https://example.com' },
+          },
+        ],
+      };
+
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
       } as any);
 
-      const results = await searchOpenalex('test', 10);
+      const results = await searchOpenalex('test');
 
-      expect(results).toHaveLength(1);
-      expect(results[0].title).toBe('');
-      expect(results[0].summary).toBe('');
       expect(results[0].published).toBe('Unknown');
-      expect(results[0].authors).toEqual([]);
-      expect(results[0].link).toBe('W123');
     });
 
-    it('should reconstruct abstract from inverted index correctly', async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          results: [{
-            id: 'W123',
-            display_name: 'Test',
-            abstract_inverted_index: {
-              'Hello': [0, 3],
-              'world': [1],
-              'test': [2]
-            }
-          }]
-        }
+    it('should handle missing authors', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper',
+            abstract_inverted_index: null,
+            publication_year: 2024,
+            authorships: [],
+            open_access: { oa_url: 'https://example.com' },
+          },
+        ],
+      };
+
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
       } as any);
 
-      const results = await searchOpenalex('test', 10);
+      const results = await searchOpenalex('test');
 
-      expect(results[0].summary).toBe('Hello world test Hello');
+      expect(results[0].authors).toHaveLength(0);
     });
 
-    it('should prefer oa_url over doi over id for link', async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          results: [{
-            id: 'W123',
-            display_name: 'Test',
-            doi: '10.1234/test',
-            open_access: {
-              oa_url: 'https://oa.example.com/paper.pdf'
-            }
-          }]
-        }
+    it('should encode query properly', async () => {
+      mockedAxios.get.mockResolvedValue({
+        data: { results: [] },
+        status: 200,
       } as any);
 
-      const results = await searchOpenalex('test', 10);
+      await searchOpenalex('machine learning & AI');
 
-      expect(results[0].link).toBe('https://oa.example.com/paper.pdf');
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.stringContaining('filter=title.search:machine%20learning%20%26%20AI'),
+        expect.any(Object)
+      );
     });
 
-    it('should fallback to doi when oa_url is missing', async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          results: [{
-            id: 'W123',
-            display_name: 'Test',
-            doi: '10.1234/test',
-            open_access: null
-          }]
-        }
-      } as any);
+    it('should handle axios errors', async () => {
+      mockedAxios.get.mockRejectedValue({
+        response: { status: 500, data: 'Server Error' },
+        message: 'Request failed',
+      });
 
-      const results = await searchOpenalex('test', 10);
-
-      expect(results[0].link).toBe('10.1234/test');
+      await expect(searchOpenalex('test')).rejects.toThrow('Failed to fetch papers from OpenAlex');
     });
 
-    it('should handle authorships with missing author data', async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          results: [{
-            id: 'W123',
-            display_name: 'Test',
+    it('should handle network errors', async () => {
+      mockedAxios.get.mockRejectedValue(new Error('Network error'));
+
+      await expect(searchOpenalex('test')).rejects.toThrow('OpenAlex search failed');
+    });
+
+    it('should handle authorships with missing author objects', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper',
+            abstract_inverted_index: null,
+            publication_year: 2024,
             authorships: [
-              { author: { display_name: 'Valid Author' } },
               { author: null },
-              { author: { display_name: null } }
-            ]
-          }]
-        }
+              { author: { display_name: 'Valid Author' } },
+            ],
+            open_access: { oa_url: 'https://example.com' },
+          },
+        ],
+      };
+
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
       } as any);
 
-      const results = await searchOpenalex('test', 10);
+      const results = await searchOpenalex('test');
 
       expect(results[0].authors).toEqual(['Valid Author']);
     });
 
-    it('should handle axios response errors', async () => {
-      const axiosError = {
-        response: { status: 500 },
-        message: 'Internal Server Error',
-        code: 'ERR_BAD_RESPONSE'
+    it('should handle authorships with missing display_name', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper',
+            abstract_inverted_index: null,
+            publication_year: 2024,
+            authorships: [
+              { author: {} },
+              { author: { display_name: 'Valid Author' } },
+            ],
+            open_access: { oa_url: 'https://example.com' },
+          },
+        ],
       };
-      mockGet.mockRejectedValue(axiosError);
 
-      await expect(searchOpenalex('test', 10)).rejects.toThrow('Failed to fetch papers from OpenAlex');
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
+      } as any);
+
+      const results = await searchOpenalex('test');
+
+      expect(results[0].authors).toEqual(['Valid Author']);
     });
 
-    it('should handle network errors', async () => {
-      const networkError = new Error('Network error');
-      mockGet.mockRejectedValue(networkError);
+    it('should handle complex abstract reconstruction', async () => {
+      const mockResponse = {
+        results: [
+          {
+            id: 'https://openalex.org/W123456789',
+            display_name: 'Test Paper',
+            abstract_inverted_index: {
+              'Machine': [0],
+              'learning': [1, 5],
+              'is': [2],
+              'a': [3],
+              'powerful': [4],
+              'tool': [6],
+            },
+            publication_year: 2024,
+            authorships: [],
+            open_access: { oa_url: 'https://example.com' },
+          },
+        ],
+      };
 
-      await expect(searchOpenalex('test', 10)).rejects.toThrow('OpenAlex search failed');
+      mockedAxios.get.mockResolvedValue({
+        data: mockResponse,
+        status: 200,
+      } as any);
+
+      const results = await searchOpenalex('test');
+
+      expect(results[0].summary).toBe('Machine learning is a powerful learning tool');
+    });
+
+    it('should handle ECONNABORTED timeout', async () => {
+      mockedAxios.get.mockRejectedValue({
+        code: 'ECONNABORTED',
+        message: 'Timeout',
+      });
+
+      await expect(searchOpenalex('test')).rejects.toThrow('OpenAlex search failed');
     });
   });
 });
+

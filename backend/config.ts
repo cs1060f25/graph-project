@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 class Config {
   GOOGLE_CLOUD_PROJECT?: string;
   GEMINI_API_KEY?: string;

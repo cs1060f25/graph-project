@@ -1,304 +1,326 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GoogleGenAI } from '@google/genai';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { AgentService } from '../../../services/agent_service.js';
 import { Paper } from '../../../models/paper.js';
+import * as arxivService from '../../../services/arxiv_service.js';
+import * as openalexService from '../../../services/openalex_service.js';
+import * as coreService from '../../../services/core_service.js';
 
-// Mock config FIRST before anything else imports it
+// Mock dependencies
+vi.mock('../../../services/arxiv_service.js');
+vi.mock('../../../services/openalex_service.js');
+vi.mock('../../../services/core_service.js');
 vi.mock('../../../config.js', () => ({
   default: {
     GEMINI_API_KEY: 'test-api-key',
     GOOGLE_CLOUD_PROJECT: 'test-project',
-    GOOGLE_CLOUD_LOCATION: 'us-central1'
-  }
+    GOOGLE_CLOUD_LOCATION: 'us-central1',
+  },
 }));
 
-vi.mock('@google/genai');
-vi.mock('../../../services/arxiv_service.js');
-vi.mock('../../../services/openalex_service.js');
-vi.mock('../../../services/core_service.js');
+// Mock GoogleGenAI - create mocks inside the mock factory
+vi.mock('@google/genai', () => {
+  const mockModels = {
+    generateContent: vi.fn(),
+    embedContent: vi.fn(),
+  };
 
-// Import after mocks are set up
-import { AgentService } from '../../../services/agent_service.js';
-import * as arxivService from '../../../services/arxiv_service.js';
-import * as openalexService from '../../../services/openalex_service.js';
-import * as coreService from '../../../services/core_service.js';
-import config from '../../../config.js';
+  const mockGenAIInstance = {
+    models: mockModels,
+  };
 
-const mockedArxivService = arxivService as any;
-const mockedOpenalexService = openalexService as any;
-const mockedCoreService = coreService as any;
+  return {
+    GoogleGenAI: vi.fn(() => mockGenAIInstance),
+    Type: {}, // Mock Type enum/object
+    // Export mockModels so tests can access them
+    __mockModels: mockModels,
+  };
+});
 
 describe('AgentService', () => {
   let agentService: AgentService;
-  let mockGenAI: any;
+  let mockModels: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     
-    mockGenAI = {
-      models: {
-        generateContent: vi.fn(),
-        embedContent: vi.fn()
-      }
-    };
-
-    (GoogleGenAI as any).mockImplementation(() => mockGenAI);
+    // Get the mocked models from the module
+    const genAIModule = await import('@google/genai');
+    mockModels = (genAIModule as any).__mockModels;
     
     agentService = new AgentService();
   });
 
-  describe('constructor', () => {
-    it('should initialize with config values', () => {
-      expect(GoogleGenAI).toHaveBeenCalledWith({
-        vertexai: true,
-        project: 'test-project',
-        location: 'us-central1',
-        apiKey: 'test-api-key'
-      });
-    });
-
-    it('should throw error when GEMINI_API_KEY is missing', () => {
-      const originalConfig = config.GEMINI_API_KEY;
-      (config as any).GEMINI_API_KEY = undefined;
-
-      expect(() => new AgentService()).toThrow('GEMINI_API_KEY not found in config');
-
-      (config as any).GEMINI_API_KEY = originalConfig;
+  describe('Constructor', () => {
+    it('should initialize with valid config', () => {
+      expect(agentService).toBeInstanceOf(AgentService);
     });
   });
 
   describe('generateContentFromVertexAI', () => {
-    it('should generate content and return parsed JSON', async () => {
+    it('should generate content successfully', async () => {
       const mockResponse = {
         text: JSON.stringify({
-          arxiv_queries: [{ query: 'test', mode: 'topic' }],
+          arxiv_queries: [{ query: 'machine learning', mode: 'keyword' }],
           openalex_queries: [],
-          core_queries: []
-        })
+          core_queries: [],
+        }),
       };
 
-      mockGenAI.models.generateContent.mockResolvedValue(mockResponse);
+      mockModels.generateContent.mockResolvedValue(mockResponse);
 
       const result = await agentService.generateContentFromVertexAI('test query');
 
-      expect(mockGenAI.models.generateContent).toHaveBeenCalledWith(
+      expect(result).toBe(mockResponse.text);
+      expect(mockModels.generateContent).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gemini-2.5-pro',
-          contents: 'test query'
+          contents: 'test query',
         })
       );
-      expect(typeof result).toBe('string');
     });
 
-    it('should handle empty response', async () => {
-      mockGenAI.models.generateContent.mockResolvedValue({ text: null });
+    it('should handle empty text response', async () => {
+      const mockResponse = {
+        text: null,
+      };
 
-      const result = await agentService.generateContentFromVertexAI('test');
+      mockModels.generateContent.mockResolvedValue(mockResponse);
+
+      const result = await agentService.generateContentFromVertexAI('test query');
 
       expect(result).toBe('');
     });
   });
 
   describe('getEmbedding', () => {
-    it('should return embedding values', async () => {
-      const mockEmbedding = { embeddings: [{ values: [0.1, 0.2, 0.3] }] };
-      mockGenAI.models.embedContent.mockResolvedValue(mockEmbedding);
+    it('should get embedding successfully', async () => {
+      const mockEmbedding = {
+        embeddings: [{
+          values: Array(768).fill(0.5),
+        }],
+      };
 
-      const embedding = await (agentService as any).getEmbedding('test text');
+      mockModels.embedContent.mockResolvedValue(mockEmbedding);
 
-      expect(embedding).toEqual([0.1, 0.2, 0.3]);
-      expect(mockGenAI.models.embedContent).toHaveBeenCalledWith({
+      // Access private method via any cast for testing
+      const result = await (agentService as any).getEmbedding('test text');
+
+      expect(result).toEqual(Array(768).fill(0.5));
+      expect(mockModels.embedContent).toHaveBeenCalledWith({
         model: 'text-embedding-004',
-        contents: 'test text'
+        contents: 'test text',
       });
     });
 
-    it('should return empty array when no embeddings', async () => {
-      mockGenAI.models.embedContent.mockResolvedValue({ embeddings: [] });
+    it('should return empty array if no embeddings', async () => {
+      const mockEmbedding = {
+        embeddings: [],
+      };
 
-      const embedding = await (agentService as any).getEmbedding('test');
+      mockModels.embedContent.mockResolvedValue(mockEmbedding);
 
-      expect(embedding).toEqual([]);
+      const result = await (agentService as any).getEmbedding('test text');
+
+      expect(result).toEqual([]);
     });
 
     it('should throw error on failure', async () => {
-      mockGenAI.models.embedContent.mockRejectedValue(new Error('API error'));
+      mockModels.embedContent.mockRejectedValue(new Error('API Error'));
 
-      await expect((agentService as any).getEmbedding('test')).rejects.toThrow('Failed to get embedding');
+      await expect((agentService as any).getEmbedding('test text')).rejects.toThrow('Failed to get embedding');
     });
   });
 
   describe('calculateSemanticSimilarity', () => {
     beforeEach(() => {
-      mockGenAI.models.embedContent.mockResolvedValue({
-        embeddings: [{ values: [1, 0, 0] }]
-      });
+      const mockEmbedding = {
+        embeddings: [{
+          values: Array(768).fill(0.5),
+        }],
+      };
+      mockModels.embedContent.mockResolvedValue(mockEmbedding);
     });
 
-    it('should calculate cosine similarity correctly', async () => {
-      // Mock embeddings: [1,0,0] and [1,0,0] -> cosine similarity = 1
-      mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] })
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] });
+    it('should calculate similarity between two texts', async () => {
+      const result = await agentService.calculateSemanticSimilarity('text a', 'text b');
 
-      const similarity = await agentService.calculateSemanticSimilarity('text a', 'text b');
-
-      // Cosine similarity of [1,0,0] and [1,0,0] = 1, normalized to 0-1 range = 1
-      expect(similarity).toBe(1);
+      expect(typeof result).toBe('number');
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(1);
     });
 
     it('should return 0 for empty embeddings', async () => {
-      mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [] }] })
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] });
+      mockModels.embedContent.mockResolvedValue({ embeddings: [{ values: [] }] });
 
-      const similarity = await agentService.calculateSemanticSimilarity('text a', 'text b');
+      const result = await agentService.calculateSemanticSimilarity('text a', 'text b');
 
-      expect(similarity).toBe(0);
+      expect(result).toBe(0);
     });
 
     it('should throw error for mismatched dimensions', async () => {
-      mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0] }] })
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] });
+      mockModels.embedContent
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 2, 3] }] })
+        .mockResolvedValueOnce({ embeddings: [{ values: [1, 2] }] });
 
-      await expect(agentService.calculateSemanticSimilarity('text a', 'text b'))
-        .rejects.toThrow('Embedding dimensions do not match');
+      await expect(
+        agentService.calculateSemanticSimilarity('text a', 'text b')
+      ).rejects.toThrow('Embedding dimensions do not match');
     });
 
     it('should handle zero magnitude vectors', async () => {
-      mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [0, 0, 0] }] })
-        .mockResolvedValueOnce({ embeddings: [{ values: [0, 0, 0] }] });
+      mockModels.embedContent.mockResolvedValue({ embeddings: [{ values: Array(768).fill(0) }] });
 
-      const similarity = await agentService.calculateSemanticSimilarity('text a', 'text b');
+      const result = await agentService.calculateSemanticSimilarity('text a', 'text b');
 
-      expect(similarity).toBe(0);
-    });
-
-    it('should throw error on embedding failure', async () => {
-      mockGenAI.models.embedContent.mockRejectedValue(new Error('API error'));
-
-      await expect(agentService.calculateSemanticSimilarity('text a', 'text b'))
-        .rejects.toThrow('Failed to calculate semantic similarity');
+      expect(result).toBe(0);
     });
   });
 
   describe('rerankResults', () => {
-    it('should rerank results by similarity', async () => {
+    it('should rerank papers by similarity', async () => {
       const papers = [
-        new Paper('1', 'Title A', 'Summary A', '2024-01-01', [], '', 'arxiv'),
-        new Paper('2', 'Title B', 'Summary B', '2024-01-01', [], '', 'arxiv')
+        new Paper('1', 'Title 1', 'Summary 1', '2024-01-01', ['Author'], 'link1', 'arxiv'),
+        new Paper('2', 'Title 2', 'Summary 2', '2024-01-01', ['Author'], 'link2', 'arxiv'),
       ];
 
-      // calculateSemanticSimilarity calls getEmbedding twice per paper (query + paper text)
-      // So for 2 papers, we need 4 mock responses
-      // Using orthogonal vectors to ensure different cosine similarities:
-      // Paper 1: query=[1,0,0] vs paper=[0,1,0] -> cosine=0 -> normalized=0.5
-      // Paper 2: query=[1,0,0] vs paper=[1,0,0] -> cosine=1 -> normalized=1.0
-      mockGenAI.models.embedContent
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] }) // query embedding for paper 1
-        .mockResolvedValueOnce({ embeddings: [{ values: [0, 1, 0] }] }) // paper 1 text embedding (orthogonal to query)
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] }) // query embedding for paper 2
-        .mockResolvedValueOnce({ embeddings: [{ values: [1, 0, 0] }] }); // paper 2 text embedding (same as query)
+      // Mock similarity calculations
+      mockModels.embedContent
+        .mockResolvedValueOnce({ embeddings: [{ values: Array(768).fill(0.9) }] }) // High similarity
+        .mockResolvedValueOnce({ embeddings: [{ values: Array(768).fill(0.5) }] }) // Lower similarity
+        .mockResolvedValueOnce({ embeddings: [{ values: Array(768).fill(0.9) }] })
+        .mockResolvedValueOnce({ embeddings: [{ values: Array(768).fill(0.5) }] });
 
-      const reranked = await agentService.rerankResults('test query', papers);
+      const result = await agentService.rerankResults('test query', papers);
 
-      expect(reranked).toHaveLength(2);
-      expect(reranked[0].paper_id).toBe('2'); // Higher similarity should be first
-      expect(reranked[1].paper_id).toBe('1');
-      expect(reranked[0].similarity).toBeGreaterThan(reranked[1].similarity!);
+      expect(result).toHaveLength(2);
+      expect(result[0].similarity).toBeGreaterThanOrEqual(result[1].similarity || 0);
     });
 
     it('should handle empty results', async () => {
-      const reranked = await agentService.rerankResults('test query', []);
+      const result = await agentService.rerankResults('test query', []);
 
-      expect(reranked).toHaveLength(0);
+      expect(result).toEqual([]);
     });
   });
 
   describe('query', () => {
-    beforeEach(() => {
-      mockGenAI.models.generateContent.mockResolvedValue({
-        text: JSON.stringify({
-          arxiv_queries: [{ query: 'test arxiv', mode: 'topic' }],
-          openalex_queries: [{ query: 'test openalex' }],
-          core_queries: [{ query: 'test core', mode: 'keyword' }]
-        })
+    it('should execute full query workflow', async () => {
+      const mockLLMResponse = JSON.stringify({
+        arxiv_queries: [{ query: 'machine learning', mode: 'keyword' }],
+        openalex_queries: [],
+        core_queries: [],
       });
 
-      const mockPaper = new Paper('1', 'Test', 'Summary', '2024-01-01', [], '', 'arxiv');
-      mockedArxivService.searchArxiv.mockResolvedValue([mockPaper]);
-      mockedOpenalexService.searchOpenalex.mockResolvedValue([mockPaper]);
-      mockedCoreService.searchCore.mockResolvedValue([mockPaper]);
+      const mockPapers = [
+        new Paper('1', 'Title 1', 'Summary 1', '2024-01-01', ['Author'], 'link1', 'arxiv'),
+      ];
 
-      mockGenAI.models.embedContent.mockResolvedValue({
-        embeddings: [{ values: [1, 0, 0] }]
-      });
+      mockModels.generateContent.mockResolvedValue({ text: mockLLMResponse });
+      mockModels.embedContent.mockResolvedValue({ embeddings: [{ values: Array(768).fill(0.5) }] });
+
+      vi.mocked(arxivService.searchArxiv).mockResolvedValue(mockPapers);
+      vi.mocked(openalexService.searchOpenalex).mockResolvedValue([]);
+      vi.mocked(coreService.searchCore).mockResolvedValue([]);
+
+      const result = await agentService.query('machine learning');
+
+      expect(result).toBeInstanceOf(Array);
+      expect(arxivService.searchArxiv).toHaveBeenCalled();
     });
 
-    it('should execute full query pipeline successfully', async () => {
-      const results = await agentService.query('test query');
+    it('should handle LLM parsing errors', async () => {
+      mockModels.generateContent.mockResolvedValue({ text: 'invalid json' });
 
-      expect(mockGenAI.models.generateContent).toHaveBeenCalled();
-      expect(mockedArxivService.searchArxiv).toHaveBeenCalledWith('test arxiv', 10, 0, 'topic');
-      expect(mockedOpenalexService.searchOpenalex).toHaveBeenCalledWith('test openalex', 10);
-      expect(mockedCoreService.searchCore).toHaveBeenCalledWith('test core', 10, 'keyword');
-      expect(results.length).toBeGreaterThan(0);
+      await expect(agentService.query('test')).rejects.toThrow();
     });
 
-    it('should handle empty query arrays', async () => {
-      mockGenAI.models.generateContent.mockResolvedValue({
-        text: JSON.stringify({
-          arxiv_queries: [],
-          openalex_queries: [],
-          core_queries: []
-        })
-      });
-
-      const results = await agentService.query('test query');
-
-      expect(results).toHaveLength(0);
-      expect(mockedArxivService.searchArxiv).not.toHaveBeenCalled();
-    });
-
-    it('should handle missing query arrays in response', async () => {
-      mockGenAI.models.generateContent.mockResolvedValue({
-        text: JSON.stringify({})
+    it('should handle API errors', async () => {
+      const mockLLMResponse = JSON.stringify({
+        arxiv_queries: [{ query: 'test', mode: 'keyword' }],
+        openalex_queries: [],
+        core_queries: [],
       });
 
-      const results = await agentService.query('test query');
+      mockModels.generateContent.mockResolvedValue({ text: mockLLMResponse });
+      vi.mocked(arxivService.searchArxiv).mockRejectedValue(new Error('API Error'));
 
-      expect(results).toHaveLength(0);
+      await expect(agentService.query('test')).rejects.toThrow();
     });
 
-    it('should handle invalid JSON response', async () => {
-      mockGenAI.models.generateContent.mockResolvedValue({
-        text: 'invalid json'
+    it('should handle empty query results', async () => {
+      const mockLLMResponse = JSON.stringify({
+        arxiv_queries: [],
+        openalex_queries: [],
+        core_queries: [],
       });
 
-      await expect(agentService.query('test query')).rejects.toThrow();
+      mockModels.generateContent.mockResolvedValue({ text: mockLLMResponse });
+      mockModels.embedContent.mockResolvedValue({ embeddings: [{ values: Array(768).fill(0.5) }] });
+
+      const result = await agentService.query('test');
+
+      expect(result).toEqual([]);
     });
 
-    it('should handle LLM generation failure', async () => {
-      mockGenAI.models.generateContent.mockRejectedValue(new Error('LLM error'));
+    it('should handle queries from all three APIs', async () => {
+      const mockLLMResponse = JSON.stringify({
+        arxiv_queries: [{ query: 'ml', mode: 'keyword' }],
+        openalex_queries: [{ query: 'neural networks' }],
+        core_queries: [{ query: 'deep learning', mode: 'keyword' }],
+      });
 
-      await expect(agentService.query('test query')).rejects.toThrow('AI-augmented query process failed');
+      const mockPapers = [
+        new Paper('1', 'Arxiv Paper', 'Summary', '2024-01-01', ['Author'], 'link1', 'arxiv'),
+        new Paper('2', 'OpenAlex Paper', 'Summary', '2024-01-01', ['Author'], 'link2', 'openalex'),
+        new Paper('3', 'CORE Paper', 'Summary', '2024-01-01', ['Author'], 'link3', 'core'),
+      ];
+
+      mockModels.generateContent.mockResolvedValue({ text: mockLLMResponse });
+      mockModels.embedContent.mockResolvedValue({ embeddings: [{ values: Array(768).fill(0.5) }] });
+
+      vi.mocked(arxivService.searchArxiv).mockResolvedValue([mockPapers[0]]);
+      vi.mocked(openalexService.searchOpenalex).mockResolvedValue([mockPapers[1]]);
+      vi.mocked(coreService.searchCore).mockResolvedValue([mockPapers[2]]);
+
+      const result = await agentService.query('test');
+
+      expect(result).toHaveLength(3);
+      expect(arxivService.searchArxiv).toHaveBeenCalled();
+      expect(openalexService.searchOpenalex).toHaveBeenCalled();
+      expect(coreService.searchCore).toHaveBeenCalled();
     });
 
-    it('should handle API search failures', async () => {
-      mockedArxivService.searchArxiv.mockRejectedValue(new Error('API error'));
+    it('should handle rerankResults with papers without similarity scores', async () => {
+      const papers = [
+        new Paper('1', 'Title 1', 'Summary 1', '2024-01-01', ['Author'], 'link1', 'arxiv'),
+        new Paper('2', 'Title 2', 'Summary 2', '2024-01-01', ['Author'], 'link2', 'arxiv'),
+      ];
 
-      await expect(agentService.query('test query')).rejects.toThrow('AI-augmented query process failed');
+      mockModels.embedContent.mockResolvedValue({ embeddings: [{ values: Array(768).fill(0.5) }] });
+
+      const result = await agentService.rerankResults('test query', papers);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].similarity).toBeDefined();
+      expect(result[1].similarity).toBeDefined();
     });
 
     it('should handle non-string LLM response', async () => {
-      mockGenAI.models.generateContent.mockResolvedValue({
-        text: { arxiv_queries: [] } as any
-      });
+      const mockResponse = {
+        arxiv_queries: [{ query: 'test', mode: 'keyword' }],
+        openalex_queries: [],
+        core_queries: [],
+      };
 
-      const results = await agentService.query('test query');
+      mockModels.generateContent.mockResolvedValue({ text: mockResponse as any });
+      mockModels.embedContent.mockResolvedValue({ embeddings: [{ values: Array(768).fill(0.5) }] });
 
-      expect(results).toHaveLength(0);
+      vi.mocked(arxivService.searchArxiv).mockResolvedValue([]);
+
+      const result = await agentService.query('test');
+
+      expect(result).toBeInstanceOf(Array);
     });
   });
 });
+

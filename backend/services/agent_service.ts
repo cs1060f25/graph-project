@@ -3,11 +3,11 @@
 // CURRENT PLACEHOLDER FOR AGENTIC QUERIES; right now, just a one-step LLM invocation + semantic reranking
 import { GoogleGenAI, Type } from "@google/genai";
 
-import config from '../config.js';
-import { Paper } from '../models/paper.js';
-import { searchArxiv } from './arxiv_service.js';
-import { searchOpenalex } from './openalex_service.js';
-import { searchCore } from './core_service.js';
+import config from '../config';
+import { Paper } from '../models/paper';
+import { searchArxiv } from './arxiv_service';
+import { searchOpenalex } from './openalex_service';
+import { searchCore } from './core_service';
 
 export class AgentService {
   private genAI: GoogleGenAI;
