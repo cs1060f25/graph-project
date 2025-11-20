@@ -128,12 +128,12 @@ export default class OpenAlexAPI {
       const papersWithCitedBy = await Promise.all(
         papers.map(async (paper) => {
           if (!paper.citedByApiUrl || paper.citationCount === 0) {
-            return { ...paper, citedBy: [] };
+            return { ...paper, citedBy: [], citingPapers: [] };
           }
 
           try {
-            // Fetch a limited number of citing papers (max 10 to avoid too many API calls)
-            const citedByUrl = `${paper.citedByApiUrl}&per-page=10`;
+            // Fetch a limited number of citing papers (max 5 to avoid too many API calls and nodes)
+            const citedByUrl = `${paper.citedByApiUrl}&per-page=5`;
             const citedByResponse = await this.#fetchWithTimeout(citedByUrl, 10000);
             
             if (citedByResponse.ok) {
@@ -143,18 +143,44 @@ export default class OpenAlexAPI {
               // Extract IDs of papers that cite this paper
               const citedBy = citedByWorks.map(work => work.id).filter(Boolean);
               
-              return { ...paper, citedBy };
+              // Also create paper objects for citing papers so they can be added to the graph
+              const citingPapers = citedByWorks.map(work => ({
+                id: work.id,
+                title: work.display_name?.trim() || 'Untitled',
+                summary: this.#reconstructAbstract(work.abstract_inverted_index),
+                published: work.publication_year
+                  ? `${work.publication_year}-01-01T00:00:00Z`
+                  : "Unknown",
+                authors: Array.isArray(work.authorships)
+                  ? work.authorships.map((a) => a.author?.display_name)
+                  : [],
+                link: work.open_access?.oa_url || work.doi || work.id || null,
+                citationCount: work.cited_by_count || 0,
+                references: Array.isArray(work.referenced_works)
+                  ? work.referenced_works.map(ref => typeof ref === 'string' ? ref : (ref?.id || null)).filter(Boolean)
+                  : [],
+                // Mark as citing paper so we know it was added for citation relationships
+                isCitingPaper: true,
+                citedPaperId: paper.id, // Track which paper it cites
+              }));
+              
+              return { ...paper, citedBy, citingPapers };
             }
           } catch (err) {
             // If fetching cited_by fails, just continue without it
             console.warn(`Failed to fetch cited_by for ${paper.id}:`, err);
           }
           
-          return { ...paper, citedBy: [] };
+          return { ...paper, citedBy: [], citingPapers: [] };
         })
       );
 
-      return papersWithCitedBy;
+      // Flatten citing papers and add them to the results
+      const allCitingPapers = papersWithCitedBy.flatMap(p => p.citingPapers || []);
+      const papersWithoutCitedBy = papersWithCitedBy.map(({ citingPapers, ...paper }) => paper);
+      
+      // Combine original papers with citing papers
+      return [...papersWithoutCitedBy, ...allCitingPapers];
     } catch (err) {
       console.error("OpenAlex fetch failed:", err);
       return []; // Return empty array instead of throwing
