@@ -16,18 +16,22 @@ export const transformPapersToGraph = (papers, layer = 1) => {
     // Handle both API response format and direct format
     const year = paper.year || (paper.published ? new Date(paper.published).getFullYear() : null);
     const url = paper.url || paper.link || null;
-    const citationCount = paper.citationCount || 0;
+    // GRAPH-85: Preserve citationCount even if it's 0 (don't default to 0 if undefined)
+    const citationCount = paper.citationCount !== undefined && paper.citationCount !== null 
+      ? paper.citationCount 
+      : 0;
     
     return {
       id: paper.id || `paper-${index}`,
       title: paper.title || 'Untitled',
       authors: paper.authors || [],
       year: year,
-      citations: citationCount,
+      citations: citationCount, // Always use actual citationCount, even if 0
+      citationCount: citationCount, // Also preserve as citationCount for compatibility
       url: url,
       // Visual properties
       group: paper.category || 1,
-      value: citationCount || 1, // Node size based on citations
+      value: citationCount > 0 ? citationCount : 1, // Node size: use citationCount if > 0, else 1 for visibility
       // Layer information for visual distinction
       layer: paper.layer || layer, // Track which layer this node belongs to
     };

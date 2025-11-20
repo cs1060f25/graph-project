@@ -114,7 +114,12 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   const getNormalizedNodeRadius = useCallback((node, nodes) => {
     if (!nodes || nodes.length === 0) return 6;
     
-    const citations = node.citations ?? node.value ?? node.citationCount ?? 1;
+    // GRAPH-85: Use citations field first, then citationCount, then value, with proper handling of 0
+    const citations = node.citations !== undefined && node.citations !== null
+      ? node.citations
+      : (node.citationCount !== undefined && node.citationCount !== null
+          ? node.citationCount
+          : (node.value !== undefined && node.value !== null ? node.value : 1));
     const allCitations = nodes.map(n => Math.log1p(n.citations ?? n.value ?? n.citationCount ?? 1));
     const minC = Math.min(...allCitations);
     const maxC = Math.max(...allCitations);
@@ -313,7 +318,9 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
             <div style="font-weight: 600; color: #eaeaea; font-size: 0.9375rem; margin-bottom: 8px; line-height: 1.4;">${node.title || 'Untitled'}</div>
             <div style="font-size: 0.875rem; color: #c9c9ce; margin-bottom: 4px; font-style: italic;">${node.authors ? node.authors.join(', ') : 'Unknown authors'}</div>
             ${node.year ? `<div style="font-size: 0.75rem; color: #a0a0a5; margin-bottom: 4px;">Year: ${node.year}</div>` : ''}
-            ${node.citations ? `<div style="font-size: 0.75rem; color: #3a82ff; font-weight: 500;">${node.citations} citations</div>` : ''}
+            ${(node.citations !== undefined && node.citations !== null) || (node.citationCount !== undefined && node.citationCount !== null) 
+              ? `<div style="font-size: 0.75rem; color: #3a82ff; font-weight: 500;">${node.citations ?? node.citationCount ?? 0} citations</div>` 
+              : ''}
             <div style="font-size: 0.7rem; color: #6b7280; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2a2e;">Click to view details</div>
           </div>
         `}
