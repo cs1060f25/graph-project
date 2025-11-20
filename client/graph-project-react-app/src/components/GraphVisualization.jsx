@@ -106,90 +106,29 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, connectedNodeIds, hexToRgba, getLayerOpacity]);
 
-  // GRAPH-84 Fix: Adaptive node radius scaling to fit within available space
-  const NODE_GAP = 25; // Larger gap between nodes to ensure visible edges and no touching
-  
-  /**
-   * Compute adaptive node radius scaling to keep graph within available space.
-   * Ensures total node area <= φ * viewport area (packing density)
-   * Uses more aggressive scaling to make size differences more visible
-   */
-  const computeNodeRadiusScaler = useCallback((nodes, width, height, opts = {}) => {
-    const {
-      minR = 3,            // smallest radius (px) - smaller nodes overall
-      maxR = 40,           // cap large nodes - reduced for smaller overall size
-      phi = 0.2,           // target packing density - reduced for more spacing
-      scaleMode = 'power'  // 'power' for more visible differences
-    } = opts;
-
-    if (!nodes?.length) return (n) => minR;
-
-    // derive weights from citation counts with more aggressive scaling
-    const weights = nodes.map((n) => {
-      const c = Math.max(n.citations ?? n.value ?? n.citationCount ?? 1, 1);
-      if (scaleMode === 'power') {
-        // Use power function (c^0.75) for more drastic size differences
-        return Math.pow(c, 0.75);
-      } else if (scaleMode === 'log') {
-        return Math.log1p(c);
-      } else {
-        return Math.sqrt(c);
-      }
-    });
-
-    const totalWeightSq = weights.reduce((s, w) => s + w * w, 0);
-    const areaBudget = phi * width * height;
-
-    // k ensures total circle area <= budget
-    const k = Math.sqrt(areaBudget / (Math.PI * totalWeightSq));
-
-    // build radius function with more aggressive scaling
-    return (node) => {
-      const c = Math.max(node.citations ?? node.value ?? node.citationCount ?? 1, 1);
-      let w;
-      if (scaleMode === 'power') {
-        // Power function for more drastic size differences
-        w = Math.pow(c, 0.75);
-      } else if (scaleMode === 'log') {
-        w = Math.log1p(c);
-      } else {
-        w = Math.sqrt(c);
-      }
-      
-      // Calculate base radius
-      let r = k * w;
-      
-      // Normalize to minR-maxR range for maximum visibility
-      // This ensures we use the full range even if k is small
-      const normalizedWeight = (w - Math.min(...weights)) / (Math.max(...weights) - Math.min(...weights) || 1);
-      const targetR = minR + normalizedWeight * (maxR - minR);
-      
-      // Use the larger of the two to ensure we use the full range
-      r = Math.max(r, targetR * 0.8); // Blend both approaches
-      r = Math.min(maxR, Math.max(minR, r));
-      
-      return r;
-    };
+  // GRAPH-84 Fix: Linear normalization of citations → radius scale in [1, 2] range
+  // This creates consistent, proportional node sizes without over-expanding
+  const getNormalizedNodeRadius = useCallback((node, nodes) => {
+    if (!nodes || nodes.length === 0) return 6;
+    
+    const citations = node.citations ?? node.value ?? node.citationCount ?? 1;
+    const allCitations = nodes.map(n => Math.log1p(n.citations ?? n.value ?? n.citationCount ?? 1));
+    const minC = Math.min(...allCitations);
+    const maxC = Math.max(...allCitations);
+    const logC = Math.log1p(citations);
+    const t = (logC - minC) / Math.max(1e-6, maxC - minC); // normalize 0–1
+    const ratio = 1 + t; // [1,2] range
+    const BASE_R = 6;
+    return BASE_R * ratio;
   }, []);
-
-  // Compute adaptive radius scaler based on viewport size
-  // Use smaller nodes overall with edges longer than diameters
-  const graphWidth = Math.min(window.innerWidth - 100, 1200);
-  const baseRadiusScaler = useMemo(
-    () => computeNodeRadiusScaler(memoizedData.nodes, graphWidth, height, { 
-      phi: 0.2,        // Reduced packing density for more spacing
-      scaleMode: 'power' // Use power scaling for visible differences
-    }),
-    [memoizedData.nodes, graphWidth, height, computeNodeRadiusScaler]
-  );
 
   // Get node radius with layer scaling and selection/hover effects
   const getNodeRadius = useCallback((node, { forSim = false } = {}) => {
     const layer = node.layer || 1;
     const layerScale = layer === 1 ? 1 : layer === 2 ? 0.8 : 0.6;
     
-    // Get base radius from adaptive scaler
-    let radius = baseRadiusScaler(node);
+    // Get base radius from normalized scaler
+    let radius = getNormalizedNodeRadius(node, memoizedData.nodes);
     
     // Apply layer scaling
     radius *= layerScale;
@@ -201,7 +140,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     }
     
     return radius;
-  }, [baseRadiusScaler, selectedNode, hoveredNode]);
+  }, [memoizedData.nodes, selectedNode, hoveredNode, getNormalizedNodeRadius]);
 
   // Legacy getNodeSize for backward compatibility (returns radius, but nodeVal will use radius³)
   const getNodeSize = useCallback((node) => {
@@ -248,10 +187,9 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       return hexToRgba(baseColor, opacity);
     }
     
-    // Legacy fallback: Much brighter default color for maximum visibility
-    // Always use high opacity for default links to ensure they're visible on first load
-    const defaultColor = '#b0b0c0'; // Even brighter gray for dark background
-    const opacity = 1.0; // Full opacity for default links to ensure visibility
+    // Legacy fallback: Visible default color for dark background
+    const defaultColor = '#8b8b93'; // Bright gray for dark background
+    const opacity = Math.max(0.7, getLayerOpacity(linkLayer)); // Minimum 0.7 opacity
     return hexToRgba(defaultColor, opacity);
   }, [selectedNode, hoveredNode, highlightedNodes, hexToRgba, getLayerOpacity]);
 
@@ -381,9 +319,9 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         nodeVal={(node) => Math.pow(getNodeRadius(node, { forSim: true }), 3)}
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
-        linkOpacity={0.9}
+        linkOpacity={0.6}
         linkCurvature={0}
-        linkDirectionalArrowLength={0}
+        linkDirectionalArrowLength={4}
         linkDirectionalArrowRelPos={1}
         linkDirectionalArrowColor={(link) => getLinkColor(link)}
         linkDirectionalParticles={0}
@@ -429,40 +367,36 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         height={height}
         width={graphWidth}
         cooldownTicks={400}
-        // GRAPH-84 Fix: Proper force simulation with adaptive node sizing
+        // GRAPH-84 Fix: Balanced force simulation for proper graph clustering
         d3Force={(sim) => {
-          const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
-
-          // Link force with EXTREMELY long edges - almost no strength to break caterpillar
+          const byId = new Map(memoizedData.nodes.map(n => [n.id, n]));
+          
+          // Link force to keep clusters tight
           sim.force('link', d3Force.forceLink(memoizedData.links)
             .id(d => d.id)
             .distance(l => {
-              const s = typeof l.source === 'object' ? l.source : nodesById.get(l.source);
-              const t = typeof l.target === 'object' ? l.target : nodesById.get(l.target);
-              const rS = getNodeRadius(s, { forSim: true });
-              const rT = getNodeRadius(t, { forSim: true });
-              const dS = rS * 2; // diameter of source node
-              const dT = rT * 2; // diameter of target node
-              const maxDiameter = Math.max(dS, dT);
-              // Edge length = node radii + 5x the larger diameter for EXTREMELY long edges
-              return rS + rT + (maxDiameter * 5);
+              const s = typeof l.source === 'object' ? l.source : byId.get(l.source);
+              const t = typeof l.target === 'object' ? l.target : byId.get(l.target);
+              return getNodeRadius(s, { forSim: true }) + getNodeRadius(t, { forSim: true }) + 30;
             })
-            .strength(0.005) // Almost no link strength - let repulsion do the work
+            .strength(0.15) // Keep clusters tight
           );
 
-          // Extremely strong repulsion to break caterpillar and create spread out graph
-          sim.force('charge', d3Force.forceManyBody().strength(-1000).distanceMax(6000));
-
+          // Moderate repulsion to spread nodes without flinging apart
+          sim.force('charge', d3Force.forceManyBody().strength(-60).distanceMax(1200));
+          
+          // Small collision padding so edges stay visible
+          sim.force('collision', d3Force.forceCollide()
+            .radius(n => getNodeRadius(n, { forSim: true }) + 3)
+            .iterations(3)
+          );
+          
           // Center force to keep graph in view
           sim.force('center', d3Force.forceCenter());
-
-          // Collision with very large padding to create maximum space between nodes
-          sim.force('collision', d3Force.forceCollide()
-            .radius(n => getNodeRadius(n, { forSim: true }) + 60) // 60px gap for maximum spread
-            .iterations(12) // More iterations for better separation
-          );
-
-          // NO X/Y forces - they cause caterpillar shape
+          
+          // Gentle X/Y forces for better distribution
+          sim.force('x', d3Force.forceX().strength(0.05));
+          sim.force('y', d3Force.forceY().strength(0.05));
         }}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
