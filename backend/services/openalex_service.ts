@@ -67,7 +67,8 @@ export async function searchOpenalex(
   try {
     const baseUrl = "https://api.openalex.org";
     const encodedQuery = encodeURIComponent(query);
-    const queryUrl = `${baseUrl}/works?filter=title.search:${encodedQuery}&per-page=${maxResults}`;
+    // OpenAlex uses 'search' parameter for general search, not 'filter=title.search:'
+    const queryUrl = `${baseUrl}/works?search=${encodedQuery}&per-page=${maxResults}`;
     
     const response = await axios.get<OpenAlexResponse>(queryUrl, { timeout: 15000 });
     
@@ -126,7 +127,19 @@ export async function searchOpenalex(
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response) {
-      throw new Error(`Failed to fetch papers from OpenAlex: ${axiosError.message}`);
+      const status = axiosError.response.status;
+      const statusText = axiosError.response.statusText;
+      const url = axiosError.config?.url || 'unknown URL';
+      const responseData = axiosError.response.data;
+      
+      console.error(`[OpenAlexService] API error - Status: ${status} ${statusText}, URL: ${url}`);
+      if (responseData) {
+        console.error(`[OpenAlexService] Response data:`, typeof responseData === 'string' 
+          ? responseData.substring(0, 500) 
+          : JSON.stringify(responseData).substring(0, 500));
+      }
+      
+      throw new Error(`Failed to fetch papers from OpenAlex: ${status} ${statusText} - ${axiosError.message}`);
     } else {
       throw new Error(`OpenAlex search failed: ${error instanceof Error ? error.message : String(error)}`);
     }

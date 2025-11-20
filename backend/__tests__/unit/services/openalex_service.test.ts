@@ -173,7 +173,7 @@ describe('OpenAlexService', () => {
       await searchOpenalex('machine learning & AI');
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('filter=title.search:machine%20learning%20%26%20AI'),
+        expect.stringContaining('search=machine%20learning%20%26%20AI'),
         expect.any(Object)
       );
     });

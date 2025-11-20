@@ -39,19 +39,16 @@ export async function searchArxiv(
    * @returns Promise<Paper[]>
    */
   try {
-    const baseUrl = "http://export.arxiv.org/api/query";
+    const baseUrl = "https://export.arxiv.org/api/query";
     const params = new URLSearchParams({
-      query: query,
+      search_query: query, // Arxiv API uses 'search_query', not 'query'
       start: start.toString(),
       max_results: maxResults.toString()
     });
-    
-    // query modes
-    if (mode === "topic") {
-      params.append("type", "topic");
-    } else if (mode === "keyword") {
-      params.append("type", "keyword");
-    }
+
+    // Note: Arxiv API doesn't support 'type' parameter - mode is handled via query format
+    // For topic mode, query should be formatted as "cat:cs.AI" etc.
+    // For keyword mode, use plain text search
 
     const url = `${baseUrl}?${params.toString()}`;
     
@@ -122,9 +119,21 @@ export async function searchArxiv(
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response) {
-      throw new Error(`Failed to fetch papers from Arxiv: ${axiosError.message}`);
+      const status = axiosError.response.status;
+      const statusText = axiosError.response.statusText;
+      const url = axiosError.config?.url || 'unknown URL';
+      const responseData = axiosError.response.data;
+      
+      console.error(`[ArxivService] API error - Status: ${status} ${statusText}, URL: ${url}`);
+      if (responseData) {
+        console.error(`[ArxivService] Response data:`, typeof responseData === 'string' 
+          ? responseData.substring(0, 500) 
+          : JSON.stringify(responseData).substring(0, 500));
+      }
+      
+      throw new Error(`Failed to fetch papers from Arxiv: ${status} ${statusText} - ${axiosError.message}`);
     } else if (axiosError.code === 'ETIMEDOUT' || axiosError.code === 'ECONNABORTED') {
-      throw new Error(`Failed to fetch papers from Arxiv: ${axiosError.message}`);
+      throw new Error(`Failed to fetch papers from Arxiv: Timeout - ${axiosError.message}`);
     } else {
       throw new Error(`Arxiv search failed: ${error instanceof Error ? error.message : String(error)}`);
     }

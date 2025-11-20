@@ -117,7 +117,19 @@ export async function searchCore(
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response) {
-      throw new Error(`Failed to fetch papers from CORE: ${axiosError.message}`);
+      const status = axiosError.response.status;
+      const statusText = axiosError.response.statusText;
+      const url = axiosError.config?.url || 'unknown URL';
+      const responseData = axiosError.response.data;
+      
+      console.error(`[CoreService] API error - Status: ${status} ${statusText}, URL: ${url}`);
+      if (responseData) {
+        console.error(`[CoreService] Response data:`, typeof responseData === 'string' 
+          ? responseData.substring(0, 500) 
+          : JSON.stringify(responseData).substring(0, 500));
+      }
+      
+      throw new Error(`Failed to fetch papers from CORE: ${status} ${statusText} - ${axiosError.message}`);
     } else {
       throw new Error(`CORE search failed: ${error instanceof Error ? error.message : String(error)}`);
     }

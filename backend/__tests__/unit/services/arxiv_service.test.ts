@@ -101,7 +101,7 @@ describe('ArxivService', () => {
       await searchArxiv('test query', 20, 10, 'keyword');
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('query=test+query'),
+        expect.stringContaining('search_query=test+query'),
         expect.objectContaining({ timeout: 15000 })
       );
     });
@@ -114,8 +114,9 @@ describe('ArxivService', () => {
 
       await searchArxiv('cs.AI', 10, 0, 'topic');
 
+      // Arxiv API doesn't support 'type' parameter - mode is handled via query format
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('type=topic'),
+        expect.stringContaining('search_query'),
         expect.any(Object)
       );
     });
@@ -200,8 +201,9 @@ describe('ArxivService', () => {
 
       await searchArxiv('machine learning', 10, 0, 'keyword');
 
+      // Arxiv API doesn't support 'type' parameter - mode is handled via query format
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('type=keyword'),
+        expect.stringContaining('search_query'),
         expect.any(Object)
       );
     });
@@ -240,8 +242,9 @@ describe('ArxivService', () => {
       const { searchArxivByTopic } = await import('../../../services/arxiv_service.js');
       await searchArxivByTopic('cs.AI');
 
+      // Arxiv API doesn't support 'type' parameter - mode is handled via query format
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('type=topic'),
+        expect.stringContaining('search_query'),
         expect.any(Object)
       );
     });
@@ -257,8 +260,9 @@ describe('ArxivService', () => {
       const { searchArxivByKeyword } = await import('../../../services/arxiv_service.js');
       await searchArxivByKeyword('machine learning');
 
+      // Arxiv API doesn't support 'type' parameter - mode is handled via query format
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('type=keyword'),
+        expect.stringContaining('search_query'),
         expect.any(Object)
       );
     });
