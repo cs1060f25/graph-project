@@ -299,24 +299,26 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   }, []);
 
   // GRAPH-84: Auto-fit graph to viewport once when data first loads to show edges
-  const [hasAutoFitted, setHasAutoFitted] = useState(false);
-  const dataKeyRef = useRef(JSON.stringify(memoizedData.nodes.map(n => n.id).sort()));
+  const dataKeyRef = useRef('');
+  const hasAutoFittedRef = useRef(false);
   
   useEffect(() => {
     // Check if this is new data (different node IDs)
-    const currentDataKey = JSON.stringify(memoizedData.nodes.map(n => n.id).sort());
-    const isNewData = currentDataKey !== dataKeyRef.current;
+    const currentDataKey = memoizedData.nodes.length > 0 
+      ? JSON.stringify(memoizedData.nodes.map(n => n.id).sort())
+      : '';
+    const isNewData = currentDataKey !== dataKeyRef.current && currentDataKey !== '';
     
     if (isNewData && fgRef.current && memoizedData.nodes && memoizedData.nodes.length > 0) {
       // Reset auto-fit flag for new data
-      setHasAutoFitted(false);
+      hasAutoFittedRef.current = false;
       dataKeyRef.current = currentDataKey;
       
       // Wait for simulation to stabilize, then zoom to fit ONCE
       const timer = setTimeout(() => {
-        if (fgRef.current && !hasAutoFitted) {
+        if (fgRef.current && !hasAutoFittedRef.current) {
           fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
-          setHasAutoFitted(true);
+          hasAutoFittedRef.current = true;
         }
       }, 1000); // Wait 1s for initial simulation to stabilize
       
@@ -466,16 +468,15 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         // Zoom: mouse wheel, Pan: click and drag background
         onEngineStop={() => {
           // Graph layout is stable - auto-fit ONCE on initial load only
-          // Don't interfere if user has already zoomed
-          if (fgRef.current && !hasAutoFitted) {
-            // Use a longer delay to ensure simulation is fully stable
-            const timer = setTimeout(() => {
-              if (fgRef.current && !hasAutoFitted) {
+          // Don't interfere if user has already zoomed or we've already auto-fitted
+          if (fgRef.current && !hasAutoFittedRef.current) {
+            // Use a delay to ensure simulation is fully stable
+            setTimeout(() => {
+              if (fgRef.current && !hasAutoFittedRef.current) {
                 fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
-                setHasAutoFitted(true);
+                hasAutoFittedRef.current = true;
               }
             }, 200);
-            return () => clearTimeout(timer);
           }
         }}
       />
