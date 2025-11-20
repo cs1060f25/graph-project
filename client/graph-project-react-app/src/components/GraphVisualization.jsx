@@ -353,7 +353,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         linkColor={getLinkColor}
         linkWidth={getLinkWidth}
         linkOpacity={0.9}
-        linkDirectionalArrowLength={8}
+        linkDirectionalArrowLength={0}
         linkDirectionalArrowRelPos={1}
         linkDirectionalArrowColor={(link) => getLinkColor(link)}
         linkDirectionalParticles={0}
@@ -403,7 +403,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         d3Force={(sim) => {
           const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
 
-          // Strong link force to create clusters (not caterpillar)
+          // Link force with much larger distances to prevent clumping
           sim.force('link', d3Force.forceLink(memoizedData.links)
             .id(d => d.id)
             .distance(l => {
@@ -411,21 +411,21 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               const t = typeof l.target === 'object' ? l.target : nodesById.get(l.target);
               const rS = getNodeRadius(s, { forSim: true });
               const rT = getNodeRadius(t, { forSim: true });
-              return rS + rT + 50; // visible gap between node surfaces
+              return rS + rT + 80; // Much larger gap to prevent clumping
             })
-            .strength(0.3) // Stronger link force to create clusters
+            .strength(0.15) // Weaker link force to allow more spreading
           );
 
-          // Moderate repulsion to spread nodes but not too much
-          sim.force('charge', d3Force.forceManyBody().strength(-120).distanceMax(2000));
+          // Stronger repulsion to spread nodes out and prevent clumping
+          sim.force('charge', d3Force.forceManyBody().strength(-200).distanceMax(2500));
 
           // Center force to keep graph in view
           sim.force('center', d3Force.forceCenter());
 
-          // Collision to prevent overlap with visible gaps
+          // Collision with much larger padding to prevent any touching
           sim.force('collision', d3Force.forceCollide()
-            .radius(n => getNodeRadius(n, { forSim: true }) + 8) // 8px gap for visible edges
-            .iterations(4)
+            .radius(n => getNodeRadius(n, { forSim: true }) + 20) // 20px gap to prevent clumping
+            .iterations(6) // More iterations for better separation
           );
 
           // NO X/Y forces - they cause caterpillar shape
