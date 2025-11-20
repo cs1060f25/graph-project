@@ -399,12 +399,12 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         }}
         height={height}
         width={graphWidth}
-        cooldownTicks={200}
+        cooldownTicks={400}
         // GRAPH-84 Fix: Proper force simulation with adaptive node sizing
         d3Force={(sim) => {
           const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
 
-          // Link force with VERY long edges - minimal strength to prevent caterpillar
+          // Link force with EXTREMELY long edges - almost no strength to break caterpillar
           sim.force('link', d3Force.forceLink(memoizedData.links)
             .id(d => d.id)
             .distance(l => {
@@ -415,22 +415,22 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               const dS = rS * 2; // diameter of source node
               const dT = rT * 2; // diameter of target node
               const maxDiameter = Math.max(dS, dT);
-              // Edge length = node radii + 4x the larger diameter for VERY long edges
-              return rS + rT + (maxDiameter * 4);
+              // Edge length = node radii + 5x the larger diameter for EXTREMELY long edges
+              return rS + rT + (maxDiameter * 5);
             })
-            .strength(0.01) // Minimal link strength to allow maximum spreading
+            .strength(0.005) // Almost no link strength - let repulsion do the work
           );
 
-          // Extremely strong repulsion to break caterpillar and spread nodes out
-          sim.force('charge', d3Force.forceManyBody().strength(-800).distanceMax(5000));
+          // Extremely strong repulsion to break caterpillar and create spread out graph
+          sim.force('charge', d3Force.forceManyBody().strength(-1000).distanceMax(6000));
 
           // Center force to keep graph in view
           sim.force('center', d3Force.forceCenter());
 
-          // Collision with very large padding to create maximum space
+          // Collision with very large padding to create maximum space between nodes
           sim.force('collision', d3Force.forceCollide()
-            .radius(n => getNodeRadius(n, { forSim: true }) + 50) // 50px gap for maximum spread
-            .iterations(10) // More iterations for better separation
+            .radius(n => getNodeRadius(n, { forSim: true }) + 60) // 60px gap for maximum spread
+            .iterations(12) // More iterations for better separation
           );
 
           // NO X/Y forces - they cause caterpillar shape
