@@ -79,3 +79,10 @@ client/graph-project-react-app/.env
 server/.env
 
 .cursor/serviceAccountKey.json
+
+# HW11 local files (not committed)
+HW11_SUBMISSION.md
+HW11_SUMMARY.md
+HW11_WORK_PLAN.md
+PR_DESCRIPTION.md
+CITATION_CHANGES_SUMMARY.md
