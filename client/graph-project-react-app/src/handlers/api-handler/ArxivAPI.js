@@ -18,7 +18,7 @@ import { XMLParser } from "fast-xml-parser";
 
 export default class ArxivAPI {
   constructor({ rateLimitMs = 1000, defaultMaxResults = 10 } = {}) {
-    this.baseUrl = "https://export.arxiv.org/api/query";
+    this.baseUrl = "http://localhost:5001/api/arxiv";
     this.rateLimitMs = rateLimitMs; // Delay between requests in ms
     this.defaultMaxResults = defaultMaxResults;
     this.lastRequestTime = 0;
@@ -66,47 +66,42 @@ export default class ArxivAPI {
    * @param {string} searchQuery - Arxiv-compatible search term (e.g., "cat:cs.AI")
    * @param {number} maxResults - Max number of results to return
    */
-    async #fetchResults(searchQuery, maxResults) {
-        await this.#rateLimit();
+    async #fetchResults(url) {
+      await this.#rateLimit();
 
-        const queryUrl = `${this.baseUrl}?search_query=${encodeURIComponent(
-            searchQuery
-        )}&start=0&max_results=${maxResults ?? this.defaultMaxResults}`;
-
-        try {
-          const response = await this.#fetchWithTimeout(queryUrl, 15000);
-          
-          if (!response.ok) {
-            console.error("Arxiv API failed:", response.status, response.statusText);
-            throw new Error(`Failed to fetch papers: ${response.statusText}`);
-          }
-
-          const text = await response.text();
-
-          // Parse XML -> JSON
-          const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
-          const jsonObj = parser.parse(text);
-
-          // Normalize results
-          const entries = jsonObj.feed?.entry || [];
-          const results = Array.isArray(entries) ? entries : [entries];
-
-          return results.map((entry) => ({
-              id: entry.id,
-              title: entry.title?.trim(),
-              summary: entry.summary?.trim(),
-              published: entry.published,
-              authors: Array.isArray(entry.author)
-              ? entry.author.map((a) => a.name)
-              : [entry.author?.name],
-              link: Array.isArray(entry.link)
-              ? entry.link[0].href
-              : entry.link?.href,
-          }));
-        } catch (err) {
-          console.error("Arxiv fetch failed:", err);
-          return []; // Return empty array on error
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch papers: ${response.status} ${response.statusText}`);
         }
+
+        const text = await response.text();
+        
+        // Parse XML -> JSON (assuming you have a parser defined)
+        const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
+        const jsonObj = parser.parse(text);
+
+        // Normalize results
+        const entries = jsonObj.feed?.entry || [];
+        const results = Array.isArray(entries) ? entries : [entries];
+
+        return results.map((entry) => ({
+          id: entry.id,
+          title: entry.title?.trim(),
+          summary: entry.summary?.trim(),
+          published: entry.published,
+          authors: Array.isArray(entry.author)
+            ? entry.author.map((a) => a.name)
+            : [entry.author?.name],
+          link: Array.isArray(entry.link)
+            ? entry.link[0].href
+            : entry.link?.href,
+        }));
+      } catch (err) {
+        console.error("ArXiv fetch failed:", err);
+        throw err;
+      }
     }
 
   /**
@@ -115,8 +110,16 @@ export default class ArxivAPI {
    * @param {number} [maxResults]
    */
   async queryByTopic(topic, maxResults) {
-    const searchQuery = `cat:${topic}`;
-    return await this.#fetchResults(searchQuery, maxResults);
+    try {
+    const url = `${this.baseUrl}?query=${encodeURIComponent(topic)}&type=topic&maxResults=${maxResults}`;
+      
+      console.log(`Requesting from proxy: ${url}`);
+      const results = await this.#fetchResults(url);
+      return results;
+    } catch (error) {
+      console.error('ArXiv fetch failed:', error);
+      throw error;
+    }
   }
 
   /**
@@ -125,7 +128,16 @@ export default class ArxivAPI {
    * @param {number} [maxResults]
    */
   async queryByKeyword(keyword, maxResults) {
-    const searchQuery = `all:${keyword}`;
-    return await this.#fetchResults(searchQuery, maxResults);
+    try {
+      // Use the proxy with query parameters
+      const url = `${this.baseUrl}?query=${encodeURIComponent(keyword)}&type=keyword&maxResults=${maxResults}`;
+      
+      console.log(`Requesting from proxy: ${url}`);
+      const results = await this.#fetchResults(url);
+      return results;
+    } catch (error) {
+      console.error('ArXiv fetch failed:', error);
+      throw error;
+    }
   }
 }
