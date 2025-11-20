@@ -298,25 +298,31 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     }
   }, []);
 
-  // GRAPH-84: Auto-fit graph to viewport when data changes to show edges on first load
+  // GRAPH-84: Auto-fit graph to viewport once when data first loads to show edges
   const [hasAutoFitted, setHasAutoFitted] = useState(false);
+  const dataKeyRef = useRef(JSON.stringify(memoizedData.nodes.map(n => n.id).sort()));
   
   useEffect(() => {
-    if (fgRef.current && memoizedData.nodes && memoizedData.nodes.length > 0) {
-      // Reset auto-fit flag when data changes
+    // Check if this is new data (different node IDs)
+    const currentDataKey = JSON.stringify(memoizedData.nodes.map(n => n.id).sort());
+    const isNewData = currentDataKey !== dataKeyRef.current;
+    
+    if (isNewData && fgRef.current && memoizedData.nodes && memoizedData.nodes.length > 0) {
+      // Reset auto-fit flag for new data
       setHasAutoFitted(false);
+      dataKeyRef.current = currentDataKey;
       
-      // Wait for simulation to stabilize, then zoom to fit
+      // Wait for simulation to stabilize, then zoom to fit ONCE
       const timer = setTimeout(() => {
         if (fgRef.current && !hasAutoFitted) {
           fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
           setHasAutoFitted(true);
         }
-      }, 800); // Wait 800ms for initial simulation to stabilize
+      }, 1000); // Wait 1s for initial simulation to stabilize
       
       return () => clearTimeout(timer);
     }
-  }, [memoizedData.nodes, memoizedData.links, hasAutoFitted]);
+  }, [memoizedData.nodes, memoizedData.links]);
 
   if (!memoizedData.nodes || memoizedData.nodes.length === 0) {
     return (
@@ -459,14 +465,17 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
         onEngineStop={() => {
-          // Graph layout is stable - auto-fit to show full graph with edges
+          // Graph layout is stable - auto-fit ONCE on initial load only
+          // Don't interfere if user has already zoomed
           if (fgRef.current && !hasAutoFitted) {
-            setTimeout(() => {
-              if (fgRef.current) {
+            // Use a longer delay to ensure simulation is fully stable
+            const timer = setTimeout(() => {
+              if (fgRef.current && !hasAutoFitted) {
                 fgRef.current.zoomToFit(400, 50); // 50px padding to ensure edges are visible
                 setHasAutoFitted(true);
               }
-            }, 100);
+            }, 200);
+            return () => clearTimeout(timer);
           }
         }}
       />
