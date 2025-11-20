@@ -116,9 +116,9 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
    */
   const computeNodeRadiusScaler = useCallback((nodes, width, height, opts = {}) => {
     const {
-      minR = 5,            // smallest radius (px) - increased for visibility
-      maxR = 120,          // cap large nodes - much larger for drastic size differences
-      phi = 0.25,          // target packing density - reduced to allow larger nodes
+      minR = 3,            // smallest radius (px) - smaller nodes overall
+      maxR = 40,           // cap large nodes - reduced for smaller overall size
+      phi = 0.2,           // target packing density - reduced for more spacing
       scaleMode = 'power'  // 'power' for more visible differences
     } = opts;
 
@@ -173,12 +173,12 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
   }, []);
 
   // Compute adaptive radius scaler based on viewport size
-  // Use more aggressive scaling to make size differences more visible
+  // Use smaller nodes overall with edges longer than diameters
   const graphWidth = Math.min(window.innerWidth - 100, 1200);
   const baseRadiusScaler = useMemo(
     () => computeNodeRadiusScaler(memoizedData.nodes, graphWidth, height, { 
-      phi: 0.25,       // Reduced packing density to allow larger nodes
-      scaleMode: 'power' // Use power scaling for more drastic differences
+      phi: 0.2,        // Reduced packing density for more spacing
+      scaleMode: 'power' // Use power scaling for visible differences
     }),
     [memoizedData.nodes, graphWidth, height, computeNodeRadiusScaler]
   );
@@ -274,8 +274,8 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
       }
     }
     
-    // Default width - much thicker for maximum visibility
-    return 3.5;
+    // Default width - thick enough to be visible but not overwhelming
+    return 2.5;
   }, [selectedNode, hoveredNode]);
 
   // GRAPH-61: Zoom and pan controls
@@ -404,7 +404,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         d3Force={(sim) => {
           const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
 
-          // Link force with very long distances to break caterpillar shape
+          // Link force with edges longer than node diameters
           sim.force('link', d3Force.forceLink(memoizedData.links)
             .id(d => d.id)
             .distance(l => {
@@ -412,7 +412,11 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               const t = typeof l.target === 'object' ? l.target : nodesById.get(l.target);
               const rS = getNodeRadius(s, { forSim: true });
               const rT = getNodeRadius(t, { forSim: true });
-              return rS + rT + 150; // Very long links to break caterpillar shape
+              const dS = rS * 2; // diameter of source node
+              const dT = rT * 2; // diameter of target node
+              const maxDiameter = Math.max(dS, dT);
+              // Edge length = node radii + at least 1.5x the larger diameter
+              return rS + rT + (maxDiameter * 1.5);
             })
             .strength(0.05) // Very weak link force to allow long stretching
           );
