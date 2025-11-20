@@ -8,6 +8,34 @@ import { render, screen } from '@testing-library/react';
 import GraphVisualization from './GraphVisualization';
 import { createMockGraphData } from '../utils/graphDataTransformer';
 
+// Mock d3-force since Jest has trouble with ES modules
+jest.mock('d3-force', () => ({
+  forceLink: jest.fn(() => ({
+    id: jest.fn().mockReturnThis(),
+    distance: jest.fn().mockReturnThis(),
+    strength: jest.fn().mockReturnThis(),
+  })),
+  forceManyBody: jest.fn(() => ({
+    strength: jest.fn().mockReturnThis(),
+    distanceMax: jest.fn().mockReturnThis(),
+  })),
+  forceCollide: jest.fn(() => ({
+    radius: jest.fn().mockReturnThis(),
+    strength: jest.fn().mockReturnThis(),
+    iterations: jest.fn().mockReturnThis(),
+  })),
+  forceCenter: jest.fn(() => ({
+    x: jest.fn().mockReturnThis(),
+    y: jest.fn().mockReturnThis(),
+  })),
+  forceX: jest.fn(() => ({
+    strength: jest.fn().mockReturnThis(),
+  })),
+  forceY: jest.fn(() => ({
+    strength: jest.fn().mockReturnThis(),
+  })),
+}));
+
 // Mock react-force-graph-2d since it's a canvas-based component
 jest.mock('react-force-graph-2d', () => {
   return function MockForceGraph2D({ graphData, onNodeClick, onNodeHover, nodeColor, nodeVal, linkColor, linkWidth, selectedNode }) {
