@@ -404,7 +404,7 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
         d3Force={(sim) => {
           const nodesById = new Map(memoizedData.nodes.map(n => [n.id, n]));
 
-          // Link force with edges longer than node diameters
+          // Link force with edges longer than node diameters - very weak to allow spreading
           sim.force('link', d3Force.forceLink(memoizedData.links)
             .id(d => d.id)
             .distance(l => {
@@ -415,22 +415,22 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
               const dS = rS * 2; // diameter of source node
               const dT = rT * 2; // diameter of target node
               const maxDiameter = Math.max(dS, dT);
-              // Edge length = node radii + at least 1.5x the larger diameter
-              return rS + rT + (maxDiameter * 1.5);
+              // Edge length = node radii + at least 2x the larger diameter for more spread
+              return rS + rT + (maxDiameter * 2);
             })
-            .strength(0.05) // Very weak link force to allow long stretching
+            .strength(0.02) // Very weak link force to allow maximum spreading
           );
 
-          // Much stronger repulsion to spread nodes out and break caterpillar
-          sim.force('charge', d3Force.forceManyBody().strength(-300).distanceMax(3000));
+          // Much stronger repulsion to spread nodes out in a natural graph layout
+          sim.force('charge', d3Force.forceManyBody().strength(-500).distanceMax(4000));
 
           // Center force to keep graph in view
           sim.force('center', d3Force.forceCenter());
 
-          // Collision with much larger padding to prevent any touching
+          // Collision with larger padding to create more space between nodes
           sim.force('collision', d3Force.forceCollide()
-            .radius(n => getNodeRadius(n, { forSim: true }) + 20) // 20px gap to prevent clumping
-            .iterations(6) // More iterations for better separation
+            .radius(n => getNodeRadius(n, { forSim: true }) + 30) // 30px gap for more spread
+            .iterations(8) // More iterations for better separation
           );
 
           // NO X/Y forces - they cause caterpillar shape
