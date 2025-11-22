@@ -78,6 +78,5 @@ node_modules/
 client/graph-project-react-app/.env
 server/.env
 
-.cursor/serviceAccountKey.json
 .cursor
 OLD/
