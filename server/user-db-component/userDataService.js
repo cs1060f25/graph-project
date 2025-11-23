@@ -27,7 +27,14 @@ export async function addFolder(uid, folderName) {
   }
 
   const folderRef = db.collection("users").doc(uid).collection("folders");
-  await folderRef.add({ name: trimmedName, createdAt: Date.now() });
+  const docRef = await folderRef.add({ name: trimmedName, createdAt: Date.now() });
+  
+  // Return the created folder with its ID
+  return {
+    id: docRef.id,
+    name: trimmedName,
+    createdAt: Date.now()
+  };
 }
 
 export async function getFolders(uid) {

@@ -187,24 +187,40 @@ export function useSavedPapers() {
   }, [papers]);
 
   /**
-   * Create a new folder
-   * @param {string} folderName - Folder name
-   */
-  const createFolder = useCallback(async (folderName) => {
-    try {
-      const result = await userApi.createFolder(folderName);
-      if (result.success && result.data) {
-        setFolders(prev => [...prev, result.data]);
-        return result.data;
-      } else {
-        throw new Error(result.error || 'Failed to create folder');
-      }
-    } catch (err) {
-      console.error('Error creating folder:', err);
-      setError('Failed to create folder');
-      throw err;
+ * Create a new folder
+ * @param {string} folderName - Folder name
+ */
+const createFolder = useCallback(async (folderName) => {
+  try {
+    const result = await userApi.createFolder(folderName);
+    
+    // Check if result is null or undefined
+    if (!result) {
+      throw new Error('No response from server');
     }
-  }, []);
+    
+    // Handle both response formats:
+    let newFolder;
+    
+    if (result.success && result.data) {
+      // Format 1: Wrapped response
+      newFolder = result.data;
+    } else if (result.id || result._id) {
+      // Format 2: Direct folder object
+      newFolder = result;
+    } else {
+      throw new Error(result.error || 'Failed to create folder');
+    }
+    
+    // Add to local state
+    setFolders(prev => [...prev, newFolder]);
+    return newFolder;
+  } catch (err) {
+    console.error('Error creating folder:', err);
+    setError('Failed to create folder');
+    throw err;
+  }
+}, []);
 
   /**
    * Rename a folder

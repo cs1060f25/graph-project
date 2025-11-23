@@ -43,8 +43,8 @@ export async function addUserFolder(uid, folderName) {
       return createResponse(false, null, nameValidation.error);
     }
 
-    await addFolder(uid, folderName.trim());
-    return createResponse(true, { name: folderName.trim(), createdAt: Date.now() }, null);
+    const newFolder = await addFolder(uid, folderName.trim());
+    return createResponse(true, newFolder, null);
   } catch (error) {
     console.error("Error adding folder:", error);
     return createResponse(false, null, `Failed to add folder: ${error.message}`);
