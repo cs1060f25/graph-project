@@ -275,18 +275,18 @@ export const userApi = {
   },
 
   /**
-   * Delete a folder
-   * Note: This endpoint doesn't exist yet in the backend
-   * @param {string} folderId - Folder ID
-   * @returns {Promise<void>}
-   */
-  deleteFolder: async (folderId) => {
-    const headers = await getAuthHeaders();
-    await apiRequest(`/api/user/folders/${folderId}`, {
-      method: 'DELETE',
-      headers,
-    });
-  },
+ * Delete a folder
+ * @param {string} folderId - Folder ID to delete
+ * @returns {Promise<Object>} Response with deletion confirmation
+ */
+deleteFolder: async (folderId) => {
+  const headers = await getAuthHeaders();
+  const response = await apiRequest(`/api/user/folders/${folderId}`, {
+    method: 'DELETE',
+    headers,
+  });
+  return response;
+},
 };
 
 // Export individual functions for convenience

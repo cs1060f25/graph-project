@@ -2,8 +2,8 @@
 // Folder-related functions for the interface layer
 
 import { db } from "../user-db-component/firebaseConfig.js";
-import { getFolders, addFolder } from "../user-db-component/userDataService.js";
 import { createResponse, validateUserId, validateFolderName } from "./utils.js";
+import { getFolders, addFolder, deleteFolder } from "../user-db-component/userDataService.js"
 
 /**
  * Retrieves all folder data for a given user
@@ -50,3 +50,37 @@ export async function addUserFolder(uid, folderName) {
     return createResponse(false, null, `Failed to add folder: ${error.message}`);
   }
 }
+
+
+/**
+ * Delete a folder
+ * @param {string} uid - User ID
+ * @param {string} folderId - ID of the folder to delete
+ * @returns {Promise<Object>} Standardized response with deletion confirmation
+ */
+export async function deleteUserFolder(uid, folderId) {
+  try {
+    const uidValidation = validateUserId(uid);
+    if (!uidValidation.isValid) {
+      return createResponse(false, null, uidValidation.error);
+    }
+
+    // Validate folder ID
+    if (!folderId || typeof folderId !== 'string' || folderId.trim().length === 0) {
+      return createResponse(false, null, 'Folder ID is required');
+    }
+
+    const result = await deleteFolder(uid, folderId.trim());
+    return createResponse(true, result, null);
+  } catch (error) {
+    console.error("Error deleting folder:", error);
+    
+    // Handle "not found" error specifically
+    if (error.message === 'Folder not found') {
+      return createResponse(false, null, 'Folder not found');
+    }
+    
+    return createResponse(false, null, `Failed to delete folder: ${error.message}`);
+  }
+}
+

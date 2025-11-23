@@ -23,6 +23,7 @@ export default function PersonalPage() {
     removePaper,
     movePaperToFolder,
     createFolder,
+    deleteFolder,
     getFilteredPapers,
     getPaperCountForFolder,
     clearError,
@@ -30,6 +31,8 @@ export default function PersonalPage() {
 
   const [filterMode, setFilterMode] = useState('all'); // 'all', 'starred'
   const [searchQuery, setSearchQuery] = useState('');
+  const [folderToDelete, setFolderToDelete] = useState(null);
+  const [showDeleteFolderModal, setShowDeleteFolderModal] = useState(false);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -78,6 +81,29 @@ export default function PersonalPage() {
       console.error('Failed to create folder:', err);
     }
   };
+
+  const handleDeleteFolder = (folder) => {
+  setFolderToDelete(folder);
+  setShowDeleteFolderModal(true);
+};
+
+  const confirmDeleteFolder = async () => {
+  if (!folderToDelete) return;
+  
+  try {
+    await deleteFolder(folderToDelete.id);
+    // Success! Close modal and clear state
+    setShowDeleteFolderModal(false);
+    setFolderToDelete(null);
+  } catch (err) {
+    // Error is already handled in useSavedPapers hook
+    // Modal stays open so user can see the error and try again or cancel
+    console.error('Failed to delete folder:', err);
+    // Optionally close the modal even on error:
+    // setShowDeleteFolderModal(false);
+    // setFolderToDelete(null);
+  }
+};
 
   // Handle logout
   const handleLogout = async () => {
@@ -173,24 +199,36 @@ export default function PersonalPage() {
             {folders.length === 0 ? (
               <p className="sidebar-empty">No folders yet</p>
             ) : (
-              <div className="folder-list">
-                {folders.map(folder => (
+              <div className="folders-list">
+              {folders.map(folder => (
+                <div key={folder.id} className="folder-item">
                   <button
-                    key={folder.id}
                     className={`filter-btn ${selectedFolder === folder.id ? 'active' : ''}`}
                     onClick={() => {
+                      setFilterMode('folder');
                       setSelectedFolder(folder.id);
-                      setFilterMode('all');
                     }}
                   >
-                    <Icon name="folder" ariaLabel="Folder" />
-                    <span style={{ marginLeft: 8 }}>{folder.name}</span>
+                    <span className="filter-icon">📁</span>
+                    <span className="folder-name">{folder.name}</span>
                     <span className="filter-count">
                       {getPaperCountForFolder(folder.id)}
                     </span>
                   </button>
-                ))}
-              </div>
+                  <button
+                    className="delete-folder-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFolder(folder);
+                    }}
+                    title="Delete folder"
+                    aria-label={`Delete folder ${folder.name}`}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+            </div>
             )}
           </div>
         </aside>
@@ -292,6 +330,37 @@ export default function PersonalPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete Folder Confirmation Modal */}
+      {showDeleteFolderModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteFolderModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete Folder</h2>
+            <p>
+              Are you sure you want to delete "<strong>{folderToDelete?.name}</strong>"?
+            </p>
+            <p className="warning-text">
+              Papers in this folder will be moved to "All Papers". This action cannot be undone.
+            </p>
+            <div className="modal-actions">
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setShowDeleteFolderModal(false);
+                  setFolderToDelete(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-danger"
+                onClick={confirmDeleteFolder}
+              >
+                Delete Folder
+              </button>
+            </div>
           </div>
         </div>
       )}

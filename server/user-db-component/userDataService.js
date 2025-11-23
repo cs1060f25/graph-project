@@ -48,6 +48,36 @@ export async function getFolders(uid) {
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+export async function deleteFolder(uid, folderId) {
+  // Input validation for UID
+  if (!uid || typeof uid !== 'string' || uid.trim().length === 0) {
+    throw new Error('User ID is required and must be a non-empty string');
+  }
+  
+  // Input validation for folder ID
+  if (!folderId || typeof folderId !== 'string' || folderId.trim().length === 0) {
+    throw new Error('Folder ID is required and must be a non-empty string');
+  }
+  
+  const folderRef = db.collection("users").doc(uid).collection("folders").doc(folderId);
+  
+  // Check if folder exists before deleting
+  const doc = await folderRef.get();
+  if (!doc.exists) {
+    throw new Error('Folder not found');
+  }
+  
+  // Delete the folder
+  await folderRef.delete();
+  
+  // Return the deleted folder ID for confirmation
+  return {
+    id: folderId,
+    deletedAt: Date.now()
+  };
+}
+
+
 export async function updatePreferences(uid, prefs) {
   const userRef = db.collection("users").doc(uid);
   await userRef.update({ preferences: prefs });
