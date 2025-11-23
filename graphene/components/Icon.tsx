@@ -11,8 +11,8 @@ interface IconProps {
 }
 
 interface CustomIconProps {
-  width?: number;
-  height?: number;
+  width?: number | string;
+  height?: number | string;
   ariaHidden?: boolean;
 }
 
@@ -59,7 +59,7 @@ const GraphIcon = ({ width = 24, height = 24, ariaHidden = true }: CustomIconPro
   </svg>
 );
 
-const heroMap: Record<string, React.ComponentType<CustomIconProps>> = {
+const heroMap: Record<string, React.ComponentType<any>> = {
   search: MagnifyingGlassIcon,
   save: BookmarkIcon,
   book: Squares2X2Icon,
@@ -69,7 +69,6 @@ const heroMap: Record<string, React.ComponentType<CustomIconProps>> = {
   refresh: ArrowPathIcon,
   warning: ExclamationTriangleIcon,
   graph: GraphIcon,
-  // use our custom die icon here
   dice: DieIcon,
   hourglass: ArrowPathIcon,
   clipboard: BookmarkIcon

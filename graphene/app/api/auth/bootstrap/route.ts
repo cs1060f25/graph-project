@@ -17,7 +17,18 @@ export async function POST(request: NextRequest) {
       displayName: user.displayName,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    console.error('Bootstrap auth error:', error.code || error.message || error);
+    const errorMessage = error.message || 'Invalid token';
+    
+    let status = 401;
+    if (error.code === 'app/invalid-credential' || error.message?.includes('PERMISSION_DENIED') || error.message?.includes('serviceusage')) {
+      status = 500;
+    }
+    
+    return NextResponse.json({ 
+      error: errorMessage,
+      code: error.code || 'UNKNOWN_ERROR'
+    }, { status });
   }
 }
 

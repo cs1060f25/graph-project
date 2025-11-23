@@ -5,9 +5,13 @@
 // GRAPH-61: Graph visualization with zoom and pan controls
 // GRAPH-84: Variable node sizing with collision detection
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
-import * as d3Force from 'd3-force';
+import dynamic from 'next/dynamic';
 import './GraphVisualization.css';
+
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d').then(mod => mod.default), {
+  ssr: false,
+  loading: () => <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff' }}>Loading graph...</div>
+});
 
 interface GraphNode {
   id: string;
@@ -54,7 +58,12 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
   const { nodes, links } = graphData || { nodes: [], links: [] };
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set());
+  const [d3Force, setD3Force] = useState<any>(null);
   const fgRef = useRef<any>(null);
+
+  useEffect(() => {
+    import('d3-force').then(mod => setD3Force(mod));
+  }, []);
 
   // Memoize the graph data to prevent unnecessary re-renders
   const memoizedData = useMemo(() => ({
@@ -377,6 +386,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
           ⌂
         </button>
       </div>
+      {/* @ts-ignore - d3Force prop exists but types are incomplete */}
       <ForceGraph2D
         ref={fgRef}
         graphData={memoizedData}
@@ -392,19 +402,18 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
             <div style="font-size: 0.7rem; color: #6b7280; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2a2e;">Click to view details</div>
           </div>
         `}
-        nodeColor={getNodeColor}
+        nodeColor={(node: any) => getNodeColor(node as GraphNode)}
         nodeRelSize={1}
-        nodeVal={(node: any) => Math.pow(getNodeRadius(node, { forSim: true }), 3)}
-        linkColor={getLinkColor}
-        linkWidth={getLinkWidth}
-        linkOpacity={0.6}
+        nodeVal={(node: any) => Math.pow(getNodeRadius(node as GraphNode, { forSim: true }), 3)}
+        linkColor={(link: any) => getLinkColor(link as GraphLink)}
+        linkWidth={(link: any) => getLinkWidth(link as GraphLink)}
         linkCurvature={0}
         linkDirectionalArrowLength={4}
         linkDirectionalArrowRelPos={1}
-        linkDirectionalArrowColor={(link: any) => getLinkColor(link)}
+        linkDirectionalArrowColor={(link: any) => getLinkColor(link as GraphLink)}
         linkDirectionalParticles={0}
-        onNodeClick={onNodeClick}
-        onNodeHover={handleNodeHover}
+        onNodeClick={onNodeClick ? (node: any) => onNodeClick(node as GraphNode) : undefined}
+        onNodeHover={handleNodeHover ? (node: any) => handleNodeHover(node as GraphNode | null) : undefined}
         nodeCanvasObjectMode={() => 'replace'}
         nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
           const r = getNodeRadius(node) / globalScale;
@@ -446,7 +455,8 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
         width={graphWidth}
         cooldownTicks={400}
         // GRAPH-84 Fix: Balanced force simulation for proper graph clustering
-        d3Force={(sim: any) => {
+        {...(d3Force ? {
+          d3Force: (sim: any) => {
           const byId = new Map(memoizedData.nodes.map(n => [n.id, n]));
           
           // Link force to keep clusters tight
@@ -475,7 +485,8 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
           // Gentle X/Y forces for better distribution
           sim.force('x', d3Force.forceX().strength(0.05));
           sim.force('y', d3Force.forceY().strength(0.05));
-        }}
+          }
+        } : {})}
         // GRAPH-61: Enable zoom and pan (built-in functionality)
         // Zoom: mouse wheel, Pan: click and drag background
         onEngineStop={() => {

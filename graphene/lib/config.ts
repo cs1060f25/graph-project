@@ -12,10 +12,17 @@ export interface Config {
 
 function parsePrivateKey(key: string | undefined): string {
   if (!key) return '';
-  return key
+  let parsed = key
     .replace(/\\n/g, '\n')
     .replace(/"/g, '')
     .trim();
+  
+  if (parsed && !parsed.includes('\n') && parsed.length > 100) {
+    parsed = parsed.replace(/(.{64})/g, '$1\n');
+    parsed = parsed.replace(/\n$/, '');
+  }
+  
+  return parsed;
 }
 
 export const config: Config = {

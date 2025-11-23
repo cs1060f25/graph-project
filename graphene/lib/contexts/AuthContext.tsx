@@ -60,21 +60,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (currentUser) {
         setUser(currentUser);
         try {
-          const idToken = await currentUser.getIdToken();
+          const idToken = await currentUser.getIdToken(true);
           setToken(idToken);
           
           try {
             const userData = await apiClient('/auth/bootstrap', {
               method: 'POST',
+              token: idToken,
               body: JSON.stringify({ token: idToken }),
             });
             setRole(userData.role || 'user');
-          } catch (error) {
-            console.error('Error bootstrapping auth with backend:', error);
+          } catch (error: any) {
+            console.error('Error bootstrapping auth with backend:', error.message || error);
             setRole('user');
           }
-        } catch (error) {
-          console.error('Error getting ID token:', error);
+        } catch (error: any) {
+          console.error('Error getting ID token:', error.message || error);
           setToken(null);
           setRole(null);
         }
