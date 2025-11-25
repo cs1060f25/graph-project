@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../lib/contexts/AuthContext';
 import { userApi } from '../lib/services/userApi';
 import { Paper } from '../lib/models/types';
+import PaperSummary from '../components/PaperSummary';
 import '../styles/QueryPage.css';
 
 interface QueryGraph {
@@ -883,6 +884,31 @@ export default function QueryPage() {
                       </a>
                     </p>
                   )}
+                  <PaperSummary 
+                    paperId={selectedNode.id} 
+                    paper={(() => {
+                      // Find original paper data from results or queryGraphs
+                      const allPapers = [
+                        ...results,
+                        ...queryGraphs.flatMap(qg => qg.papers || []),
+                        ...Object.values(layerPapers).flat()
+                      ];
+                      const originalPaper = allPapers.find(p => 
+                        p.id === selectedNode.id || 
+                        p.paperId === selectedNode.id ||
+                        (p.doi && selectedNode.id.includes(p.doi))
+                      );
+                      
+                      return {
+                        id: selectedNode.id,
+                        title: selectedNode.title || '',
+                        authors: selectedNode.authors || [],
+                        link: selectedNode.url || originalPaper?.link || '',
+                        summary: originalPaper?.summary || originalPaper?.abstract,
+                        abstract: originalPaper?.abstract || originalPaper?.summary,
+                      };
+                    })()}
+                  />
                   <button
                     onClick={() => handleSavePaper(selectedNode)}
                     className="save-button"

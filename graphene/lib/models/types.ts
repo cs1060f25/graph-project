@@ -13,6 +13,8 @@ export interface Paper {
   citations?: number;
   citationCount?: number;
   url?: string;
+  aiSummary?: string;
+  createdAt?: number;
 }
 
 export interface Folder {
