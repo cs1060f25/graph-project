@@ -21,7 +21,19 @@ async function apiRequest(endpoint, options = {}) {
       headers: newHeaders,
     });
 
-    const data = await response.json();
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    
+    // Try to parse JSON, fallback to text if not JSON
+    let data;
+    try {
+      const text = await response.text();
+      data = isJson && text ? JSON.parse(text) : { error: text || 'Unknown error' };
+    } catch (parseError) {
+      console.error(`JSON parse error for ${endpoint}:`, parseError);
+      data = { error: 'Invalid response format' };
+    }
 
     if (!response.ok) {
       throw new Error(data.error || `HTTP error! status: ${response.status}`);

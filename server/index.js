@@ -8,7 +8,8 @@ import userRoutes from './routes/user.js';
 import authRoutes from './routes/auth.js';
 import { verifyFirebaseToken } from './middleware/auth.js';
 
-dotenv.config();
+// Ensure server/.env overrides any existing PORT env to avoid conflicts with CRA
+dotenv.config({ override: true });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
