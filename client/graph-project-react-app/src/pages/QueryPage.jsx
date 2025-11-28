@@ -839,38 +839,78 @@ export default function QueryPage() {
                   </div>
                 </div>
               </div>
-              <div className="graph-section">
-                <GraphVisualization 
-                  graphData={graphData} 
-                  onNodeClick={handleNodeClick}
-                  selectedNode={selectedNode}
-                  height={600}
-                />
-              </div>
-              {selectedNode && (
-                <div className="node-details">
-                  <h3>Selected Paper</h3>
-                  <p><strong>Title:</strong> {selectedNode.title}</p>
-                  <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
-                  {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
-                  {selectedNode.citations && <p><strong>Citations:</strong> {selectedNode.citations}</p>}
-                  {selectedNode.url && (
-                    <p>
-                      <a href={selectedNode.url} target="_blank" rel="noopener noreferrer" className="view-paper-link">
-                        View Paper →
-                      </a>
-                    </p>
-                  )}
-                  <button
-                    onClick={() => handleSavePaper(selectedNode)}
-                    className="save-button"
-                    title="Save paper"
-                  >
-                    <Icon name="save" ariaLabel="Save paper" />
-                    <span style={{ marginLeft: 8 }}>Save Paper</span>
-                  </button>
+              <div className="graph-and-details">
+                <div className="graph-section">
+                  <GraphVisualization 
+                    graphData={graphData} 
+                    onNodeClick={handleNodeClick}
+                    selectedNode={selectedNode}
+                    height={600}
+                  />
                 </div>
-              )}
+
+                {selectedNode && (
+                  <>
+                    {/* Desktop / tablet: side panel next to graph */}
+                    <aside
+                      className="selected-paper-pane selected-paper-pane-desktop"
+                      data-testid="selected-paper-pane-desktop"
+                    >
+                      <div className="node-details">
+                        <h3>Selected Paper</h3>
+                        <p><strong>Title:</strong> {selectedNode.title}</p>
+                        <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
+                        {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
+                        {selectedNode.citations && <p><strong>Citations:</strong> {selectedNode.citations}</p>}
+                        {selectedNode.url && (
+                          <p>
+                            <a href={selectedNode.url} target="_blank" rel="noopener noreferrer" className="view-paper-link">
+                              View Paper →
+                            </a>
+                          </p>
+                        )}
+                        <button
+                          onClick={() => handleSavePaper(selectedNode)}
+                          className="save-button"
+                          title="Save paper"
+                        >
+                          <Icon name="save" ariaLabel="Save paper" />
+                          <span style={{ marginLeft: 8 }}>Save Paper</span>
+                        </button>
+                      </div>
+                    </aside>
+
+                    {/* Mobile: stacked, scrollable details below graph */}
+                    <section
+                      className="selected-paper-pane selected-paper-pane-mobile"
+                      data-testid="selected-paper-pane-mobile"
+                    >
+                      <div className="node-details">
+                        <h3>Selected Paper</h3>
+                        <p><strong>Title:</strong> {selectedNode.title}</p>
+                        <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
+                        {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
+                        {selectedNode.citations && <p><strong>Citations:</strong> {selectedNode.citations}</p>}
+                        {selectedNode.url && (
+                          <p>
+                            <a href={selectedNode.url} target="_blank" rel="noopener noreferrer" className="view-paper-link">
+                              View Paper →
+                            </a>
+                          </p>
+                        )}
+                        <button
+                          onClick={() => handleSavePaper(selectedNode)}
+                          className="save-button"
+                          title="Save paper"
+                        >
+                          <Icon name="save" ariaLabel="Save paper" />
+                          <span style={{ marginLeft: 8 }}>Save Paper</span>
+                        </button>
+                      </div>
+                    </section>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
