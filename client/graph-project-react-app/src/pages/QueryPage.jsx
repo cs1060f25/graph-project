@@ -641,6 +641,20 @@ export default function QueryPage() {
     setIsHistoryOpen(!isHistoryOpen);
   };
 
+  const handleFeelingLuckyClick = async (e) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+
+    try {
+      const luckyQuery = await getFeelingLuckyQuery();
+      handleSubmit(e, false, luckyQuery);
+      setQuery(luckyQuery);
+    } catch (err) {
+      console.warn(`[QueryPage] Failed to fetch lucky query: ${err?.message || err}`);
+    }
+  };
+
   return (
     <div className="query-page">
       {/* Main Content */}
@@ -689,14 +703,8 @@ export default function QueryPage() {
                   <button
                     type="button"
                     className="search-button"
-                    disabled={false}
-                    onClick={(e) => {
-                      const luckyQuery = getFeelingLuckyQuery();
-                      // Submit a preset query immediately without waiting for state update
-                      handleSubmit(e, false, luckyQuery);
-                      // also update the input so the user sees the selected query
-                      setQuery(luckyQuery);
-                    }}
+                    disabled={loading || authLoading}
+                    onClick={handleFeelingLuckyClick}
                     title={"I'm feeling lucky"}
                   >
                     {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="dice" ariaLabel="I'm feeling lucky" />}
