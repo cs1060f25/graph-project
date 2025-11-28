@@ -5,6 +5,7 @@ import { runFolderTests } from "./testFolders.js";
 import { runPapersTests } from "./testPapers.js";
 import { runSubscriptionTests } from "./testSubscriptions.js";
 import { runUserTests } from "./testUser.js";
+import { runQueryHistoryTests } from "./testQueryHistory.js";
 
 /**
  * Run all test suites
@@ -22,7 +23,8 @@ async function runAllTests() {
     { name: "Folder Tests", runner: runFolderTests },
     { name: "Papers Tests", runner: runPapersTests },
     { name: "Subscription Tests", runner: runSubscriptionTests },
-    { name: "User Data Tests", runner: runUserTests }
+    { name: "User Data Tests", runner: runUserTests },
+    { name: "Query History Tests", runner: runQueryHistoryTests }
   ];
   
   for (const suite of testSuites) {
@@ -69,14 +71,16 @@ async function runSpecificTest(suiteName) {
     "folders": runFolderTests,
     "papers": runPapersTests,
     "subscriptions": runSubscriptionTests,
-    "user": runUserTests
+    "user": runUserTests,
+    "queryhistory": runQueryHistoryTests,
+    "history": runQueryHistoryTests
   };
   
   const runner = testSuites[suiteName.toLowerCase()];
   
   if (!runner) {
     console.error(`❌ Unknown test suite: ${suiteName}`);
-    console.log("Available test suites: folders, papers, subscriptions, user");
+    console.log("Available test suites: folders, papers, subscriptions, user, queryhistory (or history)");
     process.exit(1);
   }
   
