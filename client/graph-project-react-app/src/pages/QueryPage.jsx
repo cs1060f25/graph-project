@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import './QueryPage.css';
 import { userApi } from '../services/userApi';
+import { getFeelingLuckyQuery } from '../utils/feelingLuckyGenerator';
 
 export default function QueryPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -690,10 +691,11 @@ export default function QueryPage() {
                     className="search-button"
                     disabled={false}
                     onClick={(e) => {
+                      const luckyQuery = getFeelingLuckyQuery();
                       // Submit a preset query immediately without waiting for state update
-                      handleSubmit(e, false, 'machine learning');
+                      handleSubmit(e, false, luckyQuery);
                       // also update the input so the user sees the selected query
-                      setQuery('machine learning');
+                      setQuery(luckyQuery);
                     }}
                     title={"I'm feeling lucky"}
                   >
