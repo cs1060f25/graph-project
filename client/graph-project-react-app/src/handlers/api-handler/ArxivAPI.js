@@ -18,8 +18,8 @@ import { XMLParser } from "fast-xml-parser";
 
 export default class ArxivAPI {
   constructor({ rateLimitMs = 1000, defaultMaxResults = 10 } = {}) {
-    // Use env variable or default to localhost:5000
-    const apiBaseUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
+    // Use env variable or default to localhost:5001
+    const apiBaseUrl = process.env.REACT_APP_API_URL || "http://localhost:5001";
     this.baseUrl = `${apiBaseUrl}/api/arxiv`;
     this.rateLimitMs = rateLimitMs; // Delay between requests in ms
     this.defaultMaxResults = defaultMaxResults;
