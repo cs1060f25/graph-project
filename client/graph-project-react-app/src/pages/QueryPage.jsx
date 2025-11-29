@@ -21,6 +21,13 @@ import { useAuth } from '../contexts/AuthContext';
 import './QueryPage.css';
 import { userApi } from '../services/userApi';
 
+// Helper for consistent query comparisons
+const normalizeQueryText = (text) =>
+  (text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
 export default function QueryPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -194,6 +201,46 @@ export default function QueryPage() {
       queries = validation.queries || [query.trim()];
     }
 
+    // 1) Dedupe within this batch of queries (e.g., "qc; qc")
+    const seenInBatch = new Set();
+    const batchUniqueQueries = [];
+    for (const q of queries) {
+      const key = normalizeQueryText(q);
+      if (seenInBatch.has(key)) continue;
+      seenInBatch.add(key);
+      batchUniqueQueries.push(q);
+    }
+    queries = batchUniqueQueries;
+
+    // 2) If not a retry, skip queries that are already active in queryGraphs
+    if (!retry) {
+      const existingKeys = new Set(
+        queryGraphs.map(qg =>
+          normalizeQueryText(qg.query || qg.label || qg.queryText)
+        )
+      );
+
+      const newQueries = [];
+      for (const q of queries) {
+        const key = normalizeQueryText(q);
+        if (existingKeys.has(key)) {
+          console.log('[QueryPage] Skipping duplicate active query:', q);
+          continue;
+        }
+        existingKeys.add(key);
+        newQueries.push(q);
+      }
+
+      // If nothing new, just stop (no extra chip, no extra color)
+      if (newQueries.length === 0) {
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      queries = newQueries;
+    }
+
     if (!retry) {
       setRetryCount(0);
     }
@@ -250,7 +297,7 @@ export default function QueryPage() {
         }
       }
 
-      // Update state with all new query graphs
+      // Update state with all new query graphs (these are already deduped vs existing)
       if (newQueryGraphs.length > 0) {
         setQueryGraphs(prev => [...prev, ...newQueryGraphs]);
         setResults(allResults);
@@ -676,8 +723,8 @@ export default function QueryPage() {
                   <option value="keyword">Keywords</option>
                   <option value="topic">Topic</option>
                 </select>
-                  <div className="search-actions">
-                                    <button 
+                <div className="search-actions">
+                  <button 
                     type="submit" 
                     className="search-button"
                     disabled={loading || !query.trim() || authLoading}
@@ -708,7 +755,6 @@ export default function QueryPage() {
                     <Icon name="book" ariaLabel="History" />
                   </button>
                 </div>
-
               </div>
               {error && retryCount > 0 && (
                 <div className="retry-info">
