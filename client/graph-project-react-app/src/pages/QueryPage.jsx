@@ -21,13 +21,6 @@ import { useAuth } from '../contexts/AuthContext';
 import './QueryPage.css';
 import { userApi } from '../services/userApi';
 
-// Helper for consistent query comparisons
-const normalizeQueryText = (text) =>
-  (text || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-
 export default function QueryPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -146,6 +139,27 @@ export default function QueryPage() {
     return queries;
   };
 
+  // ✅ New helper: handle example-chip click by APPENDING instead of overwriting
+  const handleExampleQueryClick = (exampleQuery) => {
+    setQuery((prev) => {
+      const trimmed = (prev || '').trim();
+      if (!trimmed) {
+        return exampleQuery;
+      }
+
+      // Use the same parsing logic as the rest of the page
+      const existing = parseMultipleQueries(trimmed).map(q => q.toLowerCase());
+      const lowerExample = exampleQuery.toLowerCase();
+
+      // Avoid adding duplicates
+      if (existing.includes(lowerExample)) {
+        return trimmed;
+      }
+
+      return `${trimmed}; ${exampleQuery}`;
+    });
+  };
+
   // Validate query input (GRAPH-60 enhancement)
   const validateQuery = (queryText) => {
     if (!queryText || !queryText.trim()) {
@@ -199,46 +213,6 @@ export default function QueryPage() {
       }
 
       queries = validation.queries || [query.trim()];
-    }
-
-    // 1) Dedupe within this batch of queries (e.g., "qc; qc")
-    const seenInBatch = new Set();
-    const batchUniqueQueries = [];
-    for (const q of queries) {
-      const key = normalizeQueryText(q);
-      if (seenInBatch.has(key)) continue;
-      seenInBatch.add(key);
-      batchUniqueQueries.push(q);
-    }
-    queries = batchUniqueQueries;
-
-    // 2) If not a retry, skip queries that are already active in queryGraphs
-    if (!retry) {
-      const existingKeys = new Set(
-        queryGraphs.map(qg =>
-          normalizeQueryText(qg.query || qg.label || qg.queryText)
-        )
-      );
-
-      const newQueries = [];
-      for (const q of queries) {
-        const key = normalizeQueryText(q);
-        if (existingKeys.has(key)) {
-          console.log('[QueryPage] Skipping duplicate active query:', q);
-          continue;
-        }
-        existingKeys.add(key);
-        newQueries.push(q);
-      }
-
-      // If nothing new, just stop (no extra chip, no extra color)
-      if (newQueries.length === 0) {
-        setLoading(false);
-        setError(null);
-        return;
-      }
-
-      queries = newQueries;
     }
 
     if (!retry) {
@@ -297,9 +271,22 @@ export default function QueryPage() {
         }
       }
 
-      // Update state with all new query graphs (these are already deduped vs existing)
+      // Update state with all new query graphs
       if (newQueryGraphs.length > 0) {
-        setQueryGraphs(prev => [...prev, ...newQueryGraphs]);
+        setQueryGraphs(prev => {
+          console.log('[QueryPage DEBUG] Existing queries:', prev.map(g => g.query || g.label || g.queryText));
+          console.log('[QueryPage DEBUG] New queries:', newQueryGraphs.map(g => g.query || g.label || g.queryText));
+      
+          const next = [...prev, ...newQueryGraphs];
+      
+          console.log(
+            '[QueryPage DEBUG] Combined queries:',
+            next.map(g => g.query || g.label || g.queryText)
+          );
+      
+          return next;
+        });
+      
         setResults(allResults);
         setRetryCount(0);
 
@@ -921,19 +908,19 @@ export default function QueryPage() {
                 <div className="example-list">
                   <button 
                     className="example-query"
-                    onClick={() => setQuery('machine learning')}
+                    onClick={() => handleExampleQueryClick('machine learning')}
                   >
                     machine learning
                   </button>
                   <button 
                     className="example-query"
-                    onClick={() => setQuery('artificial intelligence')}
+                    onClick={() => handleExampleQueryClick('artificial intelligence')}
                   >
                     artificial intelligence
                   </button>
                   <button 
                     className="example-query"
-                    onClick={() => setQuery('quantum computing')}
+                    onClick={() => handleExampleQueryClick('quantum computing')}
                   >
                     quantum computing
                   </button>
