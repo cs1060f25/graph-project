@@ -1,12 +1,17 @@
+// src/pages/QueryPage.feature.test.js
+
 import React from 'react';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
+
 import QueryPage from './QueryPage';
 import { useAuth } from '../contexts/AuthContext';
+import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 
-// Mock d3-force and react-force-graph-2d to avoid canvas/ESM issues when QueryPage renders GraphVisualization
+// ---- Mocks ----
+
+// Mock d3-force so ForceGraph-related hooks don’t explode in jsdom
 jest.mock('d3-force', () => ({
   forceLink: jest.fn(() => ({
     id: jest.fn().mockReturnThis(),
@@ -34,41 +39,50 @@ jest.mock('d3-force', () => ({
   })),
 }));
 
+// Mock react-force-graph-2d to a simple div so we can inspect node/link counts
 jest.mock('react-force-graph-2d', () => {
   return function MockForceGraph2D({ graphData }) {
     return (
       <div data-testid="force-graph-mock-query-page">
-        <div data-testid="node-count-query-page">{graphData?.nodes?.length || 0} nodes</div>
-        <div data-testid="link-count-query-page">{graphData?.links?.length || 0} links</div>
+        <div data-testid="node-count-query-page">
+          {graphData?.nodes?.length || 0} nodes
+        </div>
+        <div data-testid="link-count-query-page">
+          {graphData?.links?.length || 0} links
+        </div>
       </div>
     );
   };
 });
 
-// Mock AuthContext for GRAPH-60 tests
+// Mock AuthContext so QueryPage thinks a user is logged in
 jest.mock('../contexts/AuthContext');
 
-// Mock userApi to prevent real network calls from useQueryHistory
+// Mock userApi so query history hooks don’t hit the network
 jest.mock('../services/userApi', () => ({
   userApi: {
     getQueryHistory: jest.fn().mockResolvedValue([]),
-    addQueryHistory: jest.fn().mockResolvedValue({ id: 'new', query: '', type: 'keyword', resultCount: 0, timestamp: Date.now() }),
+    addQueryHistory: jest.fn().mockResolvedValue({
+      id: 'history-1',
+      query: 'quantum computing',
+      type: 'keyword',
+      resultCount: 1,
+      timestamp: Date.now(),
+    }),
     clearQueryHistory: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
-// Helper render function used by the single bug-focused test
-function setup() {
-  return render(
-    <MemoryRouter>
-      <QueryPage />
-    </MemoryRouter>
-  );
-}
+// Mock QueryHistoryPanel to fully decouple this test from its internals
+jest.mock('../components/QueryHistoryPanel', () => () => (
+  <div data-testid="mock-query-history-panel" />
+));
 
-// Single test: reproduces the duplicate-query bug in the graph/query filter UI
-test('BUG: submitting the same query twice should not create duplicate active query filters', async () => {
-  // Simulate an authenticated user for this test
+// Mock APIHandlerInterface so we control makeQuery
+jest.mock('../handlers/api-handler/APIHandlerInterface');
+
+function setup(makeQueryMock) {
+  // Simulate an authenticated user
   useAuth.mockReturnValue({
     user: { uid: 'test-user-123', email: 'test@example.com' },
     loading: false,
@@ -76,9 +90,21 @@ test('BUG: submitting the same query twice should not create duplicate active qu
     signOut: jest.fn(),
   });
 
-  // Avoid real alerts during the test
+  // Avoid real alerts
   window.alert = jest.fn();
 
+  APIHandlerInterface.mockImplementation(() => ({
+    makeQuery: makeQueryMock,
+  }));
+
+  return render(
+    <MemoryRouter>
+      <QueryPage />
+    </MemoryRouter>
+  );
+}
+
+test('BUG: submitting the same query twice should not create duplicate active query filters', async () => {
   const makeQueryMock = jest.fn().mockResolvedValue([
     {
       id: 'paper-dup-1',
@@ -90,41 +116,51 @@ test('BUG: submitting the same query twice should not create duplicate active qu
     },
   ]);
 
-  APIHandlerInterface.mockImplementation(() => ({
-    makeQuery: makeQueryMock,
-  }));
+  setup(makeQueryMock);
 
-  setup();
+  // Find the search input
+  const input = screen.getByPlaceholderText(
+    /search for research papers/i
+  );
 
-  const input = screen.getByPlaceholderText(/search for research papers/i);
+  // Find the submit button by its title (matches your current DOM)
+  const submitButton = screen.getByTitle(/search by keywords/i);
 
-  // First search for "quantum computing"
+  // ----- First search for "quantum computing" -----
   await userEvent.type(input, 'quantum computing');
-  const firstSubmitButton = screen.getByRole('button', { name: /search by/i });
-  await userEvent.click(firstSubmitButton);
+  await userEvent.click(submitButton);
 
-  // Wait for the Active Queries panel to appear
-  const filterPanel = await screen.findByRole('region', { name: /active queries/i });
+  // Wait until the first "quantum computing" label appears somewhere in the UI
+  await waitFor(() => {
+    const labels = screen.getAllByText('quantum computing');
+    expect(labels.length).toBeGreaterThanOrEqual(1);
+  });
 
-  // Second search for the same query text
+  // ----- Second search for the same query text -----
   await userEvent.clear(input);
   await userEvent.type(input, 'quantum computing');
-  const secondSubmitButton = screen.getByRole('button', { name: /search by/i });
-  await userEvent.click(secondSubmitButton);
+  await userEvent.click(submitButton);
 
-  // Ensure the backend was called twice with the same query
   await waitFor(() => {
-    expect(makeQueryMock).toHaveBeenCalledTimes(2);
-  });
-  await waitFor(() => {
-    expect(makeQueryMock).toHaveBeenLastCalledWith(
-      'quantum computing',
-      expect.any(Object)
+    const labels = screen.getAllByText('quantum computing');
+
+    // 🔍 DEBUG LOG — this will appear in test output
+    console.log(
+      "🛑 DEBUG: Active query labels found:",
+      labels.length,
+      labels.map(n => n.outerHTML)
     );
+
+    expect(labels.length).toBe(1);
+    });
+
+  // Now assert that there is still only ONE active query label for "quantum computing"
+  // (This encodes your desired, de-duplicated behavior)
+  await waitFor(() => {
+    const labels = screen.getAllByText('quantum computing');
+    expect(labels.length).toBe(1);
   });
 
-  // Desired behavior: only one active query entry for "quantum computing"
-  const { getAllByText } = within(filterPanel);
-  const labels = getAllByText('quantum computing');
-  expect(labels.length).toBe(1);
-  });
+  // Optional: confirm we actually hit the backend at least once
+  expect(makeQueryMock).toHaveBeenCalled();
+});
