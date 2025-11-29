@@ -139,27 +139,6 @@ export default function QueryPage() {
     return queries;
   };
 
-  // ✅ New helper: handle example-chip click by APPENDING instead of overwriting
-  const handleExampleQueryClick = (exampleQuery) => {
-    setQuery((prev) => {
-      const trimmed = (prev || '').trim();
-      if (!trimmed) {
-        return exampleQuery;
-      }
-
-      // Use the same parsing logic as the rest of the page
-      const existing = parseMultipleQueries(trimmed).map(q => q.toLowerCase());
-      const lowerExample = exampleQuery.toLowerCase();
-
-      // Avoid adding duplicates
-      if (existing.includes(lowerExample)) {
-        return trimmed;
-      }
-
-      return `${trimmed}; ${exampleQuery}`;
-    });
-  };
-
   // Validate query input (GRAPH-60 enhancement)
   const validateQuery = (queryText) => {
     if (!queryText || !queryText.trim()) {
@@ -179,6 +158,33 @@ export default function QueryPage() {
     }
     
     return { valid: true, queries };
+  };
+
+  // 🔹 Helper: append a topic (chip) to the existing query input instead of overwriting
+  const appendQueryTopic = (topic) => {
+    const normalizedTopic = topic.trim();
+    if (!normalizedTopic) return;
+
+    setQuery(prev => {
+      if (!prev || !prev.trim()) {
+        return normalizedTopic;
+      }
+
+      // Use same parsing logic to avoid weird spacing / delimiter issues
+      const existing = parseMultipleQueries(prev);
+      const alreadyHas = existing.some(
+        q => q.toLowerCase() === normalizedTopic.toLowerCase()
+      );
+
+      if (alreadyHas) {
+        // No need to add duplicates; keep as-is
+        return prev;
+      }
+
+      // Append with a semicolon (your tests expect `;` as the separator)
+      const cleanedPrev = prev.trim().replace(/[;,]\s*$/, '');
+      return `${cleanedPrev}; ${normalizedTopic}`;
+    });
   };
 
   // Enhanced error handling with retry logic (GRAPH-60 enhancement)
@@ -274,17 +280,50 @@ export default function QueryPage() {
       // Update state with all new query graphs
       if (newQueryGraphs.length > 0) {
         setQueryGraphs(prev => {
-          console.log('[QueryPage DEBUG] Existing queries:', prev.map(g => g.query || g.label || g.queryText));
-          console.log('[QueryPage DEBUG] New queries:', newQueryGraphs.map(g => g.query || g.label || g.queryText));
-      
-          const next = [...prev, ...newQueryGraphs];
-      
-          console.log(
-            '[QueryPage DEBUG] Combined queries:',
-            next.map(g => g.query || g.label || g.queryText)
+          const normalizeLabel = (g) =>
+            (g.query || g.label || g.queryText || g.rawQuery || '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+          const existingLabels = new Set(
+            prev
+              .map(normalizeLabel)
+              .filter(Boolean)
           );
-      
-          return next;
+
+          console.log(
+            '[QueryPage DEBUG] Existing queries:',
+            prev.map(g => g.query || g.label || g.queryText)
+          );
+          console.log(
+            '[QueryPage DEBUG] New queries (raw):',
+            newQueryGraphs.map(g => g.query || g.label || g.queryText)
+          );
+
+          const merged = [...prev];
+
+          for (const g of newQueryGraphs) {
+            const key = normalizeLabel(g);
+            if (key && existingLabels.has(key)) {
+              console.log(
+                '[QueryPage DEBUG] Skipping duplicate query graph for:',
+                key
+              );
+              continue;
+            }
+            if (key) {
+              existingLabels.add(key);
+            }
+            merged.push(g);
+          }
+
+          console.log(
+            '[QueryPage DEBUG] Combined (deduped) queries:',
+            merged.map(g => g.query || g.label || g.queryText)
+          );
+
+          return merged;
         });
       
         setResults(allResults);
@@ -742,6 +781,7 @@ export default function QueryPage() {
                     <Icon name="book" ariaLabel="History" />
                   </button>
                 </div>
+
               </div>
               {error && retryCount > 0 && (
                 <div className="retry-info">
@@ -908,19 +948,19 @@ export default function QueryPage() {
                 <div className="example-list">
                   <button 
                     className="example-query"
-                    onClick={() => handleExampleQueryClick('machine learning')}
+                    onClick={() => appendQueryTopic('machine learning')}
                   >
                     machine learning
                   </button>
                   <button 
                     className="example-query"
-                    onClick={() => handleExampleQueryClick('artificial intelligence')}
+                    onClick={() => appendQueryTopic('artificial intelligence')}
                   >
                     artificial intelligence
                   </button>
                   <button 
                     className="example-query"
-                    onClick={() => handleExampleQueryClick('quantum computing')}
+                    onClick={() => appendQueryTopic('quantum computing')}
                   >
                     quantum computing
                   </button>
