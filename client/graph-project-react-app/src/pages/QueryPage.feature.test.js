@@ -104,6 +104,28 @@ function setup(makeQueryMock) {
   );
 }
 
+test('allows selecting author query type and routes search as author', async () => {
+  const makeQueryMock = jest.fn().mockResolvedValue([]);
+
+  setup(makeQueryMock);
+
+  const queryTypeSelector = screen.getByTitle(/search type/i);
+  await userEvent.selectOptions(queryTypeSelector, 'author');
+
+  const input = screen.getByPlaceholderText(/search for research papers/i);
+  await userEvent.type(input, 'Yann LeCun');
+
+  const submitButton = screen.getByTitle(/search by author/i);
+  await userEvent.click(submitButton);
+
+  await waitFor(() => {
+    expect(makeQueryMock).toHaveBeenCalledWith(
+      'Yann LeCun',
+      expect.objectContaining({ type: 'author' })
+    );
+  });
+});
+
 test('BUG: submitting the same query twice should not create duplicate active query filters', async () => {
   const makeQueryMock = jest.fn().mockResolvedValue([
     {

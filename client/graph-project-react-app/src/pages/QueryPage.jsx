@@ -10,7 +10,7 @@ import QueryFilterPanel from '../components/QueryFilterPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
 import GraphVisualization from '../components/GraphVisualization';
 import { transformPapersToGraph } from '../utils/graphDataTransformer';
-import { fetchNextLayer, createLayerLinks } from '../utils/graphLayerHelper';
+import { fetchNextLayer, createLayerLinks, fetchAdditionalAuthorPapers } from '../utils/graphLayerHelper';
 import { 
   createQueryGraph, 
   mergeQueryGraphs, 
@@ -50,6 +50,13 @@ export default function QueryPage() {
 
   // Initialize API handler
   const apiHandler = useRef(new APIHandlerInterface({ maxResults: 10 })).current;
+  const normalizeAuthorName = (name) => (name || '').trim().toLowerCase();
+  const paperMatchesAuthor = (paper, authorName) => {
+    const normalized = normalizeAuthorName(authorName);
+    if (!normalized) return false;
+    const authorList = Array.isArray(paper?.authors) ? paper.authors : [];
+    return authorList.some(author => normalizeAuthorName(author).includes(normalized));
+  };
 
   // Query history hook
   const {
@@ -271,12 +278,14 @@ export default function QueryPage() {
               layerPapers: { 1: layerOnePapers },
               currentDepth: Math.min(existingGraph.currentDepth || 1, desiredLayerDepth || 1),
               visible: true,
+              queryType,
             };
           } else {
             const newQueryGraph = createQueryGraph(
               queryText,
               layerOnePapers,
-              updatedQueryGraphs.length
+              updatedQueryGraphs.length,
+              queryType
             );
             updatedQueryGraphs = [...updatedQueryGraphs, newQueryGraph];
           }
@@ -516,6 +525,12 @@ export default function QueryPage() {
                   allExistingPapers.push(...updatedLayerPapers[layer]);
                 }
               }
+              const allExistingPapersFlat = [];
+              Object.values(updatedLayerPapers).forEach(layerEntries => {
+                if (Array.isArray(layerEntries)) {
+                  allExistingPapersFlat.push(...layerEntries);
+                }
+              });
 
               // Calculate how many papers we need for this layer
               const currentCount = allExistingPapers.length;
@@ -529,35 +544,71 @@ export default function QueryPage() {
                 continue;
               }
 
-              // Fetch next layer papers
-              const maxPerPaper = Math.ceil(needed / Math.max(1, previousLayerPapers.length));
-              const newPapers = await fetchNextLayer(
-                previousLayerPapers,
-                allExistingPapers,
-                apiHandler,
-                Math.max(1, Math.min(maxPerPaper, 5))
-              );
+              let remainingNeeded = needed;
+              const nextLayerPapers = [];
 
-              // Limit to exactly what we need
-              const limitedPapers = newPapers.slice(0, needed);
+              if (remainingNeeded > 0 && queryGraph.queryType === 'author') {
+                const authorName = queryGraph.fullLabel || queryGraph.label || '';
+                const authorPapers = await fetchAdditionalAuthorPapers(
+                  authorName,
+                  allExistingPapersFlat,
+                  apiHandler,
+                  remainingNeeded
+                );
 
-              if (limitedPapers.length === 0) {
+                if (authorPapers.length > 0) {
+                  const anchorPaper =
+                    allExistingPapersFlat.find(p => paperMatchesAuthor(p, authorName)) ||
+                    allExistingPapersFlat[0] ||
+                    previousLayerPapers[0] ||
+                    null;
+                  const anchorId = anchorPaper?.id;
+
+                  nextLayerPapers.push(
+                    ...authorPapers.map(paper => ({
+                      ...paper,
+                      layer: nextLayer,
+                      relatedTo: anchorId,
+                      isAuthorLayer: true
+                    }))
+                  );
+                  remainingNeeded -= authorPapers.length;
+                }
+              }
+
+              if (remainingNeeded > 0) {
+                const maxPerPaper = Math.ceil(remainingNeeded / Math.max(1, previousLayerPapers.length));
+                const newPapers = await fetchNextLayer(
+                  previousLayerPapers,
+                  allExistingPapers,
+                  apiHandler,
+                  Math.max(1, Math.min(maxPerPaper, 5))
+                );
+
+                const limitedPapers = newPapers.slice(0, remainingNeeded);
+
+                if (limitedPapers.length > 0) {
+                  nextLayerPapers.push(
+                    ...limitedPapers.map(paper => ({
+                      ...paper,
+                      layer: nextLayer
+                    }))
+                  );
+                  remainingNeeded -= limitedPapers.length;
+                }
+              }
+
+              if (nextLayerPapers.length === 0) {
                 console.log(`[QueryPage] No new papers found for query ${queryGraph.id} layer ${nextLayer}`);
                 updatedLayerPapers[nextLayer] = [];
                 nextDepth = nextLayer;
                 continue;
               }
 
-              // Mark new papers with their layer
-              const layerMarkedPapers = limitedPapers.map(paper => ({
-                ...paper,
-                layer: nextLayer
-              }));
-
-              updatedLayerPapers[nextLayer] = layerMarkedPapers;
+              updatedLayerPapers[nextLayer] = nextLayerPapers;
               nextDepth = nextLayer;
 
-              console.log(`[QueryPage] Query ${queryGraph.id} expanded to layer ${nextLayer} with ${layerMarkedPapers.length} papers`);
+              console.log(`[QueryPage] Query ${queryGraph.id} expanded to layer ${nextLayer} with ${nextLayerPapers.length} papers`);
             }
 
             return {
@@ -735,13 +786,20 @@ export default function QueryPage() {
                 >
                   <option value="keyword">Keywords</option>
                   <option value="topic">Topic</option>
+                  <option value="author">Author</option>
                 </select>
                 <div className="search-actions">
                   <button 
                     type="submit" 
                     className="search-button"
                     disabled={loading || !query.trim() || authLoading}
-                    title={queryType === 'keyword' ? 'Search by keywords' : 'Search by topic'}
+                    title={
+                      queryType === 'topic'
+                        ? 'Search by topic'
+                        : queryType === 'author'
+                          ? 'Search by author'
+                          : 'Search by keywords'
+                    }
                   >
                     {loading ? '⏳' : '🔍'}
                   </button>

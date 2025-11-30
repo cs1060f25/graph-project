@@ -26,7 +26,7 @@ export const QUERY_COLOR_PALETTE = [
  * @param {number} index - Index for color assignment
  * @returns {Object} Query graph object
  */
-export function createQueryGraph(queryText, papers, index = 0) {
+export function createQueryGraph(queryText, papers, index = 0, queryType = 'keyword') {
   const color = QUERY_COLOR_PALETTE[index % QUERY_COLOR_PALETTE.length];
   const id = `query-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
@@ -41,6 +41,7 @@ export function createQueryGraph(queryText, papers, index = 0) {
     layerPapers: { 1: papers || [] }, // Initialize with layer 1 papers
     currentDepth: 1, // Current layer depth for this query
     createdAt: new Date().toISOString(),
+    queryType,
   };
 }
 

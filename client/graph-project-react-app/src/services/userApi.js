@@ -3,7 +3,7 @@ import { auth } from '../config/firebase';
 // client/src/services/userApi.js
 // API client for user-related endpoints
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
 
 /**
  * Helper function to make API requests with error handling

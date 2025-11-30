@@ -12,7 +12,7 @@ import { verifyFirebaseToken } from './middleware/auth.js';
 dotenv.config({ override: true });
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
 
 // Middleware
 app.use(cors());
@@ -49,6 +49,8 @@ app.get('/api/arxiv', async (req, res) => {
     let searchQuery;
     if (type === 'topic') {
       searchQuery = `cat:${query}`;
+    } else if (type === 'author') {
+      searchQuery = `au:"${query}"`;
     } else {
       searchQuery = `all:${query}`;
     }
