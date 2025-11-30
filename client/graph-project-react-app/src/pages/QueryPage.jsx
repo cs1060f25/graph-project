@@ -37,6 +37,7 @@ export default function QueryPage() {
 
   // Graph layer expansion state (legacy - kept for backward compatibility)
   const [currentDepth, setCurrentDepth] = useState(1); // Current layer depth (1-3)
+  const [desiredLayerDepth, setDesiredLayerDepth] = useState(1); // Tracks slider selection
   const [layerPapers, setLayerPapers] = useState({}); // Papers organized by layer: { 1: [...], 2: [...], 3: [...] }
   const [expandingLayer, setExpandingLayer] = useState(false); // Loading state for expansion
   
@@ -231,9 +232,11 @@ export default function QueryPage() {
     
     try {
       const userId = isAuthenticated && user?.uid ? user.uid : 'demo-user';
-      const newQueryGraphs = [];
       const allResults = [];
       const errors = [];
+      const normalizeKey = (text) => text?.trim().toLowerCase();
+      let updatedQueryGraphs = [...queryGraphs];
+      let successfulQueries = 0;
 
       // Process each query
       for (const queryText of queries) {
@@ -249,15 +252,34 @@ export default function QueryPage() {
             continue;
           }
 
-          // Create a new query graph for this query
-          const newQueryGraph = createQueryGraph(
-            queryText,
-            searchResults.slice(0, LAYER_LIMITS[1]), // Limit to 10 papers for layer 1
-            queryGraphs.length + newQueryGraphs.length
-          );
-          
-          newQueryGraphs.push(newQueryGraph);
+          const layerOnePapers = searchResults.slice(0, LAYER_LIMITS[1]); // Limit to 10 papers for layer 1
           allResults.push(...searchResults);
+          successfulQueries += 1;
+
+          const key = normalizeKey(queryText);
+          const existingIndex = updatedQueryGraphs.findIndex((graph) => 
+            normalizeKey(graph.fullLabel || graph.label || graph.query || graph.queryText) === key
+          );
+
+          if (existingIndex !== -1) {
+            const existingGraph = updatedQueryGraphs[existingIndex];
+            updatedQueryGraphs[existingIndex] = {
+              ...existingGraph,
+              label: queryText.length > 30 ? `${queryText.substring(0, 30)}...` : queryText,
+              fullLabel: queryText,
+              papers: layerOnePapers,
+              layerPapers: { 1: layerOnePapers },
+              currentDepth: Math.min(existingGraph.currentDepth || 1, desiredLayerDepth || 1),
+              visible: true,
+            };
+          } else {
+            const newQueryGraph = createQueryGraph(
+              queryText,
+              layerOnePapers,
+              updatedQueryGraphs.length
+            );
+            updatedQueryGraphs = [...updatedQueryGraphs, newQueryGraph];
+          }
           
           // Add to database history if authenticated
           if (isAuthenticated) {
@@ -278,54 +300,8 @@ export default function QueryPage() {
       }
 
       // Update state with all new query graphs
-      if (newQueryGraphs.length > 0) {
-        setQueryGraphs(prev => {
-          const normalizeLabel = (g) =>
-            (g.query || g.label || g.queryText || g.rawQuery || '')
-              .toString()
-              .trim()
-              .toLowerCase();
-
-          const existingLabels = new Set(
-            prev
-              .map(normalizeLabel)
-              .filter(Boolean)
-          );
-
-          console.log(
-            '[QueryPage DEBUG] Existing queries:',
-            prev.map(g => g.query || g.label || g.queryText)
-          );
-          console.log(
-            '[QueryPage DEBUG] New queries (raw):',
-            newQueryGraphs.map(g => g.query || g.label || g.queryText)
-          );
-
-          const merged = [...prev];
-
-          for (const g of newQueryGraphs) {
-            const key = normalizeLabel(g);
-            if (key && existingLabels.has(key)) {
-              console.log(
-                '[QueryPage DEBUG] Skipping duplicate query graph for:',
-                key
-              );
-              continue;
-            }
-            if (key) {
-              existingLabels.add(key);
-            }
-            merged.push(g);
-          }
-
-          console.log(
-            '[QueryPage DEBUG] Combined (deduped) queries:',
-            merged.map(g => g.query || g.label || g.queryText)
-          );
-
-          return merged;
-        });
-      
+      if (successfulQueries > 0) {
+        setQueryGraphs(updatedQueryGraphs);
         setResults(allResults);
         setRetryCount(0);
 
@@ -349,8 +325,14 @@ export default function QueryPage() {
           setResults([]);
           setLayerPapers({});
           setCurrentDepth(1);
+          setDesiredLayerDepth(1);
         } else {
           setError(null);
+        }
+
+        // Honor currently selected layer depth for new queries
+        if (desiredLayerDepth > 1) {
+          await expandToLayer(desiredLayerDepth, updatedQueryGraphs);
         }
       } else {
         // All queries failed
@@ -361,6 +343,7 @@ export default function QueryPage() {
         setResults([]);
         setLayerPapers({});
         setCurrentDepth(1);
+        setDesiredLayerDepth(1);
       }
     } catch (err) {
       console.error('Search failed:', err);
@@ -435,6 +418,7 @@ export default function QueryPage() {
     // Reset graph layers
     setLayerPapers({});
     setCurrentDepth(1);
+    setDesiredLayerDepth(1);
   };
 
   /**
@@ -454,6 +438,7 @@ export default function QueryPage() {
       setResults([]);
       setLayerPapers({});
       setCurrentDepth(1);
+      setDesiredLayerDepth(1);
     }
   };
 
@@ -461,7 +446,7 @@ export default function QueryPage() {
    * Expands the graph to a specific layer for all visible query graphs
    * Fetches related papers for all papers in previous layers up to the target layer
    */
-  const expandToLayer = async (targetLayer) => {
+  const expandToLayer = async (targetLayer, graphsOverride = null) => {
     if (targetLayer < 1 || targetLayer > 3) {
       console.warn('[QueryPage] Invalid target layer:', targetLayer);
       return;
@@ -476,10 +461,11 @@ export default function QueryPage() {
     setError(null);
 
     try {
+      const activeQueryGraphs = graphsOverride ?? queryGraphs;
       // If we have query graphs, expand layers for each visible query
-      if (queryGraphs.length > 0) {
+      if (activeQueryGraphs.length > 0) {
         const updatedQueryGraphs = await Promise.all(
-          queryGraphs.map(async (queryGraph) => {
+          activeQueryGraphs.map(async (queryGraph) => {
             if (!queryGraph.visible) {
               // Just update depth for hidden queries without fetching
               return {
@@ -690,6 +676,7 @@ export default function QueryPage() {
    */
   const handleLayerSliderChange = async (e) => {
     const newDepth = parseInt(e.target.value, 10);
+    setDesiredLayerDepth(newDepth);
     await expandToLayer(newDepth);
   };
 
@@ -848,10 +835,7 @@ export default function QueryPage() {
                   <div className="layer-controls">
                     <label htmlFor="layer-slider" className="layer-label">
                       Layer: <span className="layer-value">
-                        {queryGraphs.length > 0 
-                          ? Math.max(...queryGraphs.map(qg => qg.currentDepth || 1))
-                          : currentDepth
-                        }
+                        {queryGraphs.length > 0 ? desiredLayerDepth : currentDepth}
                       </span>
                     </label>
                     <input
@@ -859,17 +843,11 @@ export default function QueryPage() {
                       type="range"
                       min="1"
                       max="3"
-                      value={queryGraphs.length > 0 
-                        ? Math.max(...queryGraphs.map(qg => qg.currentDepth || 1))
-                        : currentDepth
-                      }
+                      value={queryGraphs.length > 0 ? desiredLayerDepth : currentDepth}
                       onChange={handleLayerSliderChange}
                       className="layer-slider"
                       disabled={expandingLayer || loading}
-                      title={`Current layer: ${queryGraphs.length > 0 
-                        ? Math.max(...queryGraphs.map(qg => qg.currentDepth || 1))
-                        : currentDepth
-                      }/3`}
+                      title={`Desired layer: ${(queryGraphs.length > 0 ? desiredLayerDepth : currentDepth)}/3`}
                     />
                     <div className="layer-limits">
                       <span className="layer-limit-text">Limits: 10 / 40 / 80</span>
