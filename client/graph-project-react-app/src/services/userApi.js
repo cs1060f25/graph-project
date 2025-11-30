@@ -299,6 +299,28 @@ export const userApi = {
       headers,
     });
   },
+
+  // ========================================
+  // AI SUMMARY API
+  // ========================================
+
+  /**
+   * Generate AI summary for a paper
+   * Note: This uses frontend Google Generative AI directly
+   * @param {Object} paperData - Paper data
+   * @param {string} paperData.title - Paper title
+   * @param {Array<string>} paperData.authors - List of authors
+   * @param {string} [paperData.summary] - Paper abstract/summary
+   * @param {string} [paperData.abstract] - Paper abstract (alternative)
+   * @param {number} [paperData.year] - Publication year
+   * @param {number} [paperData.citations] - Citation count
+   * @returns {Promise<{success: boolean, summary: string|null, error: string|null}>}
+   */
+  generatePaperSummary: async (paperData) => {
+    // Import dynamically to avoid circular dependencies
+    const { generatePaperSummary } = await import('./aiSummaryService');
+    return generatePaperSummary(paperData);
+  },
 };
 
 // Export individual functions for convenience
@@ -316,6 +338,7 @@ export const {
   createFolder,
   updateFolder,
   deleteFolder,
+  generatePaperSummary,
 } = userApi;
 
 export default userApi;

@@ -2,7 +2,7 @@
 // Main Query Page component with search and graph visualization
 // HW9 GRAPH-60: Enhanced Query Input & API Integration
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon';
 import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
@@ -18,6 +18,8 @@ import {
   removeQueryGraph
 } from '../utils/queryGraphManager';
 import { useAuth } from '../contexts/AuthContext';
+import { usePaperSummaries } from '../hooks/usePaperSummaries';
+import PaperSummary from '../components/PaperSummary';
 import './QueryPage.css';
 import { userApi } from '../services/userApi';
 
@@ -30,7 +32,17 @@ export default function QueryPage() {
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [paperSummary, setPaperSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState(null);
   const queryInputRef = useRef(null);
+
+  // Paper summaries hook
+  const {
+    getSummary,
+    isLoading: isSummaryLoading,
+    getError: getSummaryError
+  } = usePaperSummaries();
 
   // Multi-query graph state
   const [queryGraphs, setQueryGraphs] = useState([]); // Array of query graph objects
@@ -636,6 +648,49 @@ export default function QueryPage() {
     setSelectedNode(node);
   };
 
+  // Generate summary when node is selected
+  useEffect(() => {
+    if (!selectedNode) {
+      setPaperSummary(null);
+      setSummaryLoading(false);
+      setSummaryError(null);
+      return;
+    }
+
+    // Generate summary for selected node
+    const generateSummary = async () => {
+      setSummaryLoading(true);
+      setSummaryError(null);
+      
+      try {
+        const result = await getSummary(selectedNode.id, {
+          title: selectedNode.title,
+          authors: selectedNode.authors,
+          summary: selectedNode.summary,
+          abstract: selectedNode.abstract,
+          year: selectedNode.year,
+          citations: selectedNode.citations || selectedNode.citationCount
+        });
+        
+        if (result.success) {
+          setPaperSummary(result.summary);
+          setSummaryError(null);
+        } else {
+          setPaperSummary(null);
+          setSummaryError(result.error || 'Failed to generate summary');
+        }
+      } catch (err) {
+        console.error('Error generating summary:', err);
+        setPaperSummary(null);
+        setSummaryError(err.message || 'Failed to generate summary');
+      } finally {
+        setSummaryLoading(false);
+      }
+    };
+
+    generateSummary();
+  }, [selectedNode, getSummary]);
+
   const toggleHistory = () => {
     setIsHistoryOpen(!isHistoryOpen);
   };
@@ -859,6 +914,11 @@ export default function QueryPage() {
                     <Icon name="save" ariaLabel="Save paper" />
                     <span style={{ marginLeft: 8 }}>Save Paper</span>
                   </button>
+                  <PaperSummary
+                    summary={paperSummary}
+                    loading={summaryLoading || isSummaryLoading(selectedNode?.id)}
+                    error={summaryError || getSummaryError(selectedNode?.id)}
+                  />
                 </div>
               )}
             </div>
