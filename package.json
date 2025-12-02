@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "install": "(cd client && npm install) && (cd client/graph-project-react-app && npm install) && (cd server && npm install)",
     "start": "concurrently -k -n \"server,client\" -c \"blue,green\" \"npm start --prefix server\" \"npm start --prefix client/graph-project-react-app\""
   },
   "dependencies": {

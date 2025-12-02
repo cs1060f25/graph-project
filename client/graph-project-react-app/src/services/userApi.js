@@ -21,7 +21,19 @@ async function apiRequest(endpoint, options = {}) {
       headers: newHeaders,
     });
 
-    const data = await response.json();
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    
+    // Try to parse JSON, fallback to text if not JSON
+    let data;
+    try {
+      const text = await response.text();
+      data = isJson && text ? JSON.parse(text) : { error: text || 'Unknown error' };
+    } catch (parseError) {
+      console.error(`JSON parse error for ${endpoint}:`, parseError);
+      data = { error: 'Invalid response format' };
+    }
 
     if (!response.ok) {
       throw new Error(data.error || `HTTP error! status: ${response.status}`);
@@ -287,6 +299,27 @@ deleteFolder: async (folderId) => {
   });
   return response;
 },
+  // ========================================
+  // AI SUMMARY API
+  // ========================================
+
+  /**
+   * Generate AI summary for a paper
+   * Note: This uses frontend Google Generative AI directly
+   * @param {Object} paperData - Paper data
+   * @param {string} paperData.title - Paper title
+   * @param {Array<string>} paperData.authors - List of authors
+   * @param {string} [paperData.summary] - Paper abstract/summary
+   * @param {string} [paperData.abstract] - Paper abstract (alternative)
+   * @param {number} [paperData.year] - Publication year
+   * @param {number} [paperData.citations] - Citation count
+   * @returns {Promise<{success: boolean, summary: string|null, error: string|null}>}
+   */
+  generatePaperSummary: async (paperData) => {
+    // Import dynamically to avoid circular dependencies
+    const { generatePaperSummary } = await import('./aiSummaryService');
+    return generatePaperSummary(paperData);
+  },
 };
 
 // Export individual functions for convenience
@@ -304,6 +337,7 @@ export const {
   createFolder,
   updateFolder,
   deleteFolder,
+  generatePaperSummary,
 } = userApi;
 
 export default userApi;

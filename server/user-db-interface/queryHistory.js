@@ -25,15 +25,20 @@ export async function addQueryHistory(uid, queryData) {
     }
 
     const queryHistoryRef = db.collection("users").doc(uid).collection("queryHistory");
-    const docRef = await queryHistoryRef.add({
+    
+    // Prepare the document data
+    const docData = {
       query: queryData.query.trim(),
       type: queryData.type || "keyword",
       resultCount: queryData.resultCount || 0,
       timestamp: Date.now(),
       createdAt: new Date().toISOString()
-    });
+    };
+    
+    const docRef = await queryHistoryRef.add(docData);
 
-    return createResponse(true, { id: docRef.id, ...queryData }, null);
+    // Return the complete saved data including timestamp
+    return createResponse(true, { id: docRef.id, ...docData }, null);
   } catch (error) {
     console.error("Error adding query history:", error);
     return createResponse(false, null, `Failed to add query history: ${error.message}`);
