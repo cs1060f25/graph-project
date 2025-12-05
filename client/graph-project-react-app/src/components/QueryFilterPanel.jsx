@@ -8,19 +8,34 @@
 import React from 'react';
 import './QueryFilterPanel.css';
 
-const QueryFilterPanel = ({ queryGraphs, onToggleVisibility, onRemoveQuery }) => {
+const QueryFilterPanel = ({ 
+  queryGraphs, 
+  onToggleVisibility, 
+  onRemoveQuery,
+  isCollapsed = false,
+  onToggleCollapse
+}) => {
   if (!queryGraphs || queryGraphs.length === 0) {
     return null;
   }
 
   return (
-    <div className="query-filter-panel">
+    <div className={`query-filter-panel ${isCollapsed ? 'panel-collapsed' : ''}`}>
       <div className="filter-panel-header">
+        <button 
+          className="collapse-toggle"
+          onClick={onToggleCollapse}
+          title={isCollapsed ? 'Show Active Queries' : 'Hide Active Queries'}
+          aria-label={isCollapsed ? 'Show Active Queries' : 'Hide Active Queries'}
+          aria-expanded={!isCollapsed}
+        >
+          <span className="collapse-icon">{isCollapsed ? '▶' : '▼'}</span>
+        </button>
         <h3 className="filter-panel-title">Active Queries</h3>
         <span className="query-count">{queryGraphs.length}</span>
       </div>
       
-      <div className="query-list">
+      <div className="query-list" style={{ display: isCollapsed ? 'none' : 'flex' }}>
         {queryGraphs.map((queryGraph) => (
           <div
             key={queryGraph.id}
@@ -58,7 +73,7 @@ const QueryFilterPanel = ({ queryGraphs, onToggleVisibility, onRemoveQuery }) =>
         ))}
       </div>
       
-      {queryGraphs.length > 1 && (
+      {queryGraphs.length > 1 && !isCollapsed && (
         <div className="filter-panel-actions">
           <button
             className="show-all-button"

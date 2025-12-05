@@ -47,6 +47,7 @@ export default function QueryPage() {
 
   // Multi-query graph state
   const [queryGraphs, setQueryGraphs] = useState([]); // Array of query graph objects
+  const [isQueryPanelCollapsed, setIsQueryPanelCollapsed] = useState(false); // Query filter panel visibility
 
   // Graph layer expansion state (legacy - kept for backward compatibility)
   const [currentDepth, setCurrentDepth] = useState(1); // Current layer depth (1-3)
@@ -948,6 +949,8 @@ export default function QueryPage() {
                   queryGraphs={queryGraphs}
                   onToggleVisibility={handleToggleQueryVisibility}
                   onRemoveQuery={handleRemoveQuery}
+                  isCollapsed={isQueryPanelCollapsed}
+                  onToggleCollapse={() => setIsQueryPanelCollapsed(!isQueryPanelCollapsed)}
                 />
               )}
               
