@@ -3,7 +3,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const API_KEY = process.env.REACT_APP_GOOGLE_GENAI_API_KEY;
+const API_KEY = "AIzaSyDxEhaLLIQDGdrA3Um1DbtoKk8aiwVDENw";
 
 /**
  * Generates an AI summary for a research paper

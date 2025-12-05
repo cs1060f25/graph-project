@@ -9,6 +9,7 @@ import {
   updateSavedPaper,
   deleteSavedPaper,
   getUserData,
+  updateUserPaperReadStatus,
   addQueryHistory,
   getQueryHistory,
   clearQueryHistory
@@ -62,6 +63,18 @@ router.patch('/papers/:paperId', async (req, res) => {
     const { paperId } = req.params;
     const updateData = req.body; // { starred, folderId, title, etc. }
     const result = await updateSavedPaper(req.uid, paperId, updateData);
+    res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PATCH /api/user/papers/:paperId/status - Update paper reading status
+router.patch('/papers/:paperId/status', async (req, res) => {
+  try {
+    const { paperId } = req.params;
+    const { readStatus } = req.body;
+    const result = await updateUserPaperReadStatus(req.uid, paperId, readStatus);
     res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

@@ -7,6 +7,7 @@ export { addSavedPaper, getSavedPapers, updateSavedPaper, deleteSavedPaper } fro
 export { subscribeToFolders, subscribeToSavedPapers } from './subscriptions.js';
 export { getUserData } from './user.js';
 export { addQueryHistory, getQueryHistory, clearQueryHistory } from './queryHistory.js';
+export { updateUserPaperReadStatus } from './papers.js';
 
 // Export utility functions for external use
 export { createResponse, validateUserId, validatePaperData, validatePaperUpdate, validateFolderName, validateCallback } from './utils.js';

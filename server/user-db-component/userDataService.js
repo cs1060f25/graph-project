@@ -82,3 +82,34 @@ export async function updatePreferences(uid, prefs) {
   const userRef = db.collection("users").doc(uid);
   await userRef.update({ preferences: prefs });
 }
+
+
+export async function updatePaperReadStatus(uid, paperId, readStatus) {
+  // Input validation
+  if (!uid || typeof uid !== 'string' || uid.trim().length === 0) {
+    throw new Error('User ID is required and must be a non-empty string');
+  }
+  
+  if (!paperId || typeof paperId !== 'string' || paperId.trim().length === 0) {
+    throw new Error('Paper ID is required and must be a non-empty string');
+  }
+  
+  const validStatuses = ['unread', 'reading', 'read'];
+  if (!validStatuses.includes(readStatus)) {
+    throw new Error('Invalid read status. Must be: unread, reading, or read');
+  }
+
+  const paperRef = db.collection("users").doc(uid).collection("papers").doc(paperId);
+  
+  const updateData = {
+    readStatus,
+    lastReadDate: Date.now()
+  };
+  
+  await paperRef.update(updateData);
+  
+  return {
+    id: paperId,
+    ...updateData
+  };
+}

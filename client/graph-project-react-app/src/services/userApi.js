@@ -299,6 +299,22 @@ deleteFolder: async (folderId) => {
   });
   return response;
 },
+
+/**
+ * Update paper reading status
+ * @param {string} paperId - Paper ID
+ * @param {string} readStatus - Reading status (unread, reading, read)
+ * @returns {Promise<Object>} Response object
+ */
+updatePaperReadStatus: async (paperId, readStatus) => {
+  const headers = await getAuthHeaders();
+  const response = await apiRequest(`/api/user/papers/${paperId}/status`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ readStatus }),
+  });
+  return response;
+},
   // ========================================
   // AI SUMMARY API
   // ========================================
@@ -337,6 +353,7 @@ export const {
   createFolder,
   updateFolder,
   deleteFolder,
+  updatePaperReadStatus,
   generatePaperSummary,
 } = userApi;
 

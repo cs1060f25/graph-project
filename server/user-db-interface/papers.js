@@ -3,6 +3,7 @@
 
 import { db } from "../user-db-component/firebaseConfig.js";
 import { createResponse, validateUserId, validatePaperData, validatePaperUpdate } from "./utils.js";
+import { updatePaperReadStatus } from "../user-db-component/userDataService.js";
 
 /**
  * Adds a paper to the user's saved papers collection
@@ -144,5 +145,27 @@ export async function getSavedPapers(uid) {
   } catch (error) {
     console.error("Error getting saved papers:", error);
     return createResponse(false, null, `Failed to get saved papers: ${error.message}`);
+  }
+}
+
+
+/** * Updates the read status of a saved paper
+ * @param {string} uid - User ID
+ * @param {string} paperId - Paper ID
+ * @param {string} readStatus - New read status
+ * @returns {Promise<Object>} Standardized response with updated paper data
+ */
+export async function updateUserPaperReadStatus(uid, paperId, readStatus) {
+  try {
+    const validation = validateUserId(uid);
+    if (!validation.isValid) {
+      return createResponse(false, null, validation.error);
+    }
+
+    const result = await updatePaperReadStatus(uid, paperId, readStatus);
+    return createResponse(true, result, null);
+  } catch (error) {
+    console.error("Error updating paper read status:", error);
+    return createResponse(false, null, `Failed to update read status: ${error.message}`);
   }
 }

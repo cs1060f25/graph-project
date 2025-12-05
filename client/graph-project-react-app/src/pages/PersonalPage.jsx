@@ -27,6 +27,7 @@ export default function PersonalPage() {
     getFilteredPapers,
     getPaperCountForFolder,
     clearError,
+    updateReadStatus,
   } = useSavedPapers();
 
   const [filterMode, setFilterMode] = useState('all'); // 'all', 'starred'
@@ -36,6 +37,7 @@ export default function PersonalPage() {
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [readStatusFilter, setReadStatusFilter] = useState('all'); // 'all', 'unread', 'reading', 'read'
 
   // Get filtered and searched papers
   const getDisplayedPapers = () => {
@@ -49,6 +51,14 @@ export default function PersonalPage() {
     // Handle undefined/null case (defensive programming)
     if (!Array.isArray(filtered)) {
       return [];
+    }
+
+    // Apply read status filter
+    if (readStatusFilter !== 'all') {
+      filtered = filtered.filter(p => {
+        const status = p?.readStatus || 'unread';
+        return status === readStatusFilter;
+      });
     }
 
     // Apply search
@@ -83,27 +93,24 @@ export default function PersonalPage() {
   };
 
   const handleDeleteFolder = (folder) => {
-  setFolderToDelete(folder);
-  setShowDeleteFolderModal(true);
-};
+    setFolderToDelete(folder);
+    setShowDeleteFolderModal(true);
+  };
 
   const confirmDeleteFolder = async () => {
-  if (!folderToDelete) return;
-  
-  try {
-    await deleteFolder(folderToDelete.id);
-    // Success! Close modal and clear state
-    setShowDeleteFolderModal(false);
-    setFolderToDelete(null);
-  } catch (err) {
-    // Error is already handled in useSavedPapers hook
-    // Modal stays open so user can see the error and try again or cancel
-    console.error('Failed to delete folder:', err);
-    // Optionally close the modal even on error:
-    // setShowDeleteFolderModal(false);
-    // setFolderToDelete(null);
-  }
-};
+    if (!folderToDelete) return;
+    
+    try {
+      await deleteFolder(folderToDelete.id);
+      // Success! Close modal and clear state
+      setShowDeleteFolderModal(false);
+      setFolderToDelete(null);
+    } catch (err) {
+      // Error is already handled in useSavedPapers hook
+      // Modal stays open so user can see the error and try again or cancel
+      console.error('Failed to delete folder:', err);
+    }
+  };
 
   // Handle logout
   const handleLogout = async () => {
@@ -183,6 +190,49 @@ export default function PersonalPage() {
             </button>
           </div>
 
+          {/* Reading Status Filters */}
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Reading Status</h3>
+            <button
+              className={`filter-btn ${readStatusFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setReadStatusFilter('all')}
+            >
+              <span className="filter-icon">📚</span>
+              <span style={{ marginLeft: 8 }}>All</span>
+              <span className="filter-count">{Array.isArray(papers) ? papers.length : 0}</span>
+            </button>
+            <button
+              className={`filter-btn ${readStatusFilter === 'unread' ? 'active' : ''}`}
+              onClick={() => setReadStatusFilter('unread')}
+            >
+              <span className="filter-icon">📄</span>
+              <span style={{ marginLeft: 8 }}>Unread</span>
+              <span className="filter-count">
+                {Array.isArray(papers) ? papers.filter(p => !p?.readStatus || p?.readStatus === 'unread').length : 0}
+              </span>
+            </button>
+            <button
+              className={`filter-btn ${readStatusFilter === 'reading' ? 'active' : ''}`}
+              onClick={() => setReadStatusFilter('reading')}
+            >
+              <span className="filter-icon">📖</span>
+              <span style={{ marginLeft: 8 }}>Reading</span>
+              <span className="filter-count">
+                {Array.isArray(papers) ? papers.filter(p => p?.readStatus === 'reading').length : 0}
+              </span>
+            </button>
+            <button
+              className={`filter-btn ${readStatusFilter === 'read' ? 'active' : ''}`}
+              onClick={() => setReadStatusFilter('read')}
+            >
+              <span className="filter-icon">✓</span>
+              <span style={{ marginLeft: 8 }}>Read</span>
+              <span className="filter-count">
+                {Array.isArray(papers) ? papers.filter(p => p?.readStatus === 'read').length : 0}
+              </span>
+            </button>
+          </div>
+
           {/* Folders */}
           <div className="sidebar-section">
             <div className="sidebar-header">
@@ -200,35 +250,35 @@ export default function PersonalPage() {
               <p className="sidebar-empty">No folders yet</p>
             ) : (
               <div className="folders-list">
-              {folders.map(folder => (
-                <div key={folder.id} className="folder-item">
-                  <button
-                    className={`filter-btn ${selectedFolder === folder.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setFilterMode('folder');
-                      setSelectedFolder(folder.id);
-                    }}
-                  >
-                    <span className="filter-icon">📁</span>
-                    <span className="folder-name">{folder.name}</span>
-                    <span className="filter-count">
-                      {getPaperCountForFolder(folder.id)}
-                    </span>
-                  </button>
-                  <button
-                    className="delete-folder-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteFolder(folder);
-                    }}
-                    title="Delete folder"
-                    aria-label={`Delete folder ${folder.name}`}
-                  >
-                    🗑️
-                  </button>
-                </div>
-              ))}
-            </div>
+                {folders.map(folder => (
+                  <div key={folder.id} className="folder-item">
+                    <button
+                      className={`filter-btn ${selectedFolder === folder.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setFilterMode('folder');
+                        setSelectedFolder(folder.id);
+                      }}
+                    >
+                      <span className="filter-icon">📁</span>
+                      <span className="folder-name">{folder.name}</span>
+                      <span className="filter-count">
+                        {getPaperCountForFolder(folder.id)}
+                      </span>
+                    </button>
+                    <button
+                      className="delete-folder-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFolder(folder);
+                      }}
+                      title="Delete folder"
+                      aria-label={`Delete folder ${folder.name}`}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </aside>
@@ -258,24 +308,24 @@ export default function PersonalPage() {
           {displayedPapers.length === 0 ? (
             <div className="empty-state">
               {!Array.isArray(papers) || papers.length === 0 ? (
-                  <>
-                    <div className="empty-icon"><Icon name="book" ariaLabel="No papers" /></div>
-                    <h2>No papers saved yet</h2>
-                    <p>Start exploring research papers and save them here for later!</p>
-                  </>
-                ) : searchQuery ? (
-                  <>
-                    <div className="empty-icon"><Icon name="search" ariaLabel="No results" /></div>
-                    <h2>No papers found</h2>
-                    <p>Try a different search term</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="empty-icon"><Icon name="folder" ariaLabel="Empty folder" /></div>
-                    <h2>No papers in this view</h2>
-                    <p>Try selecting a different filter or folder</p>
-                  </>
-                )}
+                <>
+                  <div className="empty-icon"><Icon name="book" ariaLabel="No papers" /></div>
+                  <h2>No papers saved yet</h2>
+                  <p>Start exploring research papers and save them here for later!</p>
+                </>
+              ) : searchQuery ? (
+                <>
+                  <div className="empty-icon"><Icon name="search" ariaLabel="No results" /></div>
+                  <h2>No papers found</h2>
+                  <p>Try a different search term</p>
+                </>
+              ) : (
+                <>
+                  <div className="empty-icon"><Icon name="folder" ariaLabel="Empty folder" /></div>
+                  <h2>No papers in this view</h2>
+                  <p>Try selecting a different filter or folder</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="papers-list">
@@ -286,6 +336,7 @@ export default function PersonalPage() {
                   onToggleStar={toggleStar}
                   onRemove={removePaper}
                   onMoveToFolder={movePaperToFolder}
+                  onUpdateReadStatus={updateReadStatus}
                   folders={folders}
                 />
               ))}
@@ -295,7 +346,7 @@ export default function PersonalPage() {
       </div>
 
       {/* New folder modal */}
-          {showNewFolderModal && (
+      {showNewFolderModal && (
         <div className="modal-overlay" onClick={() => setShowNewFolderModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">Create New Folder</h2>
@@ -333,6 +384,7 @@ export default function PersonalPage() {
           </div>
         </div>
       )}
+
       {/* Delete Folder Confirmation Modal */}
       {showDeleteFolderModal && (
         <div className="modal-overlay" onClick={() => setShowDeleteFolderModal(false)}>

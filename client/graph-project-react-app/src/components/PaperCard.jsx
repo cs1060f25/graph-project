@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import Icon from './Icon';
 import './PaperCard.css';
+import ReadingStatusBadge from './ReadingStatusBadge';
+
 
 /**
  * PaperCard Component
@@ -14,6 +16,7 @@ import './PaperCard.css';
  * @param {Function} props.onToggleStar - Callback when star is toggled
  * @param {Function} props.onRemove - Callback when remove is clicked
  * @param {Function} props.onMoveToFolder - Callback when moving to folder
+ * @param {Function} props.onUpdateReadStatus - Callback when read status changes
  * @param {Array} props.folders - List of available folders
  */
 export default function PaperCard({ 
@@ -21,6 +24,7 @@ export default function PaperCard({
   onToggleStar, 
   onRemove,
   onMoveToFolder,
+  onUpdateReadStatus,
   folders = []
 }) {
   const [showActions, setShowActions] = useState(false);
@@ -49,6 +53,12 @@ export default function PaperCard({
     onRemove(paper.id);
   };
 
+  // Handle reading status change
+  const handleStatusChange = (newStatus) => {
+    onUpdateReadStatus(paper.id, newStatus);
+    setShowActions(false);
+  };
+
   return (
     <div className="paper-card">
       {/* Header */}
@@ -56,6 +66,8 @@ export default function PaperCard({
         <div className="paper-card-meta">
           <span className="paper-card-date">{formatDate(paper.createdAt)}</span>
           {paper.starred && <span className="paper-card-badge"><Icon name="star" ariaLabel="Starred" /> <span style={{ marginLeft: 6 }}>Starred</span></span>}
+          {/* Reading status badge */}
+          <ReadingStatusBadge status={paper.readStatus || 'unread'} size="small" />
         </div>
         
         <div className="paper-card-actions">
@@ -79,6 +91,30 @@ export default function PaperCard({
         {/* Actions dropdown */}
         {showActions && (
           <div className="paper-card-dropdown">
+            {/* Reading Status Section */}
+            <div className="dropdown-section">
+              <div className="dropdown-label">Reading Status:</div>
+              <button
+                className="dropdown-item"
+                onClick={() => handleStatusChange('unread')}
+              >
+                📄 Mark as Unread
+              </button>
+              <button
+                className="dropdown-item"
+                onClick={() => handleStatusChange('reading')}
+              >
+                📖 Currently Reading
+              </button>
+              <button
+                className="dropdown-item"
+                onClick={() => handleStatusChange('read')}
+              >
+                ✓ Mark as Read
+              </button>
+            </div>
+
+            {/* Move to Folder Section */}
             {folders.length > 0 && (
               <div className="dropdown-section">
                 <div className="dropdown-label">Move to folder:</div>
@@ -97,6 +133,7 @@ export default function PaperCard({
               </div>
             )}
             
+            {/* Remove Section */}
             <button
               className="dropdown-item danger"
               onClick={() => {

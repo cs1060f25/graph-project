@@ -326,6 +326,51 @@ const deleteFolder = useCallback(async (folderId) => {
   }
 }, [folders, papers, selectedFolder]);
 
+/**
+ * Update paper reading status
+ * @param {string} paperId - Paper ID
+ * @param {string} readStatus - Reading status (unread, reading, read)
+ */
+const updateReadStatus = useCallback(async (paperId, readStatus) => {
+  if (!Array.isArray(papers)) {
+    return;
+  }
+  
+  const paper = papers.find(p => p?.id === paperId);
+  const previousStatus = paper?.readStatus;
+  const previousDate = paper?.lastReadDate;
+  
+  try {
+    // Optimistic update
+    setPapers(prev =>
+      prev.map(p =>
+        p.id === paperId 
+          ? { ...p, readStatus, lastReadDate: Date.now() } 
+          : p
+      )
+    );
+
+    // Update in backend
+    const result = await userApi.updatePaperReadStatus(paperId, readStatus);
+    
+    if (result.success === false) {
+      throw new Error(result.error || 'Failed to update read status');
+    }
+
+  } catch (err) {
+    console.error('Error updating read status:', err);
+    // Revert optimistic update
+    setPapers(prev =>
+      prev.map(p =>
+        p.id === paperId 
+          ? { ...p, readStatus: previousStatus, lastReadDate: previousDate } 
+          : p
+      )
+    );
+    setError('Failed to update read status');
+  }
+}, [papers]);
+
 
   /**
    * Get filtered papers based on selected folder or filter
@@ -384,6 +429,7 @@ const deleteFolder = useCallback(async (folderId) => {
     removePaper,
     addPaper,
     movePaperToFolder,
+    updateReadStatus,
 
     // Folder actions
     createFolder,
