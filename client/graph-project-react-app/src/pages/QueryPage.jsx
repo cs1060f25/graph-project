@@ -22,6 +22,7 @@ import { usePaperSummaries } from '../hooks/usePaperSummaries';
 import PaperSummary from '../components/PaperSummary';
 import './QueryPage.css';
 import { userApi } from '../services/userApi';
+import { getFeelingLuckyQuery } from '../utils/feelingLuckyGenerator';
 
 export default function QueryPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -695,6 +696,20 @@ export default function QueryPage() {
     setIsHistoryOpen(!isHistoryOpen);
   };
 
+  const handleFeelingLuckyClick = async (e) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+
+    try {
+      const luckyQuery = await getFeelingLuckyQuery();
+      handleSubmit(e, false, luckyQuery);
+      setQuery(luckyQuery);
+    } catch (err) {
+      console.warn(`[QueryPage] Failed to fetch lucky query: ${err?.message || err}`);
+    }
+  };
+
   return (
     <div className="query-page">
       {/* Main Content */}
@@ -743,13 +758,8 @@ export default function QueryPage() {
                   <button
                     type="button"
                     className="search-button"
-                    disabled={false}
-                    onClick={(e) => {
-                      // Submit a preset query immediately without waiting for state update
-                      handleSubmit(e, false, 'machine learning');
-                      // also update the input so the user sees the selected query
-                      setQuery('machine learning');
-                    }}
+                    disabled={loading || authLoading}
+                    onClick={handleFeelingLuckyClick}
                     title={"I'm feeling lucky"}
                   >
                     {loading ? <span className="btn-spinner" aria-hidden="true" /> : <Icon name="dice" ariaLabel="I'm feeling lucky" />}
@@ -884,43 +894,78 @@ export default function QueryPage() {
                   </div>
                 </div>
               </div>
-              <div className="graph-section">
-                <GraphVisualization 
-                  graphData={graphData} 
-                  onNodeClick={handleNodeClick}
-                  selectedNode={selectedNode}
-                  height={600}
-                />
-              </div>
-              {selectedNode && (
-                <div className="node-details">
-                  <h3>Selected Paper</h3>
-                  <p><strong>Title:</strong> {selectedNode.title}</p>
-                  <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
-                  {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
-                  {selectedNode.citations && <p><strong>Citations:</strong> {selectedNode.citations}</p>}
-                  {selectedNode.url && (
-                    <p>
-                      <a href={selectedNode.url} target="_blank" rel="noopener noreferrer" className="view-paper-link">
-                        View Paper →
-                      </a>
-                    </p>
-                  )}
-                  <button
-                    onClick={() => handleSavePaper(selectedNode)}
-                    className="save-button"
-                    title="Save paper"
-                  >
-                    <Icon name="save" ariaLabel="Save paper" />
-                    <span style={{ marginLeft: 8 }}>Save Paper</span>
-                  </button>
-                  <PaperSummary
-                    summary={paperSummary}
-                    loading={summaryLoading || isSummaryLoading(selectedNode?.id)}
-                    error={summaryError || getSummaryError(selectedNode?.id)}
+              <div className="graph-and-details">
+                <div className="graph-section">
+                  <GraphVisualization 
+                    graphData={graphData} 
+                    onNodeClick={handleNodeClick}
+                    selectedNode={selectedNode}
+                    height={600}
                   />
                 </div>
-              )}
+
+                {selectedNode && (
+                  <>
+                    {/* Desktop / tablet: side panel next to graph */}
+                    <aside
+                      className="selected-paper-pane selected-paper-pane-desktop"
+                      data-testid="selected-paper-pane-desktop"
+                    >
+                      <div className="node-details">
+                        <h3>Selected Paper</h3>
+                        <p><strong>Title:</strong> {selectedNode.title}</p>
+                        <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
+                        {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
+                        {selectedNode.citations && <p><strong>Citations:</strong> {selectedNode.citations}</p>}
+                        {selectedNode.url && (
+                          <p>
+                            <a href={selectedNode.url} target="_blank" rel="noopener noreferrer" className="view-paper-link">
+                              View Paper →
+                            </a>
+                          </p>
+                        )}
+                        <button
+                          onClick={() => handleSavePaper(selectedNode)}
+                          className="save-button"
+                          title="Save paper"
+                        >
+                          <Icon name="save" ariaLabel="Save paper" />
+                          <span style={{ marginLeft: 8 }}>Save Paper</span>
+                        </button>
+                      </div>
+                    </aside>
+
+                    {/* Mobile: stacked, scrollable details below graph */}
+                    <section
+                      className="selected-paper-pane selected-paper-pane-mobile"
+                      data-testid="selected-paper-pane-mobile"
+                    >
+                      <div className="node-details">
+                        <h3>Selected Paper</h3>
+                        <p><strong>Title:</strong> {selectedNode.title}</p>
+                        <p><strong>Authors:</strong> {selectedNode.authors?.join(', ') || 'Unknown'}</p>
+                        {selectedNode.year && <p><strong>Year:</strong> {selectedNode.year}</p>}
+                        {selectedNode.citations && <p><strong>Citations:</strong> {selectedNode.citations}</p>}
+                        {selectedNode.url && (
+                          <p>
+                            <a href={selectedNode.url} target="_blank" rel="noopener noreferrer" className="view-paper-link">
+                              View Paper →
+                            </a>
+                          </p>
+                        )}
+                        <button
+                          onClick={() => handleSavePaper(selectedNode)}
+                          className="save-button"
+                          title="Save paper"
+                        >
+                          <Icon name="save" ariaLabel="Save paper" />
+                          <span style={{ marginLeft: 8 }}>Save Paper</span>
+                        </button>
+                      </div>
+                    </section>
+                  </>
+                )}
+              </div>
             </div>
           )}
 

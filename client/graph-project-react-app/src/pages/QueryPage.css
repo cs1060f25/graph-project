@@ -669,6 +669,47 @@
   margin-bottom: 2rem;
 }
 
+/* Selected paper layout */
+.graph-and-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.selected-paper-pane {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Desktop / tablet: show details beside the graph */
+@media (min-width: 900px) {
+  .graph-and-details {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr);
+    align-items: flex-start;
+    gap: 1.75rem;
+  }
+
+  .selected-paper-pane-desktop {
+    display: block;
+  }
+
+  .selected-paper-pane-mobile {
+    display: none;
+  }
+}
+
+/* Mobile: stack details below graph */
+@media (max-width: 899px) {
+  .selected-paper-pane-desktop {
+    display: none;
+  }
+
+  .selected-paper-pane-mobile {
+    display: block;
+  }
+}
+
 /* Layer Legend */
 .layer-legend {
   background: #151517;

@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+
+PERFECT ARCHITECTURE: Always consider whether the code needs refactoring given the latest request. If it does, refactor the code to be more efficient and maintainable. Spaghetti code is your enemy.
+
+IMPLEMENTATION (when relevant):
+   - Focus on the changes explicitly requested
+   - Prefer using the search-replace tool rather than the write tool
+   - Create small, focused components instead of large files
+   - Avoid fallbacks, edge cases, or features not explicitly requested
+
+## Coding guidelines
+- ALWAYS generate beautiful and responsive designs.
+- Use toast components to inform the user about important events.
+
+## Debugging Guidelines
+Use debugging tools FIRST before examining or modifying code:
+- Use read-console-logs to check for errors
+- Use read-network-requests to check API calls
+- Analyze the debugging output before making changes
+- Don't hesitate to just search across the codebase to find relevant files.
