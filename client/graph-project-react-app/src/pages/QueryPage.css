@@ -800,6 +800,13 @@
   font-weight: 600;
 }
 
+/* Paper Summary integration */
+.node-details .paper-summary {
+  margin-top: 1.5rem;
+  border-top: 1px solid #2a2a2e;
+  padding-top: 1.5rem;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;

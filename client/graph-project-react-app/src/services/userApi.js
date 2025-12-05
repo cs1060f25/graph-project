@@ -287,17 +287,38 @@ export const userApi = {
   },
 
   /**
-   * Delete a folder
-   * Note: This endpoint doesn't exist yet in the backend
-   * @param {string} folderId - Folder ID
-   * @returns {Promise<void>}
+ * Delete a folder
+ * @param {string} folderId - Folder ID to delete
+ * @returns {Promise<Object>} Response with deletion confirmation
+ */
+deleteFolder: async (folderId) => {
+  const headers = await getAuthHeaders();
+  const response = await apiRequest(`/api/user/folders/${folderId}`, {
+    method: 'DELETE',
+    headers,
+  });
+  return response;
+},
+  // ========================================
+  // AI SUMMARY API
+  // ========================================
+
+  /**
+   * Generate AI summary for a paper
+   * Note: This uses frontend Google Generative AI directly
+   * @param {Object} paperData - Paper data
+   * @param {string} paperData.title - Paper title
+   * @param {Array<string>} paperData.authors - List of authors
+   * @param {string} [paperData.summary] - Paper abstract/summary
+   * @param {string} [paperData.abstract] - Paper abstract (alternative)
+   * @param {number} [paperData.year] - Publication year
+   * @param {number} [paperData.citations] - Citation count
+   * @returns {Promise<{success: boolean, summary: string|null, error: string|null}>}
    */
-  deleteFolder: async (folderId) => {
-    const headers = await getAuthHeaders();
-    await apiRequest(`/api/user/folders/${folderId}`, {
-      method: 'DELETE',
-      headers,
-    });
+  generatePaperSummary: async (paperData) => {
+    // Import dynamically to avoid circular dependencies
+    const { generatePaperSummary } = await import('./aiSummaryService');
+    return generatePaperSummary(paperData);
   },
 };
 
@@ -316,6 +337,7 @@ export const {
   createFolder,
   updateFolder,
   deleteFolder,
+  generatePaperSummary,
 } = userApi;
 
 export default userApi;

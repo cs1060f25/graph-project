@@ -2,7 +2,7 @@
 // Main export file for the User DB Interface Layer
 
 // Export all functions from specialized modules
-export { getUserFolders, addUserFolder } from './folders.js';
+export { getUserFolders, addUserFolder, deleteUserFolder } from './folders.js';
 export { addSavedPaper, getSavedPapers, updateSavedPaper, deleteSavedPaper } from './papers.js';
 export { subscribeToFolders, subscribeToSavedPapers } from './subscriptions.js';
 export { getUserData } from './user.js';

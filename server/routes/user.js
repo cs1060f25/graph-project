@@ -2,7 +2,8 @@
 import express from 'express';
 import { 
   getUserFolders, 
-  addUserFolder, 
+  addUserFolder,
+  deleteUserFolder,
   addSavedPaper, 
   getSavedPapers,
   updateSavedPaper,
@@ -96,6 +97,17 @@ router.post('/folders', async (req, res) => {
     const { name } = req.body;
     const result = await addUserFolder(req.uid, name);
     res.status(result.success ? 201 : 400).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/user/folders/:folderId - Delete a folder
+router.delete('/folders/:folderId', async (req, res) => {
+  try {
+    const { folderId } = req.params;
+    const result = await deleteUserFolder(req.uid, folderId);
+    res.status(result.success ? 200 : 404).json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
