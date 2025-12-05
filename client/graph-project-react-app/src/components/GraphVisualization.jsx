@@ -117,11 +117,27 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     const isConnected = selectedNode && connectedNodeIds.has(nodeId) && nodeId !== selectedNode.id;
     const layer = node.layer || 1;
 
-    // Selected, hovered, connected, or highlighted nodes - always fully opaque for accessibility
+    // Selected, hovered nodes - always fully opaque for accessibility
     if (isSelected) return '#ffd700'; // Gold for selected
     if (isHovered) return '#60a5fa'; // Light blue for hover
-    if (isConnected) return '#3a82ff'; // Bright blue for connected
-    if (isHighlighted && hoveredNode) return '#4a90ff'; // Medium blue for highlighted
+    
+    // For connected nodes, use their original subgraph color with full opacity (no layer opacity)
+    if (isConnected) {
+      if (node.queryColors && node.queryColors.length > 0) {
+        return node.primaryColor || node.queryColors[0]; // Use original color, full opacity
+      }
+      // Fallback to original color if available
+      const defaultColor = '#3a82ff'; // Blue
+      return defaultColor;
+    }
+    
+    // For highlighted nodes (on hover), show their subgraph color
+    if (isHighlighted && hoveredNode) {
+      if (node.queryColors && node.queryColors.length > 0) {
+        return node.primaryColor || node.queryColors[0]; // Use original color
+      }
+      return '#4a90ff'; // Medium blue as fallback
+    }
     
     // Multi-query support: Use query color with layer-based opacity
     if (node.queryColors && node.queryColors.length > 0) {
@@ -191,18 +207,24 @@ const GraphVisualization = ({ graphData, onNodeClick, selectedNode, height = 600
     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
     const linkLayer = link.layer || 1;
     
-    // Highlight links connected to selected or hovered node (always fully opaque)
+    // Highlight links connected to selected or hovered node (use their subgraph color)
     if (selectedNode) {
       const selectedId = selectedNode.id;
       if (sourceId === selectedId || targetId === selectedId) {
-        return '#3a82ff'; // Bright blue for selected node's links
+        // Use the link's original color instead of forcing blue
+        if (link.color) return link.color;
+        if (link.queryColors && link.queryColors.length > 0) return link.queryColors[0];
+        return '#3a82ff'; // Bright blue fallback
       }
     }
     
     if (hoveredNode) {
       const hoveredId = hoveredNode.id;
       if (sourceId === hoveredId || targetId === hoveredId) {
-        return '#60a5fa'; // Light blue for hovered node's links
+        // Use the link's original color for hovered connections
+        if (link.color) return link.color;
+        if (link.queryColors && link.queryColors.length > 0) return link.queryColors[0];
+        return '#60a5fa'; // Light blue fallback
       }
     }
     
