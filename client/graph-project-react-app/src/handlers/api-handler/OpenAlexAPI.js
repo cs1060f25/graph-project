@@ -58,15 +58,13 @@ export default class OpenAlexAPI {
 
   /**
    * Internal fetch helper
-   * @param {string} searchQuery - Keyword or topic query
+   * @param {string} filterQuery - OpenAlex filter string (e.g., title.search:keyword)
    * @param {number} maxResults
    */
-  async #fetchResults(searchQuery, maxResults) {
+  async #fetchResults(filterQuery, maxResults) {
     const limit = maxResults ?? this.defaultMaxResults;
     // Include referenced_works and cited_by_api_url in response to get citation relationships
-    const queryUrl = `${this.baseUrl}/works?filter=title.search:${encodeURIComponent(
-      searchQuery
-    )}&per-page=${limit}&select=id,display_name,abstract_inverted_index,publication_year,authorships,open_access,doi,cited_by_count,referenced_works,cited_by_api_url`;
+    const queryUrl = `${this.baseUrl}/works?filter=${filterQuery}&per-page=${limit}&select=id,display_name,abstract_inverted_index,publication_year,authorships,open_access,doi,cited_by_count,referenced_works,cited_by_api_url`;
 
     try {
       const response = await this.#fetchWithTimeout(queryUrl, 15000);
@@ -267,7 +265,8 @@ export default class OpenAlexAPI {
    * @param {number} [maxResults]
    */
   async queryByTopic(topic, maxResults) {
-    return await this.#fetchResults(topic, maxResults);
+    const filter = `title.search:${encodeURIComponent(topic)}`;
+    return await this.#fetchResults(filter, maxResults);
   }
 
   /**
@@ -276,6 +275,23 @@ export default class OpenAlexAPI {
    * @param {number} [maxResults]
    */
   async queryByKeyword(keyword, maxResults) {
-    return await this.#fetchResults(keyword, maxResults);
+    const filter = `title.search:${encodeURIComponent(keyword)}`;
+    return await this.#fetchResults(filter, maxResults);
+  }
+
+  /**
+   * Query papers by author name
+   * @param {string} author
+   * @param {number} [maxResults]
+   */
+  async queryByAuthor(author, maxResults) {
+    const sanitized = author?.trim() ?? '';
+    if (!sanitized) {
+      return [];
+    }
+    // Quote author name to improve matching of full names
+    const encodedAuthor = encodeURIComponent(`"${sanitized}"`);
+    const filter = `authorships.author.display_name.search:${encodedAuthor}`;
+    return await this.#fetchResults(filter, maxResults);
   }
 }

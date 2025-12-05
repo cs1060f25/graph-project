@@ -78,8 +78,8 @@ function testArxivAPI() {
     console.log('%c Testing direct ArXiv API (likely to fail due to CORS)...', 'font-style: italic;');
     const directResult = await makeTestRequest(`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(testQuery)}&start=0&max_results=${maxResults}`);
     
-    console.log('\n%c Testing local proxy on port 5001...', 'font-style: italic;');
-    const localProxyResult = await makeTestRequest(`http://localhost:5001/api/arxiv?query=${encodeURIComponent(testQuery)}&type=keyword&maxResults=${maxResults}`);
+    console.log('\n%c Testing local proxy on port 5002...', 'font-style: italic;');
+    const localProxyResult = await makeTestRequest(`http://localhost:5002/api/arxiv?query=${encodeURIComponent(testQuery)}&type=keyword&maxResults=${maxResults}`);
     
     console.log('\n%c Testing CORS proxy...', 'font-style: italic;');
     const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(testQuery)}&start=0&max_results=${maxResults}`)}`;
@@ -88,13 +88,13 @@ function testArxivAPI() {
     // Summary
     console.log('\n%c === TEST SUMMARY ===', 'font-weight: bold; font-size: 16px; color: purple;');
     console.log(`Direct ArXiv API: ${directResult.success ? 'SUCCESS' : 'FAILED'} (${directResult.status || directResult.error || 'unknown'})`);
-    console.log(`Local Proxy (port 5001): ${localProxyResult.success ? 'SUCCESS' : 'FAILED'} (${localProxyResult.status || localProxyResult.error || 'unknown'})`);
+    console.log(`Local Proxy (port 5002): ${localProxyResult.success ? 'SUCCESS' : 'FAILED'} (${localProxyResult.status || localProxyResult.error || 'unknown'})`);
     console.log(`CORS Proxy: ${corsProxyResult.success ? 'SUCCESS' : 'FAILED'} (${corsProxyResult.status || corsProxyResult.error || 'unknown'})`);
     
     // Recommendation
     console.log('\n%c === RECOMMENDATION ===', 'font-weight: bold; font-size: 14px; color: blue;');
     if (localProxyResult.success) {
-      console.log('Use your local proxy on port 5001. Update ArxivAPI.js to use: http://localhost:5001/api/arxiv');
+      console.log('Use your local proxy on port 5002. Update ArxivAPI.js to use: http://localhost:5002/api/arxiv');
     } else if (corsProxyResult.success) {
       console.log('Use the CORS proxy temporarily. Update ArxivAPI.js to use the CORS proxy pattern.');
       console.log('   But for production, fix your local proxy server.');

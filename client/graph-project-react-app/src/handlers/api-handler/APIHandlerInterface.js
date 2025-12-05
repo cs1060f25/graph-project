@@ -65,7 +65,16 @@ export default class APIHandlerInterface {
   // Main query function
   // ----------------------
   async makeQuery(query, options = { type: "keyword", forceRefresh: false }) {
-    const { type, userId = "global", forceRefresh = false } = options;
+    const {
+      type,
+      userId = "global",
+      forceRefresh = false,
+      maxResultsOverride = null
+    } = options;
+
+    const limit = Number.isFinite(maxResultsOverride) && maxResultsOverride > 0
+      ? maxResultsOverride
+      : this.maxResults;
 
     // Try cache first
     let cached = null;
@@ -79,10 +88,12 @@ export default class APIHandlerInterface {
       try {
         let results = [];
         if (type === "topic" && typeof api.queryByTopic === "function") {
-          results = await api.queryByTopic(query, this.maxResults);
+          results = await api.queryByTopic(query, limit);
+        } else if (type === "author" && typeof api.queryByAuthor === "function") {
+          results = await api.queryByAuthor(query, limit);
         } else if (type === "keyword" && typeof api.queryByKeyword === "function") {
           console.log("trying...");
-          results = await api.queryByKeyword(query, this.maxResults);
+          results = await api.queryByKeyword(query, limit);
           console.log("results", results);
         }
         return results;

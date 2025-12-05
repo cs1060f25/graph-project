@@ -61,6 +61,52 @@ export async function getRelatedPapers(paperId, existingPapers, apiHandler, maxR
 }
 
 /**
+ * Fetch additional papers by the same author before expanding to citation-based nodes.
+ *
+ * @param {string} authorName - Author name from the original query
+ * @param {Array} existingPapers - All papers currently displayed for the query
+ * @param {Object} apiHandler - API handler instance
+ * @param {number} maxResults - Maximum number of author papers to fetch
+ */
+export async function fetchAdditionalAuthorPapers(authorName, existingPapers, apiHandler, maxResults = 5) {
+  if (!authorName || !authorName.trim()) {
+    return [];
+  }
+
+  try {
+    const normalizedAuthor = authorName.trim().toLowerCase();
+    const existingIds = new Set((existingPapers || []).map(p => p.id));
+
+    const authorResults = await apiHandler.makeQuery(authorName, {
+      type: 'author',
+      userId: 'graph-expansion',
+      forceRefresh: true,
+      maxResultsOverride: Math.max(maxResults * 2, 10)
+    });
+
+    if (!authorResults || authorResults.length === 0) {
+      return [];
+    }
+
+    const filtered = authorResults
+      .filter(paper => paper && paper.id && !existingIds.has(paper.id))
+      .map(paper => ({
+        ...paper,
+        // Track if this paper actually lists the author (best-effort)
+        matchesAuthor: Array.isArray(paper.authors)
+          ? paper.authors.some(author => (author || '').toLowerCase().includes(normalizedAuthor))
+          : false
+      }))
+      .slice(0, maxResults);
+
+    return filtered;
+  } catch (error) {
+    console.error(`[GraphLayerHelper] Error fetching additional author papers for "${authorName}":`, error);
+    return [];
+  }
+}
+
+/**
  * Fetches the next layer of papers for all papers in the current layer
  * 
  * @param {Array} currentLayerPapers - Papers in the current layer

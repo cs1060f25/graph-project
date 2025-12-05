@@ -32,7 +32,7 @@ describe('userApi', () => {
       const result = await userApi.getSavedPapers();
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/user/papers',
+        'http://localhost:5002/api/user/papers',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ describe('userApi', () => {
       const result = await userApi.savePaper(newPaper);
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/user/papers',
+        'http://localhost:5002/api/user/papers',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(newPaper),
@@ -119,7 +119,7 @@ describe('userApi', () => {
       const result = await userApi.getFolders();
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/user/folders',
+        'http://localhost:5002/api/user/folders',
         expect.any(Object)
       );
       expect(result).toEqual(mockFolders);
@@ -144,7 +144,7 @@ describe('userApi', () => {
       const result = await userApi.createFolder(folderName);
 
       expect(fetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/user/folders',
+        'http://localhost:5002/api/user/folders',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ name: folderName }),

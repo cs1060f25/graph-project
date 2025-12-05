@@ -18,8 +18,8 @@ import { XMLParser } from "fast-xml-parser";
 
 export default class ArxivAPI {
   constructor({ rateLimitMs = 1000, defaultMaxResults = 10 } = {}) {
-    // Use env variable or default to localhost:5000
-    const apiBaseUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
+    // Use env variable or default to localhost:5002
+    const apiBaseUrl = process.env.REACT_APP_API_URL || "http://localhost:5002";
     this.baseUrl = `${apiBaseUrl}/api/arxiv`;
     this.rateLimitMs = rateLimitMs; // Delay between requests in ms
     this.defaultMaxResults = defaultMaxResults;
@@ -139,6 +139,23 @@ export default class ArxivAPI {
       return results;
     } catch (error) {
       console.error('ArXiv fetch failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Query papers by author
+   * @param {string} author - Author name (e.g., "Yann LeCun")
+   * @param {number} [maxResults]
+   */
+  async queryByAuthor(author, maxResults) {
+    try {
+      const url = `${this.baseUrl}?query=${encodeURIComponent(author)}&type=author&maxResults=${maxResults}`;
+      console.log(`Requesting from proxy (author): ${url}`);
+      const results = await this.#fetchResults(url);
+      return results;
+    } catch (error) {
+      console.error('ArXiv author fetch failed:', error);
       throw error;
     }
   }
