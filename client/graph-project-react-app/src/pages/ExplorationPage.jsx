@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
+import { userApi } from '../services/userApi';
 import './PersonalPage.css'; // reuse existing styles
 import Icon from '../components/Icon';
 
@@ -19,16 +19,13 @@ export default function ExplorationPage() {
   const [error, setError] = useState(null);
   const [savedTopics, setSavedTopics] = useState([]);
 
-  const apiHandler = new APIHandlerInterface({ maxResults: 5 });
-  const userId = 'authenticated-user'; // replace with auth context if available
-
   const handleSelectTopic = async (topic) => {
     setSelectedTopic(topic);
     setError(null);
     setLoading(true);
 
     try {
-      const results = await apiHandler.makeQuery(topic, { type: 'topic', userId, forceRefresh: true });
+      const results = await userApi.searchPapers(topic, { type: 'topic', forceRefresh: true });
       setPapers(results);
     } catch (err) {
       console.error(err);

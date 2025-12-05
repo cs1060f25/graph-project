@@ -1,23 +1,31 @@
-// APIHandlerInterface.js
-import ArxivAPI from "./ArxivAPI.js";
-import OpenAlexAPI from "./OpenAlexAPI.js";
+// server/services/apiHandlers/APIHandlerService.js
+// Backend service to orchestrate external API calls
 
-export default class APIHandlerInterface {
+import ArxivAPI from './ArxivAPI.js';
+import OpenAlexAPI from './OpenAlexAPI.js';
+import CoreAPI from './CoreAPI.js';
+
+export default class APIHandlerService {
   constructor({ maxResults = 5 } = {}) {
     this.apis = [
       new ArxivAPI({ defaultMaxResults: maxResults }),
       new OpenAlexAPI({ defaultMaxResults: maxResults }),
+      new CoreAPI({ defaultMaxResults: maxResults }),
     ];
     this.maxResults = maxResults;
   }
 
-  // ----------------------
-  // Main query function
-  // ----------------------
-  async makeQuery(query, options = { type: "keyword", forceRefresh: false }) {
+  /**
+   * Main query function - orchestrates all API calls
+   * @param {string} query - Search query
+   * @param {Object} options - Query options
+   * @param {string} options.type - Query type: 'keyword', 'topic', or 'author'
+   * @param {number} options.maxResultsOverride - Override default max results
+   * @returns {Promise<Array>} Array of normalized paper objects
+   */
+  async makeQuery(query, options = { type: 'keyword', forceRefresh: false }) {
     const {
       type,
-      userId = "global",
       forceRefresh = false,
       maxResultsOverride = null
     } = options;
@@ -30,14 +38,12 @@ export default class APIHandlerInterface {
     const apiPromises = this.apis.map(async (api) => {
       try {
         let results = [];
-        if (type === "topic" && typeof api.queryByTopic === "function") {
+        if (type === 'topic' && typeof api.queryByTopic === 'function') {
           results = await api.queryByTopic(query, limit);
-        } else if (type === "author" && typeof api.queryByAuthor === "function") {
+        } else if (type === 'author' && typeof api.queryByAuthor === 'function') {
           results = await api.queryByAuthor(query, limit);
-        } else if (type === "keyword" && typeof api.queryByKeyword === "function") {
-          console.log("trying...");
+        } else if (type === 'keyword' && typeof api.queryByKeyword === 'function') {
           results = await api.queryByKeyword(query, limit);
-          console.log("results", results);
         }
         return results;
       } catch (err) {
@@ -63,3 +69,4 @@ export default class APIHandlerInterface {
     return uniqueResults;
   }
 }
+

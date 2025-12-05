@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 import userRoutes from './routes/user.js';
 import authRoutes from './routes/auth.js';
+import papersRoutes from './routes/papers.js';
 import { verifyFirebaseToken } from './middleware/auth.js';
 
 // Ensure server/.env overrides any existing PORT env to avoid conflicts with CRA
@@ -27,6 +28,8 @@ app.get('/', (req, res) => {
       health: '/health',
       auth: '/api/auth',
       user: '/api/user',
+      papers: '/api/papers',
+      graph: '/api/papers/layers',
       arxiv: '/api/arxiv'
     }
   });
@@ -86,6 +89,7 @@ app.use('/api/auth', authRoutes);
 
 // Protected routes - require authentication
 app.use('/api/user', verifyFirebaseToken, userRoutes);
+app.use('/api/papers', papersRoutes);
 
 // Start server
 app.listen(PORT, () => {

@@ -37,5 +37,49 @@ router.post('/bootstrap', async (req, res) => {
   }
 });
 
+// POST /api/auth/sync
+// Syncs user data to Firestore (replaces frontend userService.js)
+router.post('/sync', async (req, res) => {
+  try {
+    const { token, additionalData = {} } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ 
+        success: false,
+        isNewUser: false,
+        error: 'Token is required' 
+      });
+    }
+
+    // Verify the Firebase ID token
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const { uid, email, name } = decodedToken;
+
+    // Check if user already exists
+    const existingUser = await User.findById(uid);
+    const isNewUser = !existingUser;
+
+    // Upsert user in the database with additional data
+    const user = await User.upsert({
+      id: uid,
+      email: email || additionalData.email || '',
+      displayName: additionalData.name || name || '',
+    });
+
+    res.json({
+      success: true,
+      isNewUser,
+      error: null
+    });
+  } catch (error) {
+    console.error('Error syncing user:', error);
+    res.status(401).json({ 
+      success: false,
+      isNewUser: false,
+      error: error.message || 'Invalid token' 
+    });
+  }
+});
+
 export default router;
 

@@ -29,7 +29,18 @@ jest.mock('d3-force', () => {
 jest.mock('./contexts/AuthContext', () => ({
   useAuth: jest.fn(() => ({
     user: { uid: 'test-user-123', email: 'test@example.com' },
+    token: 'test-token',
+    role: 'user',
     loading: false,
+    error: null,
+    isNewUser: false,
+    loginWithEmail: jest.fn(),
+    loginWithGoogle: jest.fn(),
+    signUpWithEmail: jest.fn(),
+    logout: jest.fn(),
+    setError: jest.fn(),
+    // Legacy method names for compatibility
+    signInWithEmail: jest.fn(),
     signInWithGoogle: jest.fn(),
     signOut: jest.fn(),
   })),

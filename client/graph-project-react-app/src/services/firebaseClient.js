@@ -1,9 +1,9 @@
 // client/src/services/firebaseClient.js
-// Firebase client initialization for Auth and Firestore
+// Firebase client initialization for Authentication only
+// Note: Firestore removed - all database operations go through backend API
 
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
 // Use environment variables or fallback to demo values
 const firebaseConfig = {
@@ -28,24 +28,21 @@ if (!process.env.REACT_APP_FIREBASE_API_KEY) {
 // Initialize Firebase with error handling
 let app;
 let auth;
-let db;
 let googleProvider;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
   googleProvider = new GoogleAuthProvider();
 } catch (error) {
   console.error('Firebase initialization error:', error);
   console.warn('Firebase is not properly configured. Please check your .env file.');
   // Set to null so components can check for Firebase availability
   auth = null;
-  db = null;
   googleProvider = null;
 }
 
-export { auth, db, googleProvider };
+export { auth, googleProvider };
 export default app;
 
 
