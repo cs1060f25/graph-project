@@ -1041,6 +1041,11 @@ export default function QueryPage() {
                           <Icon name="save" ariaLabel="Save paper" />
                           <span style={{ marginLeft: 8 }}>Save Paper</span>
                         </button>
+                        <PaperSummary
+                          summary={paperSummary}
+                          loading={summaryLoading || isSummaryLoading(selectedNode?.id)}
+                          error={summaryError || getSummaryError(selectedNode?.id)}
+                        />
                       </div>
                     </aside>
 
@@ -1070,6 +1075,11 @@ export default function QueryPage() {
                           <Icon name="save" ariaLabel="Save paper" />
                           <span style={{ marginLeft: 8 }}>Save Paper</span>
                         </button>
+                        <PaperSummary
+                          summary={paperSummary}
+                          loading={summaryLoading || isSummaryLoading(selectedNode?.id)}
+                          error={summaryError || getSummaryError(selectedNode?.id)}
+                        />
                       </div>
                     </section>
                   </>
