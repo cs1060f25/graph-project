@@ -69,6 +69,7 @@ router.post('/sync', async (req, res) => {
     res.json({
       success: true,
       isNewUser,
+      role: user.role || 'user',
       error: null
     });
   } catch (error) {
@@ -76,6 +77,7 @@ router.post('/sync', async (req, res) => {
     res.status(401).json({ 
       success: false,
       isNewUser: false,
+      role: null,
       error: error.message || 'Invalid token' 
     });
   }

@@ -21,7 +21,6 @@ import { usePaperSummaries } from '../hooks/usePaperSummaries';
 import PaperSummary from '../components/PaperSummary';
 import './QueryPage.css';
 import { userApi } from '../services/userApi';
-import { getFeelingLuckyQuery } from '../utils/feelingLuckyGenerator';
 
 export default function QueryPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -773,7 +772,7 @@ export default function QueryPage() {
     }
 
     try {
-      const luckyQuery = await getFeelingLuckyQuery();
+      const luckyQuery = await userApi.getFeelingLuckyQuery();
       handleSubmit(e, false, luckyQuery);
       setQuery(luckyQuery);
     } catch (err) {

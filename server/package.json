@@ -9,7 +9,8 @@
     "dev:mock": "node --watch index.mock.js",
     "start": "node index.js",
     "start:mock": "node index.mock.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest",
+    "test:ui": "vitest --ui"
   },
   "keywords": [
     "graphene",
@@ -28,5 +29,10 @@
     "fast-xml-parser": "^5.3.1",
     "firebase": "^12.4.0",
     "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/ui": "^2.1.8",
+    "vitest": "^2.1.8"
   }
 }

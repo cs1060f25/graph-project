@@ -9,7 +9,8 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002';
  * Helper function to make API requests with error handling
  */
 async function apiRequest(endpoint, options = {}) {
-  const headers = await options.headers;
+  // Headers are already awaited in each method, so they're objects, not promises
+  const headers = options.headers || {};
   const newHeaders = {
     'Content-Type': 'application/json',
     ...headers,
@@ -95,30 +96,6 @@ async function getAuthHeaders() {
 // ========================================
 
 export const userApi = {
-  /**
-   * Get current user info
-   * @returns {Promise<Object>} User data
-   */
-  getCurrentUser: async () => {
-    const headers = await getAuthHeaders();
-    const response = await apiRequest('/api/user/me', {
-      headers,
-    });
-    return response.data;
-  },
-
-  /**
-   * Get user profile and preferences
-   * @returns {Promise<Object>} User profile data
-   */
-  getUserData: async () => {
-    const headers = await getAuthHeaders();
-    const response = await apiRequest('/api/user/data', {
-      headers,
-    });
-    return response.data;
-  },
-
   // ========================================
   // PAPERS API
   // ========================================
@@ -270,23 +247,6 @@ export const userApi = {
   },
 
   /**
-   * Update folder name
-   * Note: This endpoint doesn't exist yet in the backend
-   * @param {string} folderId - Folder ID
-   * @param {string} newName - New folder name
-   * @returns {Promise<Object>} Updated folder object
-   */
-  updateFolder: async (folderId, newName) => {
-    const headers = await getAuthHeaders();
-    const response = await apiRequest(`/api/user/folders/${folderId}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ name: newName }),
-    });
-    return response.data;
-  },
-
-  /**
  * Delete a folder
  * @param {string} folderId - Folder ID to delete
  * @returns {Promise<Object>} Response with deletion confirmation
@@ -383,7 +343,7 @@ deleteFolder: async (folderId) => {
    * Sync user data to Firestore (replaces frontend userService)
    * @param {string} token - Firebase ID token
    * @param {Object} additionalData - Additional user data (e.g., name from signup)
-   * @returns {Promise<{success: boolean, isNewUser: boolean, error: string|null}>}
+   * @returns {Promise<{success: boolean, isNewUser: boolean, role: string, error: string|null}>}
    */
   syncUser: async (token, additionalData = {}) => {
     const response = await apiRequest('/api/auth/sync', {
@@ -396,15 +356,27 @@ deleteFolder: async (folderId) => {
     return {
       success: response.success || false,
       isNewUser: response.isNewUser || false,
+      role: response.role || 'user',
       error: response.error || null,
     };
+  },
+
+  /**
+   * Get a random "feeling lucky" research query
+   * @returns {Promise<string>} A random research query
+   */
+  getFeelingLuckyQuery: async () => {
+    const headers = await getAuthHeaders();
+    const response = await apiRequest('/api/papers/feeling-lucky', {
+      method: 'GET',
+      headers,
+    });
+    return response.query || 'advanced research frontiers';
   },
 };
 
 // Export individual functions for convenience
 export const {
-  getCurrentUser,
-  getUserData,
   getSavedPapers,
   savePaper,
   updatePaper,
@@ -414,12 +386,12 @@ export const {
   clearQueryHistory,
   getFolders,
   createFolder,
-  updateFolder,
   deleteFolder,
   searchPapers,
   expandGraphLayer,
   generatePaperSummary,
   syncUser,
+  getFeelingLuckyQuery,
 } = userApi;
 
 export default userApi;

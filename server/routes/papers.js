@@ -2,9 +2,10 @@
 // Paper search and related endpoints
 
 import express from 'express';
-import PaperService from '../services/paperService.js';
-import GraphService from '../services/graphService.js';
-import { generatePaperSummary } from '../services/aiSummaryService.js';
+import PaperService from '../services/papers/paperService.js';
+import GraphService from '../services/graph/graphService.js';
+import { generatePaperSummary } from '../services/ai/aiSummaryService.js';
+import { getFeelingLuckyQuery } from '../services/ai/feelingLuckyService.js';
 import { verifyFirebaseToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -92,7 +93,7 @@ router.post('/summary', verifyFirebaseToken, async (req, res) => {
 });
 
 /**
- * POST /api/graph/layers
+ * POST /api/papers/layers
  * Expand graph layer with related papers
  * Body: { currentLayerPapers: Array, allExistingPapers: Array, authorName?: string, maxPerPaper?: number }
  */
@@ -134,6 +135,28 @@ router.post('/layers', verifyFirebaseToken, async (req, res) => {
       success: false,
       data: null,
       error: error.message || 'Failed to expand graph layer'
+    });
+  }
+});
+
+/**
+ * GET /api/papers/feeling-lucky
+ * Generate a random research query using AI
+ */
+router.get('/feeling-lucky', verifyFirebaseToken, async (req, res) => {
+  try {
+    const query = await getFeelingLuckyQuery();
+    res.json({
+      success: true,
+      query,
+      error: null
+    });
+  } catch (error) {
+    console.error('[Papers Route] Error generating feeling lucky query:', error);
+    res.status(500).json({
+      success: false,
+      query: null,
+      error: error.message || 'Failed to generate query'
     });
   }
 });

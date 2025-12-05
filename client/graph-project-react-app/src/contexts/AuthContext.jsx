@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth, googleProvider } from '../services/firebaseClient';
-import {
+import { 
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -11,7 +11,6 @@ import {
   signOut,
 } from 'firebase/auth';
 import { syncUser } from '../services/userApi';
-import { apiClient } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -40,37 +39,22 @@ export function AuthProvider({ children }) {
           const idToken = await firebaseUser.getIdToken();
           setToken(idToken);
           
-          // Call backend to bootstrap auth and get user role
-          try {
-            const userData = await apiClient('/api/auth/bootstrap', {
-              method: 'POST',
-              body: JSON.stringify({ token: idToken }),
-            });
-            setRole(userData.role || 'user');
-          } catch (error) {
-            console.error('Error bootstrapping auth with backend:', error);
-            setRole('user'); // Fallback role
-          }
-        } catch (error) {
-          console.error('Error getting ID token:', error);
-          setToken(null);
-          setRole(null);
-        }
-
-        // Sync user data to Firestore via backend API
-        try {
-          const idToken = await firebaseUser.getIdToken();
-          const { isNewUser: newUser, error: syncError } = await syncUser(idToken);
+          // Sync user data to Firestore via backend API (returns role and isNewUser)
+          const { isNewUser: newUser, role: userRole, error: syncError } = await syncUser(idToken);
           if (syncError) {
             console.error('[AuthContext] Failed to sync user:', syncError);
             setError(`Failed to sync user data: ${syncError}`);
+            setRole('user'); // Fallback role
           } else {
+            setRole(userRole || 'user');
             setIsNewUser(newUser);
-            if (!error) setError(null); // Only clear error if no other error exists
+            setError(null);
           }
         } catch (err) {
-          console.error('[AuthContext] Error in auth state change:', err);
-          if (!error) setError('Failed to initialize user session');
+          console.error('[AuthContext] Error getting ID token or syncing with backend:', err);
+          setToken(null);
+          setRole('user'); // Fallback role
+          setError('Failed to initialize user session');
         }
       } else {
         setUser(null);
@@ -202,10 +186,10 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(
     () => ({ 
-      user, 
-      token,
-      role,
-      loading, 
+    user,
+    token,
+    role,
+    loading,
       error, 
       isNewUser,
       setError, 
@@ -216,7 +200,7 @@ export function AuthProvider({ children }) {
       logout,
       // Legacy method names for compatibility
       signInWithEmail,
-      signInWithGoogle,
+    signInWithGoogle,
       signOut: logout,
     }),
     [user, token, role, loading, error, isNewUser]
