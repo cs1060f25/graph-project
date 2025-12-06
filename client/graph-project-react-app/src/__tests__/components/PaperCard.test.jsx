@@ -79,13 +79,17 @@ describe('PaperCard', () => {
       const starredPaper = { ...mockPaper, starred: true };
       render(<PaperCard {...defaultProps} paper={starredPaper} />);
       const starButton = screen.getByTitle(/Unstar/);
-      expect(starButton).toHaveTextContent('★');
+      // Star is rendered as Icon component, not text - check for the button and icon
+      expect(starButton).toBeInTheDocument();
+      expect(starButton).toHaveClass('starred');
     });
 
     it('should show empty star when paper is not starred', () => {
       render(<PaperCard {...defaultProps} />);
       const starButton = screen.getByTitle(/Star/);
-      expect(starButton).toHaveTextContent('☆');
+      // Star is rendered as Icon component, not text - check for the button
+      expect(starButton).toBeInTheDocument();
+      expect(starButton).not.toHaveClass('starred');
     });
   });
 

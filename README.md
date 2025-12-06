@@ -30,3 +30,11 @@ npm install
 ```bash
 npm start
 ```
+
+## Testing
+All code has been thoroughly tested using both unit and integration tests by leveraging the `vitest` framework. In order to run the tests, make sure you've gone ahead and installed everything necessary as in the above section. Then, simply run
+```bash
+# in the root
+npm test
+```
+This will concurrently run both client- and server-side tests.

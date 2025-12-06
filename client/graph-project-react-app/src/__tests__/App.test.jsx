@@ -3,8 +3,10 @@ import { render, screen } from '@testing-library/react';
 import App from '../App';
 
 describe('App', () => {
-  it('renders Query Page header', () => {
+  it('renders App with routing', () => {
+    // App already contains Router, so don't wrap it
     render(<App />);
-    expect(screen.getByRole('heading', { name: /research graph/i })).toBeInTheDocument();
+    // App renders Navbar and routing - check for Navbar or HomePage content
+    expect(screen.getByText(/Graph-Based Research Paper Discovery/i)).toBeInTheDocument();
   });
 });
