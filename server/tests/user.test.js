@@ -1,10 +1,16 @@
-const User = require('../models/User');
+// server/tests/user.test.js
+// Vitest tests for User model
 
-async function runTests() {
-  console.log('Running User model tests...\n');
+import { describe, it, expect, beforeEach } from 'vitest';
+import User, { resetUsers } from '../models/User.js';
 
-  // Test 1: upsert creates a new user
-  try {
+describe('User Model', () => {
+  beforeEach(() => {
+    // Clear users array before each test
+    resetUsers();
+  });
+
+  it('upsert creates a new user', async () => {
     const userData = {
       id: 'test-uid-123',
       email: 'test@example.com',
@@ -13,23 +19,21 @@ async function runTests() {
 
     const user = await User.upsert(userData);
 
-    if (!user || user.id !== 'test-uid-123' || user.email !== 'test@example.com') {
-      throw new Error('Test failed');
-    }
-    console.log('✓ upsert creates a new user');
-  } catch (error) {
-    console.log('✗ upsert creates a new user:', error.message);
-  }
+    expect(user).toBeDefined();
+    expect(user.id).toBe('test-uid-123');
+    expect(user.email).toBe('test@example.com');
+    expect(user.displayName).toBe('Test User');
+    expect(user.role).toBe('user');
+  });
 
-  // Test 2: upsert updates existing user
-  try {
+  it('upsert updates existing user', async () => {
     const userData1 = {
       id: 'test-uid-update',
       email: 'original@example.com',
       displayName: 'Original User',
     };
 
-    const user1 = await User.upsert(userData1);
+    await User.upsert(userData1);
     await new Promise(resolve => setTimeout(resolve, 10));
 
     const userData2 = {
@@ -40,16 +44,12 @@ async function runTests() {
 
     const user2 = await User.upsert(userData2);
 
-    if (user2.id !== 'test-uid-update' || user2.email !== 'updated@example.com') {
-      throw new Error('Test failed');
-    }
-    console.log('✓ upsert updates existing user');
-  } catch (error) {
-    console.log('✗ upsert updates existing user:', error.message);
-  }
+    expect(user2.id).toBe('test-uid-update');
+    expect(user2.email).toBe('updated@example.com');
+    expect(user2.displayName).toBe('Updated User');
+  });
 
-  // Test 3: findById returns correct user
-  try {
+  it('findById returns correct user', async () => {
     const userData = {
       id: 'test-uid-456',
       email: 'findme@example.com',
@@ -59,28 +59,17 @@ async function runTests() {
     await User.upsert(userData);
     const foundUser = await User.findById('test-uid-456');
 
-    if (!foundUser || foundUser.id !== 'test-uid-456' || foundUser.email !== 'findme@example.com') {
-      throw new Error('Test failed');
-    }
-    console.log('✓ findById returns correct user');
-  } catch (error) {
-    console.log('✗ findById returns correct user:', error.message);
-  }
+    expect(foundUser).toBeDefined();
+    expect(foundUser.id).toBe('test-uid-456');
+    expect(foundUser.email).toBe('findme@example.com');
+  });
 
-  // Test 4: findById returns undefined for non-existent user
-  try {
+  it('findById returns undefined for non-existent user', async () => {
     const foundUser = await User.findById('non-existent-id');
-    
-    if (foundUser !== undefined) {
-      throw new Error('Test failed');
-    }
-    console.log('✓ findById returns undefined for non-existent user');
-  } catch (error) {
-    console.log('✗ findById returns undefined for non-existent user:', error.message);
-  }
+    expect(foundUser).toBeUndefined();
+  });
 
-  // Test 5: findByEmail returns correct user
-  try {
+  it('findByEmail returns correct user', async () => {
     const userData = {
       id: 'test-uid-789',
       email: 'email@example.com',
@@ -90,15 +79,7 @@ async function runTests() {
     await User.upsert(userData);
     const foundUser = await User.findByEmail('email@example.com');
 
-    if (!foundUser || foundUser.email !== 'email@example.com') {
-      throw new Error('Test failed');
-    }
-    console.log('✓ findByEmail returns correct user');
-  } catch (error) {
-    console.log('✗ findByEmail returns correct user:', error.message);
-  }
-
-  console.log('\nTests complete!');
-}
-
-runTests();
+    expect(foundUser).toBeDefined();
+    expect(foundUser.email).toBe('email@example.com');
+  });
+});

@@ -1,5 +1,10 @@
 // In-memory user store (will be replaced with actual DB in Component 2)
-const users = [];
+let users = [];
+
+// Export reset function for testing
+export function resetUsers() {
+  users = [];
+}
 
 class User {
   static async upsert({ id, email, displayName }) {

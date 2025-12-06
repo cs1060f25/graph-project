@@ -12,15 +12,14 @@ import {
   addQueryHistory,
   getQueryHistory,
   clearQueryHistory
-} from '../user-db-interface/index.js';
+} from '../services/users/index.js';
 
 const router = express.Router();
 
 // Middleware to extract uid from authenticated request
-// (assumes you have auth middleware that adds user to req)
+// verifyFirebaseToken already adds req.user, so we just extract uid
 const extractUid = (req, res, next) => {
-  // Get uid from Firebase Auth token (you'll need auth middleware)
-  const uid = req.user?.uid; // Assuming auth middleware adds user to req
+  const uid = req.user?.uid;
   if (!uid) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
@@ -28,7 +27,6 @@ const extractUid = (req, res, next) => {
   next();
 };
 
-// Apply auth middleware to all routes
 router.use(extractUid);
 
 // ========== PAPERS ROUTES ==========

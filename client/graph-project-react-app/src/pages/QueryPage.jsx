@@ -4,13 +4,12 @@
 
 import { useState, useRef, useMemo, useEffect } from 'react';
 import Icon from '../components/Icon';
-import APIHandlerInterface from '../handlers/api-handler/APIHandlerInterface';
 import QueryHistoryPanel from '../components/QueryHistoryPanel';
 import QueryFilterPanel from '../components/QueryFilterPanel';
 import { useQueryHistory } from '../hooks/useQueryHistory';
 import GraphVisualization from '../components/GraphVisualization';
 import { transformPapersToGraph } from '../utils/graphDataTransformer';
-import { fetchNextLayer, createLayerLinks, fetchAdditionalAuthorPapers } from '../utils/graphLayerHelper';
+import { createLayerLinks } from '../utils/graphLayerHelper';
 import { 
   createQueryGraph, 
   mergeQueryGraphs, 
@@ -22,7 +21,6 @@ import { usePaperSummaries } from '../hooks/usePaperSummaries';
 import PaperSummary from '../components/PaperSummary';
 import './QueryPage.css';
 import { userApi } from '../services/userApi';
-import { getFeelingLuckyQuery } from '../utils/feelingLuckyGenerator';
 
 export default function QueryPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -62,8 +60,6 @@ export default function QueryPage() {
   const { user, loading: authLoading } = useAuth();
   const isAuthenticated = !!user;
 
-  // Initialize API handler
-  const apiHandler = useRef(new APIHandlerInterface({ maxResults: 10 })).current;
   const normalizeAuthorName = (name) => (name || '').trim().toLowerCase();
   const paperMatchesAuthor = (paper, authorName) => {
     const normalized = normalizeAuthorName(authorName);
@@ -262,9 +258,8 @@ export default function QueryPage() {
       // Process each query
       for (const queryText of queries) {
         try {
-          const searchResults = await apiHandler.makeQuery(queryText, { 
+          const searchResults = await userApi.searchPapers(queryText, { 
             type: queryType,
-            userId: userId,
             forceRefresh: retry
           });
           
@@ -558,59 +553,24 @@ export default function QueryPage() {
                 continue;
               }
 
-              let remainingNeeded = needed;
-              const nextLayerPapers = [];
+              // Use backend API to expand layer
+              const maxPerPaper = Math.ceil(needed / Math.max(1, previousLayerPapers.length));
+              const authorName = queryGraph.queryType === 'author' 
+                ? (queryGraph.fullLabel || queryGraph.label || '')
+                : undefined;
+              
+              const newPapers = await userApi.expandGraphLayer({
+                currentLayerPapers: previousLayerPapers,
+                allExistingPapers: allExistingPapersFlat,
+                authorName,
+                maxPerPaper: Math.max(1, Math.min(maxPerPaper, 5))
+              });
 
-              if (remainingNeeded > 0 && queryGraph.queryType === 'author') {
-                const authorName = queryGraph.fullLabel || queryGraph.label || '';
-                const authorPapers = await fetchAdditionalAuthorPapers(
-                  authorName,
-                  allExistingPapersFlat,
-                  apiHandler,
-                  remainingNeeded
-                );
-
-                if (authorPapers.length > 0) {
-                  const anchorPaper =
-                    allExistingPapersFlat.find(p => paperMatchesAuthor(p, authorName)) ||
-                    allExistingPapersFlat[0] ||
-                    previousLayerPapers[0] ||
-                    null;
-                  const anchorId = anchorPaper?.id;
-
-                  nextLayerPapers.push(
-                    ...authorPapers.map(paper => ({
-                      ...paper,
-                      layer: nextLayer,
-                      relatedTo: anchorId,
-                      isAuthorLayer: true
-                    }))
-                  );
-                  remainingNeeded -= authorPapers.length;
-                }
-              }
-
-              if (remainingNeeded > 0) {
-                const maxPerPaper = Math.ceil(remainingNeeded / Math.max(1, previousLayerPapers.length));
-                const newPapers = await fetchNextLayer(
-                  previousLayerPapers,
-                  allExistingPapers,
-                  apiHandler,
-                  Math.max(1, Math.min(maxPerPaper, 5))
-                );
-
-                const limitedPapers = newPapers.slice(0, remainingNeeded);
-
-                if (limitedPapers.length > 0) {
-                  nextLayerPapers.push(
-                    ...limitedPapers.map(paper => ({
-                      ...paper,
-                      layer: nextLayer
-                    }))
-                  );
-                  remainingNeeded -= limitedPapers.length;
-                }
-              }
+              const limitedPapers = newPapers.slice(0, needed);
+              const nextLayerPapers = limitedPapers.map(paper => ({
+                ...paper,
+                layer: nextLayer
+              }));
 
               if (nextLayerPapers.length === 0) {
                 console.log(`[QueryPage] No new papers found for query ${queryGraph.id} layer ${nextLayer}`);
@@ -689,14 +649,13 @@ export default function QueryPage() {
 
           console.log(`[QueryPage] Need ${needed} more papers to reach layer ${nextLayer} limit of ${targetLimit}`);
 
-          // Fetch next layer papers
+          // Fetch next layer papers via backend API
           const maxPerPaper = Math.ceil(needed / Math.max(1, previousLayerPapers.length));
-          const newPapers = await fetchNextLayer(
-            previousLayerPapers,
+          const newPapers = await userApi.expandGraphLayer({
+            currentLayerPapers: previousLayerPapers,
             allExistingPapers,
-            apiHandler,
-            Math.max(1, Math.min(maxPerPaper, 5))
-          );
+            maxPerPaper: Math.max(1, Math.min(maxPerPaper, 5))
+          });
 
           // Limit to exactly what we need
           const limitedPapers = newPapers.slice(0, needed);
@@ -814,7 +773,7 @@ export default function QueryPage() {
     }
 
     try {
-      const luckyQuery = await getFeelingLuckyQuery();
+      const luckyQuery = await userApi.getFeelingLuckyQuery();
       handleSubmit(e, false, luckyQuery);
       setQuery(luckyQuery);
     } catch (err) {

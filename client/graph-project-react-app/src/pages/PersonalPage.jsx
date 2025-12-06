@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { useSavedPapers } from '../hooks/useSavedPapers';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import PaperCard from '../components/PaperCard';
 import './PersonalPage.css';
 

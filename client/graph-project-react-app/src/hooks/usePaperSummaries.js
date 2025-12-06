@@ -2,7 +2,7 @@
 // React hook for managing AI-generated paper summaries with caching
 
 import { useState, useCallback, useRef } from 'react';
-import { generatePaperSummary } from '../services/aiSummaryService';
+import { userApi } from '../services/userApi';
 
 /**
  * Custom hook for managing paper summaries with in-memory caching
@@ -86,7 +86,7 @@ export function usePaperSummaries() {
     });
 
     try {
-      const result = await generatePaperSummary(paperData);
+      const result = await userApi.generatePaperSummary(paperData);
       
       if (result.success && result.summary) {
         // Cache the summary
